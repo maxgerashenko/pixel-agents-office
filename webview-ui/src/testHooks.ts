@@ -71,6 +71,8 @@ declare global {
         row: number;
         areaLabel: string | null;
         assigned: boolean;
+        /** Faces a computer — only these seats are ever assigned to agents. */
+        isWorkSeat: boolean;
       }>;
       /** Drive the real edit-mode tile paint/erase handlers by (col,row),
        *  bypassing only canvas pixel→tile geometry (mirrors petClick). */
@@ -313,6 +315,7 @@ export function installTestHooks(officeStateRef: { current: OfficeState | null }
       row: seat.seatRow,
       areaLabel: os.seatZone(uid),
       assigned: seat.assigned,
+      isWorkSeat: os.isWorkSeat(uid),
     }));
   };
 
