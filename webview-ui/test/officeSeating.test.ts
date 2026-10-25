@@ -177,23 +177,23 @@ test('a seat the user picked by hand survives a layout edit; sub-agents never ta
   assert.equal(os.characters.get(sub)!.seatId, null, 'sub-agents are never seated');
 });
 
-test('a mapped agent prefers a work seat inside its Area, then falls back to the rest', () => {
+test('a mapped agent works only at computers inside its Area, never elsewhere', () => {
   const os = new OfficeState(layout());
   os.setAreaMappings({ alpha: [AREA] });
 
   os.addAgent(1, undefined, undefined, undefined, true, 'alpha');
   assert.equal(seatOf(os, 1), 'w2');
-  // The Area's only computer is taken: the next alpha agent works elsewhere
+  // The Area's only computer is taken: no fallback, the next alpha agent stands
   os.addAgent(2, undefined, undefined, undefined, true, 'alpha');
-  assert.ok(['w1', 'w3', 'wb'].includes(seatOf(os, 2)!));
+  assert.equal(seatOf(os, 2), null);
 });
 
-test('an unmapped agent takes work seats outside every Area before one inside', () => {
+test('an unmapped agent works only at computers outside every Area', () => {
   const os = new OfficeState(layout());
   for (let id = 1; id <= 3; id++) os.addAgent(id, undefined, undefined, undefined, true);
   assert.deepEqual([1, 2, 3].map((id) => seatOf(os, id)).sort(), ['w1', 'w3', 'wb']);
   os.addAgent(4, undefined, undefined, undefined, true);
-  assert.equal(seatOf(os, 4), 'w2');
+  assert.equal(seatOf(os, 4), null, 'no fallback into an Area');
 });
 
 test('a mapping to an Area painted nowhere counts as no mapping', () => {

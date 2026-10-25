@@ -42,7 +42,14 @@ import { CharacterState, Direction, PetState, TILE_SIZE } from '../types.js';
 import { createCharacter, updateCharacter } from './characters.js';
 import { advanceMatrixEffect, startMatrixEffect } from './matrixEffectState.js';
 import { createPet, updatePet } from './petEntity.js';
-import { anchorTile, closestFreeSeat, zoneAt } from './seatPlacement.js';
+import {
+  anchorTile,
+  closestFreeSeat,
+  paintedAreaLabels,
+  seatSatisfiesRule,
+  workLabelsFor,
+  zoneAt,
+} from './seatPlacement.js';
 
 /** Internal helper: facing-tile coords for a seat. Returns null for invalid direction. */
 function seatFacingOffset(direction: Direction): { dCol: number; dRow: number } {
@@ -101,7 +108,8 @@ export class OfficeState {
   /**
    * directoryName → list of Area labels that Directory belongs to.
    * Populated by useExtensionMessages on `areaMappingsLoaded`. Consulted by
-   * `findFreeSeat()` to bias new agents toward seats inside their Directory's Area.
+   * `findFreeSeat()`: a mapped agent works ONLY inside these Areas, an unmapped
+   * one only outside every Area.
    */
   areaMappings: Record<string, string[]> = {};
 
@@ -129,6 +137,7 @@ export class OfficeState {
 
   setAreaMappings(mappings: Record<string, string[]>): void {
     this.areaMappings = mappings;
+    this.reconcileSeatRules();
   }
 
   constructor(layout?: OfficeLayout) {
@@ -236,6 +245,9 @@ export class OfficeState {
         ch.dir = seat.facingDir;
       }
     }
+
+    // Areas may have been repainted: re-seat anyone whose seat now breaks their rule
+    this.reconcileSeatRules();
 
     // Relocate any characters that ended up outside bounds or on non-walkable tiles
     for (const ch of this.characters.values()) {
@@ -412,47 +424,104 @@ export class OfficeState {
     return seatUids[Math.floor(Math.random() * seatUids.length)];
   }
 
+  /** Area labels `directoryName` may work in, or null when unmapped (see workLabelsFor). */
+  private workLabels(directoryName?: string): Set<string> | null {
+    const mapped = directoryName ? this.areaMappings[directoryName] : undefined;
+    return workLabelsFor(mapped, paintedAreaLabels(this.layout.areaTiles));
+  }
+
+  /** Free seats allowed by the seat rule for `directoryName`. */
+  private allowedFreeSeats(directoryName?: string): string[] {
+    const work = this.workLabels(directoryName);
+    const out: string[] = [];
+    for (const [uid, seat] of this.seats) {
+      if (
+        !seat.assigned &&
+        this.workSeatIds.has(uid) &&
+        seatSatisfiesRule(this.seatZone(uid), work)
+      ) {
+        out.push(uid);
+      }
+    }
+    return out;
+  }
+
   /**
-   * 3-stage seat picker for top-level agents.
+   * Seat picker for top-level agents. Only free WORK seats (facing electronics) are
+   * considered, and the Area rule is strict, with no fallback:
    *
-   *   Stage 1: If `directoryName` is given and `areaMappings[directoryName]` lists
-   *            Area labels, prefer free seats whose tile is labeled with one
-   *            of those areas.
-   *   Stage 2: Prefer free seats whose tile has NO area label (unzoned).
-   *   Stage 3: Any free work seat.
+   *   - Mapped (`areaMappings[directoryName]` has at least one label that is
+   *     painted in the layout): only free seats inside one of those Areas.
+   *   - Unmapped (no mapping, or its labels are painted nowhere): only free
+   *     seats outside every Area.
    *
-   * Every stage only considers free WORK seats (facing electronics). Returns
-   * null when none is free — the agent then works standing. Passing `undefined`
-   * preserves pre-Areas single-stage behavior (skips Stage 1; Stage 2 picks
-   * unzoned seats from a layout without `areaTiles`, which is every seat).
+   * Returns null when the allowed set has no free work seat — the agent then goes seatless
+   * rather than sitting somewhere its rule forbids.
    */
   private findFreeSeat(directoryName?: string): string | null {
-    const freeSeats: string[] = [];
+    return this.pickFromSeats(this.allowedFreeSeats(directoryName));
+  }
+
+  /**
+   * Re-seat every top-level character whose seat breaks its Area rule (and give
+   * seatless ones a seat if one is now free). Characters in a valid seat do not
+   * move; the others walk to their new seat via `reassignSeat`, or stand
+   * seatless when none is free.
+   */
+  private reconcileSeatRules(): void {
+    const misplaced: Character[] = [];
+    for (const ch of this.characters.values()) {
+      if (ch.isSubagent || ch.matrixEffect === 'despawn') continue;
+      const seat = ch.seatId ? this.seats.get(ch.seatId) : undefined;
+      if (seat && seatSatisfiesRule(this.seatZone(ch.seatId!), this.workLabels(ch.directoryName))) {
+        continue;
+      }
+      misplaced.push(ch);
+    }
+    // Release first so two misplaced agents can swap seats
+    for (const ch of misplaced) {
+      const seat = ch.seatId ? this.seats.get(ch.seatId) : undefined;
+      if (seat) seat.assigned = false;
+    }
+    for (const ch of misplaced) {
+      const seatId = this.findFreeSeat(ch.directoryName);
+      if (seatId) {
+        ch.seatId = null; // old seat already released
+        this.reassignSeat(ch.id, seatId);
+      } else if (ch.seatId) {
+        ch.seatId = null;
+        ch.path = [];
+        ch.moveProgress = 0;
+        ch.state = CharacterState.IDLE;
+        ch.frame = 0;
+        ch.frameTimer = 0;
+      }
+    }
+  }
+
+  /** Seats the rule allows `directoryName` (free or not), for closest-seat searches. */
+  private allowedSeatView(directoryName?: string): Map<string, Seat> {
+    const work = this.workLabels(directoryName);
+    const out = new Map<string, Seat>();
     for (const [uid, seat] of this.seats) {
-      if (!seat.assigned && this.workSeatIds.has(uid)) freeSeats.push(uid);
+      if (seatSatisfiesRule(this.seatZone(uid), work)) out.set(uid, seat);
     }
-    if (freeSeats.length === 0) return null;
+    return out;
+  }
 
-    const areaLabels = directoryName ? this.areaMappings[directoryName] : undefined;
-
-    // Stage 1 — in-area seats for the Directory's mapped Area labels.
-    if (areaLabels && areaLabels.length > 0) {
-      const wanted = new Set(areaLabels);
-      const inArea = freeSeats.filter((uid) => {
-        const label = this.seatZone(uid);
-        return label !== null && wanted.has(label);
-      });
-      const pick = this.pickFromSeats(inArea);
-      if (pick) return pick;
-    }
-
-    // Stage 2 — unzoned seats (no area label, or layout has no areas at all).
-    const unzoned = freeSeats.filter((uid) => this.seatZone(uid) === null);
-    const pick2 = this.pickFromSeats(unzoned);
-    if (pick2) return pick2;
-
-    // Stage 3 — any free work seat.
-    return this.pickFromSeats(freeSeats);
+  /** A random unoccupied walkable tile inside the agent's mapped Areas, or null
+   *  (unmapped agent, or no such tile). */
+  private freeWalkableTileInAreas(directoryName?: string): { col: number; row: number } | null {
+    const work = this.workLabels(directoryName);
+    const tiles = this.layout.areaTiles;
+    if (!work || !tiles) return null;
+    const occupied = new Set<string>();
+    for (const ch of this.characters.values()) occupied.add(`${ch.tileCol},${ch.tileRow}`);
+    const inside = this.walkableTiles.filter((t) => {
+      const label = tiles[t.row * this.layout.cols + t.col];
+      return !!label && work.has(label) && !occupied.has(`${t.col},${t.row}`);
+    });
+    return inside.length > 0 ? inside[Math.floor(Math.random() * inside.length)] : null;
   }
 
   /** Closest walkable tile to (col,row) not occupied by another character, or null. */
@@ -522,12 +591,20 @@ export class OfficeState {
     let seatId: string | null = null;
     if (preferredSeatId && this.workSeatIds.has(preferredSeatId)) {
       const seat = this.seats.get(preferredSeatId)!;
-      if (!seat.assigned) {
+      if (
+        !seat.assigned &&
+        seatSatisfiesRule(this.seatZone(preferredSeatId), this.workLabels(directoryName))
+      ) {
         seatId = preferredSeatId;
       }
     }
     if (!seatId && anchorAt) {
-      seatId = closestFreeSeat(this.seats, anchorAt.col, anchorAt.row, this.workSeatIds);
+      seatId = closestFreeSeat(
+        this.allowedSeatView(directoryName),
+        anchorAt.col,
+        anchorAt.row,
+        this.workSeatIds,
+      );
     }
     if (!seatId) {
       seatId = this.findFreeSeat(directoryName);
@@ -539,8 +616,10 @@ export class OfficeState {
       seat.assigned = true;
       ch = createCharacter(id, palette, seatId, seat, hueShift);
     } else {
-      // No work seat — teammates spawn beside their anchor, others at a random walkable tile
-      let spawn = anchorAt ? this.closestFreeWalkableTile(anchorAt.col, anchorAt.row) : null;
+      // No allowed seat — a mapped agent stands inside its Area when it can; else
+      // teammates spawn beside their anchor, others at a random walkable tile
+      let spawn = this.freeWalkableTileInAreas(directoryName);
+      if (!spawn && anchorAt) spawn = this.closestFreeWalkableTile(anchorAt.col, anchorAt.row);
       if (!spawn) {
         spawn =
           this.walkableTiles.length > 0
@@ -714,7 +793,12 @@ export class OfficeState {
     if (!teammate || !lead) return;
     const anchorAt = anchorTile(lead, this.seats);
     if (!anchorAt) return;
-    const target = closestFreeSeat(this.seats, anchorAt.col, anchorAt.row, this.workSeatIds);
+    const target = closestFreeSeat(
+      this.allowedSeatView(teammate.directoryName),
+      anchorAt.col,
+      anchorAt.row,
+      this.workSeatIds,
+    );
     if (!target || target === teammate.seatId) return;
     const targetSeat = this.seats.get(target)!;
     const targetDist =

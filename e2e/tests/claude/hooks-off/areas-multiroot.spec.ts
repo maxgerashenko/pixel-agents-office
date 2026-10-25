@@ -173,7 +173,7 @@ test.describe('Areas (multi-root)', () => {
    * Seat-preference relies on a PERSISTED area: spawning an agent opens a
    * terminal that takes over the panel and disposes the webview, so the area
    * must be saved and the panel re-acquired afterward (same reload pattern the
-   * pets persistence test uses). areaMappings is seeded so Stage 1 has labels.
+   * pets persistence test uses). areaMappings is seeded so alpha is mapped (mapped agents sit only inside their Areas).
    */
   test.describe('seat preference (alpha → Engineering)', () => {
     test.use({ seedConfig: buildSeedConfig({ areaMappings: { [ALPHA]: ['Engineering'] } }) });
@@ -187,7 +187,7 @@ test.describe('Areas (multi-root)', () => {
 
       // Spawn alpha (mapped → Engineering). The terminal takes the panel, so
       // re-acquire the webview; the restored agent re-seats via findFreeSeat with
-      // the persisted area + mapping → an Engineering seat.
+      // the persisted area + mapping → an Engineering seat (the only seats it may use).
       await addAgentForDirectory(frame, ALPHA, tmpHome, mockLogFile);
       narrator.step('re-opening the panel — the spawned terminal disposed the webview');
       const fresh = await reacquireFrame(window);
@@ -216,8 +216,8 @@ test.describe('Areas (multi-root)', () => {
       narrator.step('painting Engineering over free seats and saving the layout');
       await paintAndSaveEngineering(frame);
 
-      // beta is NOT in areaMappings → Stage 1 is skipped → it lands on an unzoned
-      // seat, never inside Engineering.
+      // beta is NOT in areaMappings → unmapped agents sit only outside every Area,
+      // never inside Engineering.
       await addAgentForDirectory(frame, BETA, tmpHome, mockLogFile);
       narrator.step('re-opening the panel after spawning the beta agent');
       const fresh = await reacquireFrame(window);

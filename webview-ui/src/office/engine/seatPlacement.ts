@@ -59,6 +59,40 @@ export function closestFreeSeat(
   return best;
 }
 
+/** Every Area label actually painted on at least one tile of the layout. */
+export function paintedAreaLabels(
+  areaTiles: ReadonlyArray<string | null | undefined> | undefined,
+): Set<string> {
+  const out = new Set<string>();
+  if (!areaTiles) return out;
+  for (const label of areaTiles) if (label) out.add(label);
+  return out;
+}
+
+/**
+ * The Area labels an agent may work in, or null when it is unmapped. Mapped
+ * labels painted nowhere in the layout are dropped; if none survive the agent
+ * is treated as unmapped (it must not be locked out of every seat by a stale
+ * mapping).
+ */
+export function workLabelsFor(
+  mapped: readonly string[] | undefined,
+  painted: ReadonlySet<string>,
+): Set<string> | null {
+  if (!mapped) return null;
+  const live = mapped.filter((l) => painted.has(l));
+  return live.length > 0 ? new Set(live) : null;
+}
+
+/**
+ * The seat rule. A mapped agent (`work` non-null) may sit only inside one of
+ * its labels; an unmapped agent (`work` null) only outside every Area. No
+ * fallback either way. `zone` is the seat tile's Area label, or null.
+ */
+export function seatSatisfiesRule(zone: string | null, work: ReadonlySet<string> | null): boolean {
+  return work ? zone !== null && work.has(zone) : zone === null;
+}
+
 /** Area label at a tile, or null when the tile is unzoned (or there are no areas). */
 export function zoneAt(
   areaTiles: ReadonlyArray<string | null> | undefined,
