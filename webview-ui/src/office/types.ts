@@ -202,6 +202,9 @@ export interface Character {
   isActive: boolean;
   /** Assigned seat uid, or null if no seat */
   seatId: string | null;
+  /** Rest seat (bench/sofa) this idle agent has claimed, or null. Transient:
+   *  never persisted, released the moment the agent becomes active. */
+  restSeatId?: string | null;
   /** Active speech bubble type, or null if none showing */
   bubbleType: 'permission' | 'waiting' | null;
   /** Only meaningful while bubbleType === 'waiting': true when the agent went
