@@ -14,6 +14,7 @@ import {
   MAX_PET_ID_LENGTH,
   PET_HIT_HALF_WIDTH,
   PET_HIT_HEIGHT,
+  REST_SEAT_TYPE_PATTERN,
   WAITING_BUBBLE_DURATION_SEC,
 } from '../../constants.js';
 import { getAnimationFrames, getCatalogEntry, getOnStateType } from '../layout/furnitureCatalog.js';
@@ -41,7 +42,7 @@ import { CharacterState, Direction, PetState, TILE_SIZE } from '../types.js';
 import { createCharacter, updateCharacter } from './characters.js';
 import { advanceMatrixEffect, startMatrixEffect } from './matrixEffectState.js';
 import { createPet, updatePet } from './petEntity.js';
-import { anchorTile, closestFreeSeat } from './seatPlacement.js';
+import { anchorTile, closestFreeSeat, zoneAt } from './seatPlacement.js';
 
 /** Internal helper: facing-tile coords for a seat. Returns null for invalid direction. */
 function seatFacingOffset(direction: Direction): { dCol: number; dRow: number } {
@@ -61,6 +62,12 @@ export class OfficeState {
   blockedTiles: Set<string>;
   furniture: FurnitureInstance[];
   walkableTiles: Array<{ col: number; row: number }>;
+  /** Walkable tiles outside every marked Area — where idle agents wander.
+   *  Falls back to all walkable tiles when Areas cover the whole floor. */
+  wanderTiles: Array<{ col: number; row: number }> = [];
+  /** Bench/sofa seats away from computers and outside every Area — where idle
+   *  agents rest. */
+  restSeatIds = new Set<string>();
   characters: Map<number, Character> = new Map();
   pets: Pet[] = [];
   /** Accumulated time for furniture animation frame cycling */
@@ -132,6 +139,7 @@ export class OfficeState {
     this.blockedTiles = getBlockedTiles(this.layout.furniture);
     this.furniture = layoutToFurnitureInstances(this.layout.furniture);
     this.walkableTiles = getWalkableTiles(this.tileMap, this.blockedTiles);
+    this.refreshSeatRoles();
     // Pets are built last because they need walkableTiles populated for spawn.
     this.rebuildPetsFromLayout(this.layout);
   }
@@ -147,6 +155,7 @@ export class OfficeState {
     this.blockedTiles = getBlockedTiles(layout.furniture);
     this.rebuildFurnitureInstances();
     this.walkableTiles = getWalkableTiles(this.tileMap, this.blockedTiles);
+    this.refreshSeatRoles();
 
     // Shift character positions when grid expands left/up
     if (shift && (shift.col !== 0 || shift.row !== 0)) {
@@ -182,6 +191,7 @@ export class OfficeState {
     // work seat and no longer is (the edit removed the PC it faced) is given up;
     // a non-work seat the user picked by hand stays theirs.
     for (const ch of this.characters.values()) {
+      ch.restSeatId = null; // rest claims don't survive a seat rebuild
       const lostItsComputer =
         ch.seatId !== null &&
         previousWorkSeatIds.has(ch.seatId) &&
@@ -293,12 +303,17 @@ export class OfficeState {
     return `${seat.seatCol},${seat.seatRow}`;
   }
 
-  /** Temporarily unblock a character's own seat, run fn, then re-block */
+  /** Temporarily unblock a character's own seat (and its claimed rest seat),
+   *  run fn, then re-block */
   private withOwnSeatUnblocked<T>(ch: Character, fn: () => T): T {
     const key = this.ownSeatKey(ch);
+    const rest = ch.restSeatId ? this.seats.get(ch.restSeatId) : undefined;
+    const restKey = rest ? `${rest.seatCol},${rest.seatRow}` : null;
+    const restWasBlocked = restKey ? this.blockedTiles.delete(restKey) : false;
     if (key) this.blockedTiles.delete(key);
     const result = fn();
     if (key) this.blockedTiles.add(key);
+    if (restKey && restWasBlocked) this.blockedTiles.add(restKey);
     return result;
   }
 
@@ -322,11 +337,30 @@ export class OfficeState {
   seatZone(uid: string): string | null {
     const seat = this.seats.get(uid);
     if (!seat) return null;
-    const tiles = this.layout.areaTiles;
-    if (!tiles || tiles.length === 0) return null;
-    const idx = seat.seatRow * this.layout.cols + seat.seatCol;
-    if (idx < 0 || idx >= tiles.length) return null;
-    return tiles[idx] ?? null;
+    return zoneAt(this.layout.areaTiles, this.layout.cols, seat.seatCol, seat.seatRow);
+  }
+
+  /**
+   * Derive the rest seats and wander tiles from the layout. A bench/sofa seat
+   * that does not face a computer and sits outside every Area is a rest seat;
+   * everything else (a cushioned chair, an Area's sofa, a bench at a PC) is not.
+   */
+  private refreshSeatRoles(): void {
+    const typeByUid = new Map(this.layout.furniture.map((f) => [f.uid, f.type]));
+    this.restSeatIds = new Set();
+    for (const uid of this.seats.keys()) {
+      if (this.workSeatIds.has(uid)) continue;
+      // Multi-tile chairs key extra seats `uid:N` (layoutToSeats)
+      const type = typeByUid.get(uid) ?? typeByUid.get(uid.replace(/:\d+$/, ''));
+      if (type && REST_SEAT_TYPE_PATTERN.test(type) && this.seatZone(uid) === null) {
+        this.restSeatIds.add(uid);
+      }
+    }
+    const { areaTiles, cols } = this.layout;
+    const outside = this.walkableTiles.filter(
+      (t) => zoneAt(areaTiles, cols, t.col, t.row) === null,
+    );
+    this.wanderTiles = outside.length > 0 ? outside : this.walkableTiles;
   }
 
   /**
@@ -633,6 +667,7 @@ export class OfficeState {
   reassignSeat(agentId: number, seatId: string): void {
     const ch = this.characters.get(agentId);
     if (!ch) return;
+    ch.restSeatId = null;
     // Unassign old seat
     if (ch.seatId) {
       const old = this.seats.get(ch.seatId);
@@ -699,6 +734,7 @@ export class OfficeState {
     if (!ch || !ch.seatId) return;
     const seat = this.seats.get(ch.seatId);
     if (!seat) return;
+    ch.restSeatId = null;
     const path = this.withOwnSeatUnblocked(ch, () =>
       findPath(ch.tileCol, ch.tileRow, seat.seatCol, seat.seatRow, this.tileMap, this.blockedTiles),
     );
@@ -1156,6 +1192,16 @@ export class OfficeState {
       this.greeter = null;
     }
 
+    // Rest seats nobody has claimed or been given as a work seat; updateCharacter
+    // removes the ones it claims
+    const freeRestSeats = new Set<string>();
+    for (const uid of this.restSeatIds) {
+      if (!this.seats.get(uid)?.assigned) freeRestSeats.add(uid);
+    }
+    for (const ch of this.characters.values()) {
+      if (ch.restSeatId) freeRestSeats.delete(ch.restSeatId);
+    }
+
     const toDelete: number[] = [];
     for (const ch of this.characters.values()) {
       const effect = advanceMatrixEffect(ch, dt);
@@ -1166,7 +1212,16 @@ export class OfficeState {
 
       // Temporarily unblock own seat so character can pathfind to it
       this.withOwnSeatUnblocked(ch, () =>
-        updateCharacter(ch, dt, this.walkableTiles, this.seats, this.tileMap, this.blockedTiles),
+        updateCharacter(
+          ch,
+          dt,
+          this.wanderTiles,
+          this.seats,
+          this.tileMap,
+          this.blockedTiles,
+          freeRestSeats,
+          !ch.seatId || this.seatZone(ch.seatId) === null,
+        ),
       );
 
       // Tick bubble timer for waiting bubbles

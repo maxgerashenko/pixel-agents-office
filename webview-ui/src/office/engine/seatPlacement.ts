@@ -58,3 +58,15 @@ export function closestFreeSeat(
   }
   return best;
 }
+
+/** Area label at a tile, or null when the tile is unzoned (or there are no areas). */
+export function zoneAt(
+  areaTiles: ReadonlyArray<string | null> | undefined,
+  cols: number,
+  col: number,
+  row: number,
+): string | null {
+  if (!areaTiles || areaTiles.length === 0) return null;
+  if (col < 0 || col >= cols || row < 0) return null;
+  return areaTiles[row * cols + col] ?? null;
+}
