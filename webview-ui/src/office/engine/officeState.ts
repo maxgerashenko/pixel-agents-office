@@ -55,6 +55,9 @@ export class OfficeState {
   layout: OfficeLayout;
   tileMap: TileTypeVal[][];
   seats: Map<string, Seat>;
+  /** Seats that face electronics — the only ones agents are auto-assigned.
+   *  Recomputed with `seats` whenever the layout changes. */
+  private workSeatIds: Set<string> = new Set();
   blockedTiles: Set<string>;
   furniture: FurnitureInstance[];
   walkableTiles: Array<{ col: number; row: number }>;
@@ -125,6 +128,7 @@ export class OfficeState {
     this.layout = layout || createDefaultLayout();
     this.tileMap = layoutToTileMap(this.layout);
     this.seats = layoutToSeats(this.layout.furniture);
+    this.workSeatIds = this.computeWorkSeatIds();
     this.blockedTiles = getBlockedTiles(this.layout.furniture);
     this.furniture = layoutToFurnitureInstances(this.layout.furniture);
     this.walkableTiles = getWalkableTiles(this.tileMap, this.blockedTiles);
@@ -138,6 +142,8 @@ export class OfficeState {
     this.layout = layout;
     this.tileMap = layoutToTileMap(layout);
     this.seats = layoutToSeats(layout.furniture);
+    const previousWorkSeatIds = this.workSeatIds;
+    this.workSeatIds = this.computeWorkSeatIds();
     this.blockedTiles = getBlockedTiles(layout.furniture);
     this.rebuildFurnitureInstances();
     this.walkableTiles = getWalkableTiles(this.tileMap, this.blockedTiles);
@@ -172,9 +178,21 @@ export class OfficeState {
       seat.assigned = false;
     }
 
-    // First pass: try to keep characters at their existing seats
+    // First pass: keep characters at their existing seats. Only a seat that WAS a
+    // work seat and no longer is (the edit removed the PC it faced) is given up;
+    // a non-work seat the user picked by hand stays theirs.
     for (const ch of this.characters.values()) {
-      if (ch.seatId && this.seats.has(ch.seatId)) {
+      const lostItsComputer =
+        ch.seatId !== null &&
+        previousWorkSeatIds.has(ch.seatId) &&
+        !this.workSeatIds.has(ch.seatId);
+      // removeAgent already freed a despawning character's seat; don't re-mark it
+      if (
+        ch.seatId &&
+        this.seats.has(ch.seatId) &&
+        !lostItsComputer &&
+        ch.matrixEffect !== 'despawn'
+      ) {
         const seat = this.seats.get(ch.seatId)!;
         if (!seat.assigned) {
           seat.assigned = true;
@@ -192,9 +210,10 @@ export class OfficeState {
       ch.seatId = null; // will be reassigned below
     }
 
-    // Second pass: assign remaining characters to free seats
+    // Second pass: assign remaining characters to free seats (sub-agents never
+    // take seats, and a despawning character has already given its seat up)
     for (const ch of this.characters.values()) {
-      if (ch.seatId) continue;
+      if (ch.seatId || ch.isSubagent || ch.matrixEffect === 'despawn') continue;
       const seatId = this.findFreeSeat(ch.directoryName);
       if (seatId) {
         this.seats.get(seatId)!.assigned = true;
@@ -337,26 +356,26 @@ export class OfficeState {
     return false;
   }
 
-  /**
-   * Random-pick a seat from a candidate list, biased toward seats that face an
-   * electronics tile. Returns null when the candidate list is empty.
-   */
-  private pickFromSeats(seatUids: string[], electronicsTiles: Set<string>): string | null {
-    if (seatUids.length === 0) return null;
-    const pcSeats: string[] = [];
-    const otherSeats: string[] = [];
-    for (const uid of seatUids) {
-      const seat = this.seats.get(uid);
-      if (!seat) continue;
-      if (this.isSeatFacingElectronics(seat, electronicsTiles)) {
-        pcSeats.push(uid);
-      } else {
-        otherSeats.push(uid);
-      }
+  /** Uids of the seats that face electronics, whatever the chair type. */
+  private computeWorkSeatIds(): Set<string> {
+    const electronicsTiles = this.buildElectronicsTileSet();
+    const out = new Set<string>();
+    for (const [uid, seat] of this.seats) {
+      if (this.isSeatFacingElectronics(seat, electronicsTiles)) out.add(uid);
     }
-    if (pcSeats.length > 0) return pcSeats[Math.floor(Math.random() * pcSeats.length)];
-    if (otherSeats.length > 0) return otherSeats[Math.floor(Math.random() * otherSeats.length)];
-    return null;
+    return out;
+  }
+
+  /** A work seat faces a PC or monitor. Agents are only auto-assigned these;
+   *  sofas, benches and dining chairs are never work seats. */
+  isWorkSeat(uid: string): boolean {
+    return this.workSeatIds.has(uid);
+  }
+
+  /** Random-pick a seat from a candidate list. Null when it is empty. */
+  private pickFromSeats(seatUids: string[]): string | null {
+    if (seatUids.length === 0) return null;
+    return seatUids[Math.floor(Math.random() * seatUids.length)];
   }
 
   /**
@@ -366,18 +385,17 @@ export class OfficeState {
    *            Area labels, prefer free seats whose tile is labeled with one
    *            of those areas.
    *   Stage 2: Prefer free seats whose tile has NO area label (unzoned).
-   *   Stage 3: Any free seat.
+   *   Stage 3: Any free work seat.
    *
-   * Each stage routes through `pickFromSeats` for the PC-bias rule. Returns
-   * null only when every seat is already occupied. Passing `undefined`
+   * Every stage only considers free WORK seats (facing electronics). Returns
+   * null when none is free — the agent then works standing. Passing `undefined`
    * preserves pre-Areas single-stage behavior (skips Stage 1; Stage 2 picks
    * unzoned seats from a layout without `areaTiles`, which is every seat).
    */
   private findFreeSeat(directoryName?: string): string | null {
-    const electronicsTiles = this.buildElectronicsTileSet();
     const freeSeats: string[] = [];
     for (const [uid, seat] of this.seats) {
-      if (!seat.assigned) freeSeats.push(uid);
+      if (!seat.assigned && this.workSeatIds.has(uid)) freeSeats.push(uid);
     }
     if (freeSeats.length === 0) return null;
 
@@ -390,17 +408,17 @@ export class OfficeState {
         const label = this.seatZone(uid);
         return label !== null && wanted.has(label);
       });
-      const pick = this.pickFromSeats(inArea, electronicsTiles);
+      const pick = this.pickFromSeats(inArea);
       if (pick) return pick;
     }
 
     // Stage 2 — unzoned seats (no area label, or layout has no areas at all).
     const unzoned = freeSeats.filter((uid) => this.seatZone(uid) === null);
-    const pick2 = this.pickFromSeats(unzoned, electronicsTiles);
+    const pick2 = this.pickFromSeats(unzoned);
     if (pick2) return pick2;
 
-    // Stage 3 — any free seat.
-    return this.pickFromSeats(freeSeats, electronicsTiles);
+    // Stage 3 — any free work seat.
+    return this.pickFromSeats(freeSeats);
   }
 
   /** Closest walkable tile to (col,row) not occupied by another character, or null. */
@@ -460,21 +478,22 @@ export class OfficeState {
       hueShift = pick.hueShift;
     }
 
-    // Try preferred seat first, then (for teammates) the seat closest to the
-    // anchor agent, then any free seat. anchorTile resolves to the anchor's SEAT
-    // (stable from creation) rather than its live tile, so a teammate placed while
-    // the lead is still walking to its seat still clusters around the final seat.
+    // Try preferred seat first (only if it is a work seat), then (for teammates)
+    // the work seat closest to the anchor agent, then any free work seat.
+    // anchorTile resolves to the anchor's SEAT (stable from creation) rather than
+    // its live tile, so a teammate placed while the lead is still walking to its
+    // seat still clusters around the final seat.
     const anchor = nearAgentId !== undefined ? this.characters.get(nearAgentId) : undefined;
     const anchorAt = anchorTile(anchor, this.seats);
     let seatId: string | null = null;
-    if (preferredSeatId && this.seats.has(preferredSeatId)) {
+    if (preferredSeatId && this.workSeatIds.has(preferredSeatId)) {
       const seat = this.seats.get(preferredSeatId)!;
       if (!seat.assigned) {
         seatId = preferredSeatId;
       }
     }
     if (!seatId && anchorAt) {
-      seatId = closestFreeSeat(this.seats, anchorAt.col, anchorAt.row);
+      seatId = closestFreeSeat(this.seats, anchorAt.col, anchorAt.row, this.workSeatIds);
     }
     if (!seatId) {
       seatId = this.findFreeSeat(directoryName);
@@ -486,7 +505,7 @@ export class OfficeState {
       seat.assigned = true;
       ch = createCharacter(id, palette, seatId, seat, hueShift);
     } else {
-      // No seats — teammates spawn beside their anchor, others at a random walkable tile
+      // No work seat — teammates spawn beside their anchor, others at a random walkable tile
       let spawn = anchorAt ? this.closestFreeWalkableTile(anchorAt.col, anchorAt.row) : null;
       if (!spawn) {
         spawn =
@@ -660,7 +679,7 @@ export class OfficeState {
     if (!teammate || !lead) return;
     const anchorAt = anchorTile(lead, this.seats);
     if (!anchorAt) return;
-    const target = closestFreeSeat(this.seats, anchorAt.col, anchorAt.row);
+    const target = closestFreeSeat(this.seats, anchorAt.col, anchorAt.row, this.workSeatIds);
     if (!target || target === teammate.seatId) return;
     const targetSeat = this.seats.get(target)!;
     const targetDist =

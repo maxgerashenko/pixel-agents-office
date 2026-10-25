@@ -226,7 +226,13 @@ export async function expectTeammateSeatedNextToLead(
     interface SeatHooks {
       getCharacters?: () => Array<{ id: number; agentName?: string }>;
       getAgentSeats?: () => Array<{ id: number; seatId: string | null }>;
-      getSeats?: () => Array<{ uid: string; col: number; row: number; assigned: boolean }>;
+      getSeats?: () => Array<{
+        uid: string;
+        col: number;
+        row: number;
+        assigned: boolean;
+        isWorkSeat: boolean;
+      }>;
     }
     const hooks = (window as { __pixelAgentsTestHooks?: SeatHooks }).__pixelAgentsTestHooks;
     const characters = hooks?.getCharacters?.() ?? [];
@@ -243,7 +249,9 @@ export async function expectTeammateSeatedNextToLead(
     const dist = (s: { col: number; row: number }): number =>
       Math.abs(s.col - leadSeat.col) + Math.abs(s.row - leadSeat.row);
     const teammateDist = dist(teammateSeat);
-    const closerFreeSeat = seats.find((s) => !s.assigned && dist(s) < teammateDist) ?? null;
+    // Only computer seats are ever assigned, so a closer free sofa doesn't count
+    const closerFreeSeat =
+      seats.find((s) => s.isWorkSeat && !s.assigned && dist(s) < teammateDist) ?? null;
     return { error: null, teammateDist, closerFreeSeat };
   }, teammateName);
 
