@@ -160,6 +160,12 @@ export function ToolOverlay({
         const isSelected = selectedId === id;
         const isHovered = hoveredId === id;
         const isSub = ch.isSubagent;
+        // Working = running a turn or blocked on approval. Working agents show
+        // their label without hover; idle / done / waiting-for-input ones don't.
+        const isWorking =
+          ch.isActive ||
+          ch.bubbleType === 'permission' ||
+          !!agentTools[id]?.some((t) => t.permissionWait && !t.done);
 
         // Speech bubble (permission dots / done checkmark) — rendered here in
         // the DOM, above the label panels (OVERLAY_BUBBLE_Z_INDEX over the label panels), for every
@@ -197,9 +203,9 @@ export function ToolOverlay({
           );
         }
 
-        // Only show the label for hovered or selected agents (unless
-        // always-show is on) — the bubble renders regardless.
-        if (!alwaysShowOverlay && !isSelected && !isHovered) {
+        // Show the label for working, hovered or selected agents (or all of them
+        // when always-show is on) — the bubble renders regardless.
+        if (!alwaysShowOverlay && !isSelected && !isHovered && !isWorking) {
           return bubbleNode && <Fragment key={id}>{bubbleNode}</Fragment>;
         }
 
@@ -213,7 +219,7 @@ export function ToolOverlay({
         // (the panel would cover the bubble). Render an empty positioned marker
         // so overlay counts stay stable and hover/select can still bring the
         // panel back. When always-show is off, the early return above already
-        // keeps the panel hidden for idle agents.
+        // keeps the panel hidden for agents that are not working.
         const isDone = ch.bubbleType === 'waiting' && !ch.waitingAwaitingInput;
         if (isDone && !isSelected && !isHovered) {
           return (
@@ -292,7 +298,12 @@ export function ToolOverlay({
                 left: screenX,
                 top: screenY - (hasExtraLines ? 34 : 28),
                 pointerEvents: isSelected ? 'auto' : 'none',
-                opacity: alwaysShowOverlay && !isSelected && !isHovered ? (isSub ? 0.5 : 0.75) : 1,
+                opacity:
+                  alwaysShowOverlay && !isWorking && !isSelected && !isHovered
+                    ? isSub
+                      ? 0.5
+                      : 0.75
+                    : 1,
                 zIndex: isSelected ? OVERLAY_LABEL_SELECTED_Z_INDEX : OVERLAY_LABEL_Z_INDEX,
               }}
               data-testid="agent-overlay"
