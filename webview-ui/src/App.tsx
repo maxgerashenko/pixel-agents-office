@@ -31,6 +31,7 @@ import { MobileShell } from './mobile/MobileShell.js';
 import { useMobileShell } from './mobile/useMobileShell.js';
 import { OfficeCanvas } from './office/components/OfficeCanvas.js';
 import { ToolOverlay } from './office/components/ToolOverlay.js';
+import { renameAreaInMappings } from './office/editor/editorActions.js';
 import { EditorState } from './office/editor/editorState.js';
 import { EditorToolbar } from './office/editor/EditorToolbar.js';
 import { OfficeState } from './office/engine/officeState.js';
@@ -72,7 +73,16 @@ function App() {
     }
   }, []);
 
-  const editor = useEditorActions(getOfficeState, editorState);
+  // useEditorActions runs before useExtensionMessages owns areaMappings, so the
+  // rename callback goes through a ref that is filled once those exist.
+  const areasRenamedRef = useRef<(renames: Array<[string, string]>) => void>(() => {});
+  const handleAreasRenamed = useCallback(
+    (renames: Array<[string, string]>) => areasRenamedRef.current(renames),
+    [],
+  );
+  const editor = useEditorActions(getOfficeState, editorState, {
+    onAreasRenamed: handleAreasRenamed,
+  });
 
   const isEditDirty = useCallback(
     () => editor.isEditMode && editor.isDirty,
@@ -259,6 +269,21 @@ function App() {
     },
     [areaMappings, setAreaMappings],
   );
+
+  // An area was renamed (edit, undo, redo, reset): carry its Directory mappings
+  // to the new label. Runs BEFORE the layout rebuild.
+  areasRenamedRef.current = (renames) => {
+    const os = getOfficeState();
+    const next = renameAreaInMappings(os.areaMappings, renames);
+    if (next === os.areaMappings) return;
+    // Assigned directly, not via os.setAreaMappings: the layout rebuild that
+    // follows re-seats agents once against a consistent label + mapping.
+    // setAreaMappings re-checks seats while the layout still carries the old
+    // label, which would briefly evict agents from their area.
+    os.areaMappings = next;
+    setAreaMappings(next);
+    transport.send({ type: 'saveAreaMappings', mappings: next });
+  };
 
   // Toggle global Show Areas — persisted via setShowAreas message; runs server-
   // side through configPersistence.

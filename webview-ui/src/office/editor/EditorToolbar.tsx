@@ -439,7 +439,7 @@ export function EditorToolbar({
           <AreaAddRow areas={areas} onAddArea={onAddArea} />
           <div className="text-xs text-text-muted px-4 leading-none">
             Paint areas on the map, then assign workspace folders. Agents will sit in their folder's
-            area.
+            area. Double-click an area's name to rename it.
           </div>
           {/* Fixed 4-per-row grid; no overflow clip, or the upward Add-folder dropdown is cut off. */}
           <div className="grid grid-cols-[repeat(4,130px)] gap-4">
@@ -830,6 +830,7 @@ function AreaCard({
           <span
             onDoubleClick={(e) => {
               e.stopPropagation();
+              setRenameDraft(area.label);
               setRenaming(true);
             }}
             className="flex-1 text-sm text-text overflow-hidden text-ellipsis whitespace-nowrap"

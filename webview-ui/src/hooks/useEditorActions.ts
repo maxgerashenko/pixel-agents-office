@@ -13,6 +13,7 @@ import type { ExpandDirection } from '../office/editor/editorActions.js';
 import {
   addArea,
   areaStrokeErases,
+  diffAreaRenames,
   dropFurniture,
   eraseArea,
   eraseCarpet,
@@ -107,10 +108,19 @@ function defaultZoom(): number {
   return Math.max(ZOOM_MIN, Math.round(ZOOM_DEFAULT_DPR_FACTOR * dpr));
 }
 
+interface EditorActionsOptions {
+  /** Areas renamed by a layout about to be applied (edit, undo, redo, reset). */
+  onAreasRenamed?: (renames: Array<[string, string]>) => void;
+}
+
 export function useEditorActions(
   getOfficeState: () => OfficeState,
   editorState: EditorState,
+  options?: EditorActionsOptions,
 ): EditorActions {
+  // Read through a ref so a callback defined after this hook still works.
+  const onAreasRenamedRef = useRef(options?.onAreasRenamed);
+  onAreasRenamedRef.current = options?.onAreasRenamed;
   const [isEditMode, setIsEditMode] = useState(false);
   const [editorTick, setEditorTick] = useState(0);
   const [isDirty, setIsDirty] = useState(false);
@@ -150,6 +160,14 @@ export function useEditorActions(
 
   const bumpTick = useCallback(() => setEditorTick((n) => n + 1), []);
 
+  /** Rebuild the office from a layout, first telling the host about any area
+   *  renames so Directory→Area mappings follow the label before agents re-seat. */
+  const applyLayoutToOffice = useCallback((os: OfficeState, newLayout: OfficeLayout) => {
+    const renames = diffAreaRenames(os.getLayout().areas, newLayout.areas);
+    if (renames.length > 0) onAreasRenamedRef.current?.(renames);
+    os.rebuildFromLayout(newLayout);
+  }, []);
+
   /**
    * Apply a layout edit: rebuild state, save, mark dirty — and push undo
    * unless the edit continues the undo session the newest entry already
@@ -166,11 +184,11 @@ export function useEditorActions(
       }
       editorState.isDirty = true;
       setIsDirty(true);
-      os.rebuildFromLayout(newLayout);
+      applyLayoutToOffice(os, newLayout);
       saveLayout(newLayout);
       bumpTick();
     },
-    [getOfficeState, editorState, saveLayout, bumpTick],
+    [getOfficeState, editorState, saveLayout, bumpTick, applyLayoutToOffice],
   );
 
   /** A discrete edit: always its own undo entry. */
@@ -463,12 +481,12 @@ export function useEditorActions(
     const os = getOfficeState();
     // Push current layout to redo stack before restoring
     editorState.pushRedo(os.getLayout());
-    os.rebuildFromLayout(prev);
+    applyLayoutToOffice(os, prev);
     saveLayout(prev);
     editorState.isDirty = true;
     setIsDirty(true);
     setEditorTick((n) => n + 1);
-  }, [getOfficeState, editorState, saveLayout]);
+  }, [getOfficeState, editorState, saveLayout, applyLayoutToOffice]);
 
   const handleRedo = useCallback(() => {
     const next = editorState.popRedo();
@@ -477,12 +495,12 @@ export function useEditorActions(
     const os = getOfficeState();
     // Push current layout to undo stack before restoring
     editorState.pushUndo(os.getLayout());
-    os.rebuildFromLayout(next);
+    applyLayoutToOffice(os, next);
     saveLayout(next);
     editorState.isDirty = true;
     setIsDirty(true);
     setEditorTick((n) => n + 1);
-  }, [getOfficeState, editorState, saveLayout]);
+  }, [getOfficeState, editorState, saveLayout, applyLayoutToOffice]);
 
   const handleReset = useCallback(() => {
     if (!lastSavedLayoutRef.current) return;
