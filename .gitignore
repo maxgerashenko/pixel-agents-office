@@ -32,7 +32,8 @@ allure-report/
 !.env.example
 
 # Project-specific
-.claude
+.claude/*
+!/.claude/skills/
 .mcp.json
 /sprites-export
 .vercel/
