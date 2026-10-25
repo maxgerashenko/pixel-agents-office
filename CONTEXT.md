@@ -171,11 +171,14 @@ Furniture that seats face and that hosts surface items. An agent's character sit
 A sittable spot the office derives from chair furniture, assignable to exactly one agent.
 _Avoid_: chair (that's the furniture), workstation
 
+**Work seat**:
+A seat that faces electronics (a PC or monitor), whatever the chair — a bench at a desk counts, a sofa across the room does not. Agents are only ever assigned work seats; with none free, an agent works standing. Picking a seat by hand is not restricted.
+
 **Chair**:
 The furniture category whose items create seats. Every footprint tile of a chair yields one seat.
 
 **Seat assignment**:
-Which agent owns which seat. Persisted, and changeable by selecting a character and clicking a free seat.
+Which agent owns which seat. Persisted for work seats, and changeable by selecting a character and clicking a free seat.
 
 **Pet**:
 An animated creature that lives in the office and belongs to no agent. Purely decorative; wanders like a character.

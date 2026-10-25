@@ -55,11 +55,12 @@ async function startArea(frame: Frame, label: string): Promise<void> {
   await selectArea(frame, label);
 }
 
-/** Add "Engineering", paint it over some real (free) seats, and save. */
+/** Add "Engineering", paint it over some real (free) computer seats, and save. */
 async function paintAndSaveEngineering(frame: Frame): Promise<void> {
   await startArea(frame, 'Engineering');
   const seats = await readSeats(frame);
-  const targetSeats = seats.filter((s) => !s.assigned).slice(0, 3);
+  // Computer seats only: agents never work anywhere else
+  const targetSeats = seats.filter((s) => s.isWorkSeat && !s.assigned).slice(0, 3);
   expect(targetSeats.length).toBeGreaterThan(0);
   for (const seat of targetSeats) {
     await paintTile(frame, seat.col, seat.row);

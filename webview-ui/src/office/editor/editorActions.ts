@@ -704,6 +704,55 @@ export function renameArea(layout: OfficeLayout, oldLabel: string, newLabel: str
   return { ...layout, areas, areaTiles };
 }
 
+/**
+ * Renames between two area lists, as `[old, new]` pairs. Positional: only
+ * lists of equal length are compared, and an index counts as a rename when its
+ * label changed to one that exists nowhere in the other list. Adds, removes and
+ * reorders therefore yield nothing. Undo/redo diffs fall out for free (the
+ * reverse pair).
+ */
+export function diffAreaRenames(
+  prev: AreaDefinition[] | undefined,
+  next: AreaDefinition[] | undefined,
+): Array<[string, string]> {
+  if (!prev || !next || prev.length !== next.length) return [];
+  const prevLabels = new Set(prev.map((a) => a.label));
+  const nextLabels = new Set(next.map((a) => a.label));
+  const renames: Array<[string, string]> = [];
+  for (let i = 0; i < prev.length; i++) {
+    const from = prev[i].label;
+    const to = next[i].label;
+    if (from !== to && !nextLabels.has(from) && !prevLabels.has(to)) renames.push([from, to]);
+  }
+  return renames;
+}
+
+/**
+ * Rewrite Directory→Area mappings for renamed areas. Keys (Directory names) are
+ * untouched; label values are replaced and deduped per directory, keeping first
+ * occurrence order. Returns the same object when nothing changed.
+ */
+export function renameAreaInMappings(
+  mappings: Record<string, string[]>,
+  renames: ReadonlyArray<[string, string]>,
+): Record<string, string[]> {
+  if (renames.length === 0) return mappings;
+  const renameMap = new Map(renames);
+  let changed = false;
+  const result: Record<string, string[]> = {};
+  for (const [dir, labels] of Object.entries(mappings)) {
+    const mapped = labels.map((l) => renameMap.get(l) ?? l);
+    const deduped = mapped.filter((l, i) => mapped.indexOf(l) === i);
+    if (deduped.length !== labels.length || deduped.some((l, i) => l !== labels[i])) {
+      changed = true;
+      result[dir] = deduped;
+    } else {
+      result[dir] = labels;
+    }
+  }
+  return changed ? result : mappings;
+}
+
 /** Update an Area's display color. No-op if the area doesn't exist or color is unchanged. */
 export function updateAreaColor(layout: OfficeLayout, label: string, color: string): OfficeLayout {
   const existing = layout.areas ?? [];

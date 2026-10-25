@@ -44,6 +44,8 @@ function makeOffice(opts: { paintArea?: boolean } = {}): OfficeState {
     { uid, seatCol: col, seatRow: 1, facingDir: Direction.DOWN, assigned: false },
   ];
   os.seats = new Map([seat('in1', 1), seat('in2', 2), seat('out1', 7), seat('out2', 8)]);
+  // Injected seats face no furniture: mark them all as work seats
+  (os as unknown as { workSeatIds: Set<string> }).workSeatIds = new Set(os.seats.keys());
   return os;
 }
 
