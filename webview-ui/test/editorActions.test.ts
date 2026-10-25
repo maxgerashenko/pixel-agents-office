@@ -13,7 +13,11 @@ import assert from 'node:assert/strict';
 
 import { beforeAll, describe, test } from 'vitest';
 
-import { rotateFurniture } from '../src/office/editor/editorActions.js';
+import {
+  diffAreaRenames,
+  renameAreaInMappings,
+  rotateFurniture,
+} from '../src/office/editor/editorActions.js';
 import type { LoadedAssetData } from '../src/office/layout/furnitureCatalog.js';
 import { buildDynamicCatalog } from '../src/office/layout/furnitureCatalog.js';
 import type { OfficeLayout, PlacedFurniture } from '../src/office/types.js';
@@ -126,5 +130,44 @@ describe('rotateFurniture validates the whole desk group', () => {
       { uid: 'pc', type: 'PC_FRONT_OFF', col: 4, row: 10 },
     ]);
     assert.equal(rotateFurniture(layout, 'desk', 'cw'), layout);
+  });
+});
+
+describe('diffAreaRenames', () => {
+  const areas = (...labels: string[]) => labels.map((label) => ({ label, color: 'teal' }));
+
+  test('detects a positional rename', () => {
+    assert.deepEqual(diffAreaRenames(areas('A', 'B'), areas('A', 'C')), [['B', 'C']]);
+  });
+
+  test('undo direction yields the reverse pair', () => {
+    assert.deepEqual(diffAreaRenames(areas('A', 'C'), areas('A', 'B')), [['C', 'B']]);
+  });
+
+  test('add, remove, reorder and no change yield nothing', () => {
+    assert.deepEqual(diffAreaRenames(areas('A'), areas('A', 'B')), []);
+    assert.deepEqual(diffAreaRenames(areas('A', 'B'), areas('A')), []);
+    assert.deepEqual(diffAreaRenames(areas('A', 'B'), areas('B', 'A')), []);
+    assert.deepEqual(diffAreaRenames(areas('A', 'B'), areas('A', 'B')), []);
+    assert.deepEqual(diffAreaRenames(undefined, areas('A')), []);
+    assert.deepEqual(diffAreaRenames(areas('A'), undefined), []);
+  });
+});
+
+describe('renameAreaInMappings', () => {
+  test('rewrites label values across directories, keys untouched', () => {
+    const next = renameAreaInMappings({ web: ['A', 'B'], api: ['B'], docs: ['A'] }, [['B', 'C']]);
+    assert.deepEqual(next, { web: ['A', 'C'], api: ['C'], docs: ['A'] });
+  });
+
+  test('dedupes when a directory already had the new label', () => {
+    const next = renameAreaInMappings({ web: ['C', 'B', 'D'] }, [['B', 'C']]);
+    assert.deepEqual(next, { web: ['C', 'D'] });
+  });
+
+  test('returns the same reference when nothing changed', () => {
+    const mappings = { web: ['A'] };
+    assert.equal(renameAreaInMappings(mappings, [['X', 'Y']]), mappings);
+    assert.equal(renameAreaInMappings(mappings, []), mappings);
   });
 });
