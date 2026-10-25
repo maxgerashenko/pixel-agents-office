@@ -17,6 +17,9 @@ export const WANDER_MOVES_BEFORE_REST_MIN = 3;
 export const WANDER_MOVES_BEFORE_REST_MAX = 6;
 export const SEAT_REST_MIN_SEC = 120.0;
 export const SEAT_REST_MAX_SEC = 240.0;
+/** Furniture whose seats are rest spots for idle agents (matched against the
+ *  catalog type, case-insensitive). Cushioned chairs are deliberately absent. */
+export const REST_SEAT_TYPE_PATTERN = /SOFA|BENCH/i;
 
 // ── Matrix Effect ────────────────────────────────────────────
 export const MATRIX_EFFECT_DURATION_SEC = 0.3;
