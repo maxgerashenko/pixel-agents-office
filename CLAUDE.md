@@ -4,6 +4,10 @@ Pixel art office where AI agents (Claude Code terminals today, any tool tomorrow
 
 `CONTEXT.md` is the canonical glossary — read it for what terms like Agent, Sub-agent, Teammate, Lead, Adopt, or Headless agent mean here, and use its vocabulary in code, comments, and docs.
 
+## This fork
+
+This checkout is `maxgerashenko/pixel-agents-office`, a fork of `pixel-agents-hq/pixel-agents` with the same extension ID, so it installs over the Marketplace build. To install or update it on the user's machine ("switch me to my fork", "update my fork"), use the `switch-to-fork` skill (`.claude/skills/switch-to-fork/SKILL.md`), which follows `docs/switch-to-fork.md`: `npm ci`, `npx @vscode/vsce package --out pixel-agents-fork.vsix`, `code --install-extension pixel-agents-fork.vsix --force`, reload the window. Never uninstall the Marketplace build first: `vscode:uninstall` strips the Claude Code hooks.
+
 ## Architecture
 
 Strict layering: `core/` depends on nothing; `server/` depends only on `core/`; `webview-ui/` depends only on `core/`; `adapters/vscode/` depends on `core/` and `server/`. The standalone CLI never imports `adapters/vscode/` and vice versa.
