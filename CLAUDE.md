@@ -6,7 +6,7 @@ Pixel art office where AI agents (Claude Code terminals today, any tool tomorrow
 
 ## This fork
 
-This checkout is `maxgerashenko/pixel-agents-office`, a fork of `pixel-agents-hq/pixel-agents` with the same extension ID, so it installs over the Marketplace build. To install or update it on the user's machine ("switch me to my fork", "update my fork"), use the `switch-to-fork` skill (`.claude/skills/switch-to-fork/SKILL.md`), which follows `docs/switch-to-fork.md`: `npm ci`, `npx @vscode/vsce package --out pixel-agents-fork.vsix`, `code --install-extension pixel-agents-fork.vsix --force`, reload the window. Never uninstall the Marketplace build first: `vscode:uninstall` strips the Claude Code hooks.
+This checkout is `maxgerashenko/pixel-agents-office`, a fork of `pixel-agents-hq/pixel-agents`. To move the user's machine onto it or update it ("switch me to my fork", "run my fork", "update my fork"), use the `switch-to-fork` skill (`.claude/skills/switch-to-fork/SKILL.md`), which follows `docs/switch-to-fork.md`. The user runs the **web version**: `npx pixel-agents` always fetches upstream, so the fork runs as `node dist/cli.js` after `npm run package`; saved state is in `~/.pixel-agents/` and carries over. `scripts/fork-switch.mjs` snapshots that state, lists running servers and stops the web one (a new launch reuses a running server otherwise). For VS Code, never uninstall the Marketplace build first: `vscode:uninstall` strips the Claude Code hooks.
 
 ## Architecture
 
