@@ -1495,6 +1495,8 @@ export function startStaleExternalAgentCheck(
 
     for (const [id, agent] of agents) {
       if (!agent.isExternal) continue;
+      // No transcript to go missing: a transcript-less agent lives until removed.
+      if (agent.jsonlFile === '') continue;
 
       // Only despawn if the JSONL file has been deleted from disk.
       // Inactive external agents stay alive so they can resume when
