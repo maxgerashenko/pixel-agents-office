@@ -21,6 +21,7 @@ import {
   OVERLAY_LABEL_Z_INDEX,
   TEAM_LEAD_COLOR,
   TEAM_ROLE_COLOR,
+  TOOL_OVERLAY_MAX_WIDTH_PX,
   TOOL_OVERLAY_VERTICAL_OFFSET,
 } from '../../constants.js';
 import type { SubagentCharacter } from '../../hooks/useExtensionMessages.js';
@@ -309,14 +310,17 @@ export function ToolOverlay({
               data-testid="agent-overlay"
               data-agent-id={id}
             >
-              <div className="flex items-center border-border px-8 pt-2 pb-4 gap-5 pixel-panel whitespace-nowrap max-w-2xs">
+              <div
+                className="flex items-center border-border px-8 pt-2 pb-4 gap-5 pixel-panel whitespace-nowrap"
+                style={{ maxWidth: TOOL_OVERLAY_MAX_WIDTH_PX }}
+              >
                 {dotColor && (
                   <span
                     className={`w-6 h-6 rounded-full shrink-0 ${isActive && !hasPermission && !hasWaiting ? 'pixel-pulse' : ''}`}
                     style={{ background: dotColor }}
                   />
                 )}
-                <div className="flex flex-col gap-0 overflow-hidden">
+                <div className="flex flex-col gap-0 min-w-0 overflow-hidden">
                   {teamRoleLabel && (
                     <span
                       className="overflow-hidden text-ellipsis block leading-none"
