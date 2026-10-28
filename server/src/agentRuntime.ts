@@ -487,13 +487,19 @@ export class AgentRuntime {
       // is live. Restoring them directly would resurrect immortal characters
       // (also skips stale entries written by older builds that persisted them).
       if (p.leadAgentId !== undefined && !p.teamName) continue;
-      try {
-        if (!fs.existsSync(p.jsonlFile)) continue;
-      } catch {
-        continue;
+      // An agent registered without a transcript (empty jsonlFile, e.g. a local
+      // model run from a Directory) has no file to check or watch. Dropping it
+      // here would also drop it from the state file on the persist() below.
+      const hasTranscript = p.jsonlFile !== '';
+      if (hasTranscript) {
+        try {
+          if (!fs.existsSync(p.jsonlFile)) continue;
+        } catch {
+          continue;
+        }
       }
       if (this.store.has(p.id)) {
-        this.knownJsonlFiles.add(p.jsonlFile);
+        if (hasTranscript) this.knownJsonlFiles.add(p.jsonlFile);
         if (p.id > maxId) maxId = p.id;
         continue;
       }
@@ -519,29 +525,33 @@ export class AgentRuntime {
 
       assignPaletteIfNeeded(agent, this.store);
       this.store.set(p.id, agent);
-      this.knownJsonlFiles.add(p.jsonlFile);
 
-      try {
-        const stat = fs.statSync(p.jsonlFile);
-        agent.fileOffset = stat.size;
-        startFileWatching(
-          p.id,
-          p.jsonlFile,
-          this.store,
-          this.fileWatchers,
-          this.pollingTimers,
-          this.waitingTimers,
-          this.permissionTimers,
-        );
-      } catch {
-        /* ignore stat errors on restore */
+      if (hasTranscript) {
+        this.knownJsonlFiles.add(p.jsonlFile);
+        try {
+          const stat = fs.statSync(p.jsonlFile);
+          agent.fileOffset = stat.size;
+          startFileWatching(
+            p.id,
+            p.jsonlFile,
+            this.store,
+            this.fileWatchers,
+            this.pollingTimers,
+            this.waitingTimers,
+            this.permissionTimers,
+          );
+        } catch {
+          /* ignore stat errors on restore */
+        }
       }
 
       this.registerAgent(agent.sessionId, agent.id);
 
       if (p.id > maxId) maxId = p.id;
       console.log(
-        `[Pixel Agents] Restored external agent ${p.id} -> ${path.basename(p.jsonlFile)}`,
+        `[Pixel Agents] Restored external agent ${p.id} -> ${
+          hasTranscript ? path.basename(p.jsonlFile) : '(no transcript)'
+        }`,
       );
     }
 
