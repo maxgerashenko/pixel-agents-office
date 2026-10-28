@@ -1,4 +1,6 @@
+import { AGENT_CARD_NAME_MAX_WIDTH_PX, MUGSHOT_DISPLAY_PX } from '../constants.js';
 import type { CardVariant } from './cardBar.js';
+import { cardShortName } from './cardBar.js';
 import { CharacterMugShot } from './CharacterMugShot.js';
 import { Button } from './ui/Button.js';
 
@@ -22,15 +24,18 @@ const STATUS_DOT: Record<TabStatus, string> = {
 };
 
 const CARD_VARIANT: Record<CardVariant, string> = {
-  default: 'bg-btn-bg border-transparent hover:bg-btn-hover',
-  focused: 'bg-active-bg border-transparent',
-  active: 'bg-active-bg border-accent',
+  default: 'bg-bg/70 border-transparent hover:bg-btn-hover/80',
+  focused: 'bg-active-bg/75 border-transparent',
+  active: 'bg-active-bg/75 border-accent',
 };
 
 interface AgentCardProps {
   agentId: number;
   variant: CardVariant;
   appearance: AgentAppearance;
+  /** The agent's name, drawn inside the card to the left of the mug shot.
+   *  Omitted (mobile) = no name block, the card is unchanged. */
+  name?: string;
   status: TabStatus | null;
   /** When false the × is invisible (not removed — the card keeps its width so
    *  the bar doesn't reflow). Mobile only shows it on the active terminal tab
@@ -47,21 +52,41 @@ export function AgentCard({
   agentId,
   variant,
   appearance,
+  name,
   status,
   showClose = true,
   onSelect,
   onClose,
 }: AgentCardProps) {
+  const named = name !== undefined;
   return (
     <div
-      className={`pointer-events-auto flex items-stretch gap-1 p-1 cursor-pointer border-2 shrink-0 ${CARD_VARIANT[variant]}`}
+      // Named (desktop bar): a subgrid of the bar's `1fr | mug shot | 1fr`
+      // columns. The two fr columns stay equal, so the name (spanning all
+      // three, row 2) centres under the mug shot, which sits beside the
+      // close/status column as before; a long name widens both sides alike and
+      // runs under that column. Unnamed (mobile): the plain flex row.
+      className={`pointer-events-auto p-1 cursor-pointer border-2 shrink-0 ${named ? 'grid grid-cols-subgrid col-span-3' : 'flex items-stretch gap-1'} ${CARD_VARIANT[variant]}`}
       onClick={() => onSelect(agentId)}
-      title={`Agent ${agentId}`}
+      title={name ?? `Agent ${agentId}`}
     >
-      <CharacterMugShot palette={appearance.palette} hueShift={appearance.hueShift} />
+      <div className={named ? 'col-start-2 row-start-1' : undefined}>
+        <CharacterMugShot palette={appearance.palette} hueShift={appearance.hueShift} />
+      </div>
+      {named && (
+        <span
+          className="col-span-3 row-start-2 min-w-0 truncate text-center text-2xs leading-none text-text px-8 pt-2"
+          style={{ maxWidth: AGENT_CARD_NAME_MAX_WIDTH_PX }}
+        >
+          {cardShortName(name)}
+        </span>
+      )}
       {/* Close on top, status dot at the bottom, both centred over the
-          same column beside the mug shot. */}
-      <div className="flex flex-col items-center justify-between shrink-0">
+          same column beside the mug shot, which sets its height. */}
+      <div
+        className={`flex flex-col items-center justify-between shrink-0 self-start ${named ? 'col-start-3 row-start-1 justify-self-start ml-1' : ''}`}
+        style={{ height: MUGSHOT_DISPLAY_PX }}
+      >
         <Button
           variant="ghost"
           size="icon"

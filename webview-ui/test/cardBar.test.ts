@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { cardVariant, mergeOrder, reorderByPointer } from '../src/components/cardBar.js';
+import {
+  cardShortName,
+  cardVariant,
+  mergeOrder,
+  reorderByPointer,
+} from '../src/components/cardBar.js';
 
 describe('cardVariant', () => {
   it('the showing pane wins over the selected character', () => {
@@ -39,5 +44,16 @@ describe('reorderByPointer', () => {
   it('skips cards that are not laid out', () => {
     const partial = (id: number) => (id === 2 ? null : mid(id));
     expect(reorderByPointer([1, 2, 3], 1, partial, 200)).toEqual([2, 1, 3]);
+  });
+});
+
+describe('cardShortName', () => {
+  it('keeps the part after the last underscore', () => {
+    expect(cardShortName('Agent_sonnet5.5_CODE')).toBe('CODE');
+    expect(cardShortName('Local_QWEN')).toBe('QWEN');
+  });
+  it('shows names without a usable tail whole', () => {
+    expect(cardShortName('prototypeRAG')).toBe('prototypeRAG');
+    expect(cardShortName('trailing_')).toBe('trailing_');
   });
 });

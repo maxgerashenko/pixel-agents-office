@@ -353,6 +353,17 @@ export const TERMINAL_DRAWER_MAX_WIDTH_RATIO = 0.8;
  *  16px close/status column + card chrome ≈ 63px, plus a little air each
  *  side). */
 export const TERMINAL_SIDEBAR_WIDTH_PX = 72;
+/** Max width of the agent name on a desktop card, in px; longer names
+ *  truncate with an ellipsis (the full name is the card's tooltip). */
+export const AGENT_CARD_NAME_MAX_WIDTH_PX = 200;
+/** Width of the card bar's overlay column: wide enough for the 72px sidebar
+ *  column plus a named card's name block (max width + the card's gap). Cards
+ *  right-align inside it, so the mug-shot column keeps its place. */
+export const AGENT_CARD_BAR_WIDTH_PX = TERMINAL_SIDEBAR_WIDTH_PX + AGENT_CARD_NAME_MAX_WIDTH_PX + 8;
+/** Width of an unnamed card (mug shot + close/status column + chrome), in px.
+ *  The bar centres these in TERMINAL_SIDEBAR_WIDTH_PX; named cards keep that
+ *  right edge via padding. */
+export const AGENT_CARD_BASE_WIDTH_PX = 63;
 /** Grab width of the drag handle on the panel's left edge. */
 export const TERMINAL_DRAWER_RESIZE_HANDLE_PX = 6;
 

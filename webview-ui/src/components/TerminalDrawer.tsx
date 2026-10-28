@@ -24,6 +24,8 @@ interface TerminalDrawerProps {
   onResizeStart: (e: ReactMouseEvent) => void;
   /** Look up an agent's character appearance for its tab mug shot. */
   getAppearance: (agentId: number) => AgentAppearance;
+  /** An agent's name for its card. */
+  getName: (agentId: number) => string;
   /** An agent's tab status dot (null until first activity). */
   statusFor: (agentId: number) => TabStatus | null;
   onStatusChange: (agentId: number, status: TerminalConnectionStatus) => void;
@@ -52,6 +54,7 @@ export function TerminalDrawer({
   widthPx,
   onResizeStart,
   getAppearance,
+  getName,
   statusFor,
   onStatusChange,
 }: TerminalDrawerProps) {
@@ -65,6 +68,7 @@ export function TerminalDrawer({
         agentIds={agentIds}
         activeAgentId={shownAgentId}
         getAppearance={getAppearance}
+        getName={getName}
         statusFor={statusFor}
         onSelect={onSelectAgent}
         onClose={onCloseAgent}
