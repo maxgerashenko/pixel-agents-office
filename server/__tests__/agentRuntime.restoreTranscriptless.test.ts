@@ -112,4 +112,17 @@ describe('AgentRuntime -- transcript-less agents survive a restart', () => {
 
     expect(store.has(5)).toBe(true);
   });
+
+  it('a shutdown does not erase the saved agents', () => {
+    const adapter = createMockAdapter([transcriptless(5, 'Local_QWEN')]);
+    const store = new AgentStateStore();
+    store.setAdapter(adapter);
+    runtime = new AgentRuntime(store, claudeProvider);
+    runtime.restoreExternalAgents();
+
+    runtime.dispose();
+
+    expect(store.has(5)).toBe(false);
+    expect(adapter.loadAgents().map((p) => p.id)).toEqual([5]);
+  });
 });
