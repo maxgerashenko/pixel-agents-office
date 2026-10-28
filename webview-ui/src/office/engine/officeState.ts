@@ -662,6 +662,10 @@ export class OfficeState {
       ch.tileRow = spawn.row;
     }
 
+    // Agents start idle: agentToolStart / agentStatus 'active' (resent after
+    // layoutLoaded for mid-turn agents) activate them, so a fresh or restored
+    // agent sitting at its prompt isn't drawn as working and shows no label.
+    ch.isActive = false;
     if (directoryName) {
       ch.directoryName = directoryName;
     }
