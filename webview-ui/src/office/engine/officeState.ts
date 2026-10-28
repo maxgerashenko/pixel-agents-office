@@ -662,6 +662,11 @@ export class OfficeState {
       ch.tileRow = spawn.row;
     }
 
+    // A new or restored agent is idle until a tool event or an 'active' status
+    // says otherwise (the server only resends 'waiting' after a tracked turn
+    // end), so it must not sit typing at its seat, least of all inside an Area.
+    ch.isActive = false;
+
     if (directoryName) {
       ch.directoryName = directoryName;
     }

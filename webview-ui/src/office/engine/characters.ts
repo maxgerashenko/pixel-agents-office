@@ -192,7 +192,9 @@ function leaveBuffer(
  *   removes its seat.
  * @param canRestAtWorkSeat Whether an idle agent with no free rest seat may sit
  *   out its rest at its own work seat — false when that seat is in an Area or
- *   its 1-tile buffer, since idle agents never linger there.
+ *   its 1-tile buffer, since idle agents never linger there. Also governs
+ *   arrival at that seat while idle (e.g. the user sent it there): when false
+ *   the agent sits down for no rest at all (seatTimer 0) and walks straight out.
  * @param noIdleTileKeys "col,row" keys of the tiles idle agents may not stay
  *   on (an Area and its buffer). An idle (not active) character standing on one
  *   skips the wander pause and walks straight to the nearest wander tile.
@@ -402,7 +404,9 @@ export function updateCharacter(
               ch.dir = seat.facingDir;
               // seatTimer < 0 is a sentinel from setAgentActive(false) meaning
               // "turn just ended" — skip the long rest so idle transition is immediate
-              if (ch.seatTimer < 0) {
+              // Same for a seat in an Area or its buffer: idle agents never sit out
+              // a rest there, so stand straight back up and leave.
+              if (ch.seatTimer < 0 || !canRestAtWorkSeat) {
                 ch.seatTimer = 0;
               } else {
                 ch.seatTimer = randomRange(SEAT_REST_MIN_SEC, SEAT_REST_MAX_SEC);
