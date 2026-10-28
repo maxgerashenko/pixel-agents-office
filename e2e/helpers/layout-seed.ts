@@ -83,7 +83,7 @@ export function buildSeedLayout(opts: SeedLayoutOptions = {}): Record<string, un
 /**
  * Mirrors server/src/configPersistence.ts DEFAULT_ADAPTER_SETTINGS, except
  * alwaysShowLabels — the e2e baseline turns labels on so overlay text is
- * assertable without hover — and showHostDirectories, on so the workspace
+ * assertable for idle agents too — and showHostDirectories, on so the workspace
  * folders the launch helpers click are drawer rows (same baseline the
  * launch-level seed applies when a test passes no seedConfig; see
  * e2e/helpers/launch.ts).
