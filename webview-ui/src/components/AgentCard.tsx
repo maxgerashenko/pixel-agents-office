@@ -59,43 +59,46 @@ export function AgentCard({
 }: AgentCardProps) {
   return (
     <div
-      className={`pointer-events-auto flex items-stretch gap-1 p-1 cursor-pointer border-2 shrink-0 ${CARD_VARIANT[variant]}`}
+      className={`pointer-events-auto flex flex-col items-end p-1 cursor-pointer border-2 shrink-0 ${CARD_VARIANT[variant]}`}
       onClick={() => onSelect(agentId)}
       title={name ?? `Agent ${agentId}`}
     >
+      <div className="flex items-stretch gap-1">
+        <CharacterMugShot palette={appearance.palette} hueShift={appearance.hueShift} />
+        {/* Close on top, status dot at the bottom, both centred over the
+          same column beside the mug shot. */}
+        <div className="flex flex-col items-center justify-between shrink-0">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={(e) => {
+              // Don't also select the tab we're about to remove.
+              e.stopPropagation();
+              onClose(agentId);
+            }}
+            title="Close agent"
+            className={`leading-none ${showClose ? '' : 'invisible'}`}
+          >
+            ×
+          </Button>
+          {/* 1px left: optically centres the solid square under the pixel-font ×
+            glyph, which sits a hair left in its cell. mb (not pb) lifts it off
+            the card's bottom edge: the span is a fixed-size empty box, so
+            padding is invisible — only margin moves it. */}
+          <span
+            className={`size-6 shrink-0 relative -left-1 mb-2 ${status ? STATUS_DOT[status] : ''}`}
+          />
+        </div>
+      </div>
+      {/* Name under the mug shot row, in the office label's small text. */}
       {name !== undefined && (
         <span
-          className="self-center flex-1 min-w-0 truncate text-left text-sm text-text px-8"
+          className="self-stretch min-w-0 truncate text-left text-2xs leading-none text-text px-8 pt-2"
           style={{ maxWidth: AGENT_CARD_NAME_MAX_WIDTH_PX }}
         >
           {name}
         </span>
       )}
-      <CharacterMugShot palette={appearance.palette} hueShift={appearance.hueShift} />
-      {/* Close on top, status dot at the bottom, both centred over the
-          same column beside the mug shot. */}
-      <div className="flex flex-col items-center justify-between shrink-0">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={(e) => {
-            // Don't also select the tab we're about to remove.
-            e.stopPropagation();
-            onClose(agentId);
-          }}
-          title="Close agent"
-          className={`leading-none ${showClose ? '' : 'invisible'}`}
-        >
-          ×
-        </Button>
-        {/* 1px left: optically centres the solid square under the pixel-font ×
-            glyph, which sits a hair left in its cell. mb (not pb) lifts it off
-            the card's bottom edge: the span is a fixed-size empty box, so
-            padding is invisible — only margin moves it. */}
-        <span
-          className={`size-6 shrink-0 relative -left-1 mb-2 ${status ? STATUS_DOT[status] : ''}`}
-        />
-      </div>
     </div>
   );
 }
