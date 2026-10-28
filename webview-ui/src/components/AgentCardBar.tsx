@@ -1,6 +1,7 @@
 import {
   AGENT_CARD_BAR_WIDTH_PX,
   AGENT_CARD_BASE_WIDTH_PX,
+  MUGSHOT_DISPLAY_PX,
   TERMINAL_SIDEBAR_WIDTH_PX,
 } from '../constants.js';
 import type { AgentAppearance, TabStatus } from './AgentCard.js';
@@ -62,9 +63,12 @@ export function AgentCardBar({
         paddingRight: (TERMINAL_SIDEBAR_WIDTH_PX - AGENT_CARD_BASE_WIDTH_PX) / 2,
       }}
     >
-      {/* One grid, shrink-wrapped: every card subgrids its two columns, so all
+      {/* One grid, shrink-wrapped: every card subgrids its columns, so all
           share the longest name's width and the mug shots line up. */}
-      <div className="grid grid-cols-[max-content_max-content] gap-y-4 w-max max-w-full">
+      <div
+        className="grid gap-y-4 w-max max-w-full"
+        style={{ gridTemplateColumns: `1fr ${MUGSHOT_DISPLAY_PX}px 1fr` }}
+      >
         {agentIds.map((agentId) => (
           <AgentCard
             key={agentId}

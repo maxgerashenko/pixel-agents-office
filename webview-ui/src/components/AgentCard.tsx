@@ -61,28 +61,30 @@ export function AgentCard({
   const named = name !== undefined;
   return (
     <div
-      // Named (desktop bar): two subgrid columns shared by every card, so the
-      // mug-shot column is as wide as the longest name and each name centres
-      // under its mug shot. Unnamed (mobile): the plain flex row.
-      className={`pointer-events-auto p-1 cursor-pointer border-2 shrink-0 ${named ? 'grid grid-cols-subgrid col-span-2 gap-x-1' : 'flex items-stretch gap-1'} ${CARD_VARIANT[variant]}`}
+      // Named (desktop bar): a subgrid of the bar's `1fr | mug shot | 1fr`
+      // columns. The two fr columns stay equal, so the name (spanning all
+      // three, row 2) centres under the mug shot, which sits beside the
+      // close/status column as before; a long name widens both sides alike and
+      // runs under that column. Unnamed (mobile): the plain flex row.
+      className={`pointer-events-auto p-1 cursor-pointer border-2 shrink-0 ${named ? 'grid grid-cols-subgrid col-span-3' : 'flex items-stretch gap-1'} ${CARD_VARIANT[variant]}`}
       onClick={() => onSelect(agentId)}
       title={name ?? `Agent ${agentId}`}
     >
-      <div className="flex flex-col items-center">
+      <div className={named ? 'col-start-2 row-start-1' : undefined}>
         <CharacterMugShot palette={appearance.palette} hueShift={appearance.hueShift} />
-        {named && (
-          <span
-            className="min-w-0 max-w-full truncate text-center text-2xs leading-none text-text px-8 pt-2"
-            style={{ maxWidth: AGENT_CARD_NAME_MAX_WIDTH_PX }}
-          >
-            {cardShortName(name)}
-          </span>
-        )}
       </div>
+      {named && (
+        <span
+          className="col-span-3 row-start-2 min-w-0 truncate text-center text-2xs leading-none text-text px-8 pt-2"
+          style={{ maxWidth: AGENT_CARD_NAME_MAX_WIDTH_PX }}
+        >
+          {cardShortName(name)}
+        </span>
+      )}
       {/* Close on top, status dot at the bottom, both centred over the
           same column beside the mug shot, which sets its height. */}
       <div
-        className="flex flex-col items-center justify-between shrink-0 self-start"
+        className={`flex flex-col items-center justify-between shrink-0 self-start ${named ? 'col-start-3 row-start-1 justify-self-start ml-1' : ''}`}
         style={{ height: MUGSHOT_DISPLAY_PX }}
       >
         <Button
