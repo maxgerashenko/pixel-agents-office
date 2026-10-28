@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+import { diffAreaRenames, renameAreaInMappings } from '../../../core/src/areaRenames.js';
 import type { HooksConsentRequest } from '../../../core/src/messages.js';
 import { playDoneSound, playPermissionSound, setSoundEnabled } from '../notificationSound.js';
 import type { ExistingAgentMeta, PendingAgent } from '../office/engine/existingAgents.js';
@@ -322,6 +323,20 @@ export function useExtensionMessages(
         const rawLayout = msg.layout as OfficeLayout | null;
         const layout = rawLayout && rawLayout.version === 1 ? migrateLayoutColors(rawLayout) : null;
         if (layout) {
+          if (layoutReadyRef.current) {
+            // An external layout change may carry area renames; the host already
+            // rewrote the stored mappings, so follow them locally (no save).
+            const renames = diffAreaRenames(os.getLayout(), layout);
+            if (renames.length > 0) {
+              const renamed = renameAreaInMappings(os.areaMappings, renames);
+              if (renamed !== os.areaMappings) {
+                // Assigned directly (see App.tsx areasRenamedRef): the rebuild below
+                // re-seats once against a consistent label + mapping.
+                os.areaMappings = renamed;
+                setAreaMappings(renamed);
+              }
+            }
+          }
           os.rebuildFromLayout(layout);
           onLayoutLoaded?.(layout);
         } else {

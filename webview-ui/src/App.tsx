@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 
+import { renameAreaInMappings } from '../../core/src/areaRenames.js';
 import { toMajorMinor } from './changelogData.js';
 import { AgentCardBar } from './components/AgentCardBar.js';
 import { BottomToolbar } from './components/BottomToolbar.js';
@@ -31,7 +32,6 @@ import { MobileShell } from './mobile/MobileShell.js';
 import { useMobileShell } from './mobile/useMobileShell.js';
 import { OfficeCanvas } from './office/components/OfficeCanvas.js';
 import { ToolOverlay } from './office/components/ToolOverlay.js';
-import { renameAreaInMappings } from './office/editor/editorActions.js';
 import { EditorState } from './office/editor/editorState.js';
 import { EditorToolbar } from './office/editor/EditorToolbar.js';
 import { OfficeState } from './office/engine/officeState.js';
@@ -282,7 +282,8 @@ function App() {
     // label, which would briefly evict agents from their area.
     os.areaMappings = next;
     setAreaMappings(next);
-    transport.send({ type: 'saveAreaMappings', mappings: next });
+    // Not persisted from here: the host rewrites the stored mappings together
+    // with the layout save that carries the rename (both are one write there).
   };
 
   // Toggle global Show Areas — persisted via setShowAreas message; runs server-

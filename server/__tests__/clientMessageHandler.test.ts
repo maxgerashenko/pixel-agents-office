@@ -10,7 +10,12 @@ import {
   type ClientMessageContext,
   handleClientMessage,
 } from '../src/clientMessageHandler.js';
-import { getHooksEnabled, readConfig, setHooksEnabled } from '../src/configPersistence.js';
+import {
+  getHooksEnabled,
+  readConfig,
+  setHooksEnabled,
+  writeConfig,
+} from '../src/configPersistence.js';
 import { TERMINAL_REQUIRES_TOKEN_REASON } from '../src/constants.js';
 import { FileStateAdapter } from '../src/fileStateAdapter.js';
 import { claudeProvider } from '../src/providers/hook/claude/claude.js';
@@ -1314,5 +1319,107 @@ describe('clientMessageHandler: read-only (untokened) clients', () => {
       privileged: true,
     });
     expect(sent[0]).toEqual({ type: 'officeAccess', readOnly: false });
+  });
+});
+
+describe('saveLayout: area renames follow into both namespaces', () => {
+  let tempHome: string;
+  let originalHome: string | undefined;
+  let store: AgentStateStore;
+  let sent: Array<Record<string, unknown>>;
+
+  const layoutWith = (labels: string[], tiles: Array<string | null>) => ({
+    version: 1,
+    cols: 3,
+    rows: 1,
+    tiles: [1, 1, 1],
+    furniture: [],
+    areas: labels.map((label) => ({ label, color: 'teal' })),
+    areaTiles: tiles,
+  });
+
+  function save(layout: Record<string, unknown>): void {
+    handleClientMessage({ type: 'saveLayout', layout }, (m) => sent.push(m), {
+      store,
+      cache: null,
+      privileged: true,
+    });
+  }
+
+  function seedMappings(): void {
+    const cfg = readConfig();
+    cfg.standalone.areaMappings = { web: ['Alpha'], api: ['Alpha', 'Other'] };
+    cfg.vscode.areaMappings = { ide: ['Alpha'] };
+    writeConfig(cfg);
+  }
+
+  function diskLayout(): Record<string, unknown> {
+    return JSON.parse(
+      fs.readFileSync(path.join(tempHome, '.pixel-agents', 'layout.json'), 'utf-8'),
+    ) as Record<string, unknown>;
+  }
+
+  beforeEach(() => {
+    tempHome = fs.mkdtempSync(path.join(os.tmpdir(), 'pxl-cmh-rename-'));
+    originalHome = process.env.HOME;
+    process.env.HOME = tempHome;
+    store = new AgentStateStore();
+    store.setAdapter(new FileStateAdapter({ namespace: 'standalone' }));
+    sent = [];
+    save(layoutWith(['Alpha', 'Other'], ['Alpha', 'Alpha', 'Other']));
+    seedMappings();
+    sent = [];
+  });
+
+  afterEach(() => {
+    if (originalHome === undefined) delete process.env.HOME;
+    else process.env.HOME = originalHome;
+    store.dispose();
+    fs.rmSync(tempHome, { recursive: true, force: true });
+  });
+
+  it('rewrites layout and both namespaces on rename, and tells the sender', () => {
+    save(layoutWith(['Beta', 'Other'], ['Beta', 'Beta', 'Other']));
+
+    const layout = diskLayout();
+    expect(JSON.stringify(layout)).not.toContain('Alpha');
+    expect((layout.areas as Array<{ label: string }>).map((a) => a.label)).toEqual([
+      'Beta',
+      'Other',
+    ]);
+    expect(layout.areaTiles).toEqual(['Beta', 'Beta', 'Other']);
+
+    const cfg = readConfig();
+    expect(cfg.standalone.areaMappings).toEqual({ web: ['Beta'], api: ['Beta', 'Other'] });
+    expect(cfg.vscode.areaMappings).toEqual({ ide: ['Beta'] });
+    expect(sent).toContainEqual({
+      type: 'areaMappingsLoaded',
+      mappings: { web: ['Beta'], api: ['Beta', 'Other'] },
+    });
+  });
+
+  it('handles rename plus add in one save', () => {
+    save(layoutWith(['Beta', 'Other', 'Gamma'], ['Beta', 'Beta', 'Other']));
+    const cfg = readConfig();
+    expect(cfg.standalone.areaMappings.web).toEqual(['Beta']);
+    expect(cfg.vscode.areaMappings.ide).toEqual(['Beta']);
+    expect(JSON.stringify(cfg)).not.toContain('Alpha');
+  });
+
+  it('undo (saving the old layout again) restores the old label everywhere', () => {
+    save(layoutWith(['Beta', 'Other'], ['Beta', 'Beta', 'Other']));
+    save(layoutWith(['Alpha', 'Other'], ['Alpha', 'Alpha', 'Other']));
+    const cfg = readConfig();
+    expect(cfg.standalone.areaMappings).toEqual({ web: ['Alpha'], api: ['Alpha', 'Other'] });
+    expect(cfg.vscode.areaMappings).toEqual({ ide: ['Alpha'] });
+    expect(JSON.stringify(diskLayout())).not.toContain('Beta');
+  });
+
+  it('leaves config untouched when nothing was renamed', () => {
+    const cfgPath = path.join(tempHome, '.pixel-agents', 'config.json');
+    const before = fs.readFileSync(cfgPath, 'utf-8');
+    save(layoutWith(['Alpha', 'Other', 'Gamma'], ['Alpha', 'Alpha', 'Other']));
+    expect(fs.readFileSync(cfgPath, 'utf-8')).toBe(before);
+    expect(sent.filter((m) => m.type === 'areaMappingsLoaded')).toEqual([]);
   });
 });
