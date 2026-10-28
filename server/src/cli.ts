@@ -357,6 +357,12 @@ async function main(): Promise<void> {
     runtime.hooksEnabled.current = getHooksEnabled(claudeProvider.id);
     runtime.watchAllSessions.current = adapter.getSetting('pixel-agents.watchAllSessions', false);
 
+    // Bring saved agents back before anything can persist. Restoring only on the
+    // first browser connect (clientMessageHandler's webviewReady) left a window in
+    // which a hook-adopted agent's persist() rewrote the state file with just
+    // itself, deleting every saved agent that had not been restored yet.
+    runtime.restoreExternalAgents();
+
     // Install hooks on startup if the persisted setting says so — gated on the
     // one-time consent to modify ~/.claude/settings.json.
     if (runtime.hooksEnabled.current) {
