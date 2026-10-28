@@ -65,7 +65,7 @@ export function AgentCard({
     >
       {name !== undefined && (
         <span
-          className="self-center flex-1 min-w-0 truncate text-left text-sm text-text pl-2"
+          className="self-center flex-1 min-w-0 truncate text-left text-sm text-text px-8"
           style={{ maxWidth: AGENT_CARD_NAME_MAX_WIDTH_PX }}
         >
           {name}
