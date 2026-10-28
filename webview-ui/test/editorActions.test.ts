@@ -13,11 +13,8 @@ import assert from 'node:assert/strict';
 
 import { beforeAll, describe, test } from 'vitest';
 
-import {
-  diffAreaRenames,
-  renameAreaInMappings,
-  rotateFurniture,
-} from '../src/office/editor/editorActions.js';
+import { diffAreaRenames, renameAreaInMappings } from '../../core/src/areaRenames.js';
+import { rotateFurniture } from '../src/office/editor/editorActions.js';
 import type { LoadedAssetData } from '../src/office/layout/furnitureCatalog.js';
 import { buildDynamicCatalog } from '../src/office/layout/furnitureCatalog.js';
 import type { OfficeLayout, PlacedFurniture } from '../src/office/types.js';
@@ -135,22 +132,68 @@ describe('rotateFurniture validates the whole desk group', () => {
 
 describe('diffAreaRenames', () => {
   const areas = (...labels: string[]) => labels.map((label) => ({ label, color: 'teal' }));
+  const layoutOf = (labels: string[], tiles: Array<string | null> = []) => ({
+    areas: areas(...labels),
+    areaTiles: tiles,
+  });
 
-  test('detects a positional rename', () => {
-    assert.deepEqual(diffAreaRenames(areas('A', 'B'), areas('A', 'C')), [['B', 'C']]);
+  test('detects a rename', () => {
+    assert.deepEqual(diffAreaRenames(layoutOf(['A', 'B']), layoutOf(['A', 'C'])), [['B', 'C']]);
   });
 
   test('undo direction yields the reverse pair', () => {
-    assert.deepEqual(diffAreaRenames(areas('A', 'C'), areas('A', 'B')), [['C', 'B']]);
+    assert.deepEqual(diffAreaRenames(layoutOf(['A', 'C']), layoutOf(['A', 'B'])), [['C', 'B']]);
   });
 
-  test('add, remove, reorder and no change yield nothing', () => {
-    assert.deepEqual(diffAreaRenames(areas('A'), areas('A', 'B')), []);
-    assert.deepEqual(diffAreaRenames(areas('A', 'B'), areas('A')), []);
-    assert.deepEqual(diffAreaRenames(areas('A', 'B'), areas('B', 'A')), []);
-    assert.deepEqual(diffAreaRenames(areas('A', 'B'), areas('A', 'B')), []);
-    assert.deepEqual(diffAreaRenames(undefined, areas('A')), []);
-    assert.deepEqual(diffAreaRenames(areas('A'), undefined), []);
+  test('rename plus add in one diff is still a rename (tile match)', () => {
+    const prev = layoutOf(['A'], ['A', 'A', null]);
+    const next = layoutOf(['New', 'B'], ['B', 'B', null]);
+    assert.deepEqual(diffAreaRenames(prev, next), [['A', 'B']]);
+  });
+
+  test('rename plus add pairs by index when tiles are empty', () => {
+    assert.deepEqual(diffAreaRenames(layoutOf(['A', 'B']), layoutOf(['A', 'C', 'D'])), [
+      ['B', 'C'],
+    ]);
+  });
+
+  test('rename plus remove', () => {
+    const prev = layoutOf(['A', 'B', 'C'], ['B', 'B', 'C']);
+    const next = layoutOf(['X', 'A'], ['X', 'X', null]);
+    assert.deepEqual(diffAreaRenames(prev, next), [['B', 'X']]);
+  });
+
+  test('tile sets win over index position', () => {
+    const prev = layoutOf(['P', 'Q'], ['P', 'Q']);
+    const next = layoutOf(['N2', 'N1'], ['N1', 'N2']);
+    assert.deepEqual(
+      diffAreaRenames(prev, next).sort(),
+      [
+        ['P', 'N1'],
+        ['Q', 'N2'],
+      ].sort(),
+    );
+  });
+
+  test('pure add, pure remove, swap, reorder and no change yield nothing', () => {
+    assert.deepEqual(diffAreaRenames(layoutOf(['A']), layoutOf(['A', 'B'])), []);
+    assert.deepEqual(diffAreaRenames(layoutOf(['A', 'B']), layoutOf(['A'])), []);
+    assert.deepEqual(diffAreaRenames(layoutOf(['A', 'B']), layoutOf(['B', 'A'])), []);
+    assert.deepEqual(diffAreaRenames(layoutOf(['A', 'B']), layoutOf(['A', 'B'])), []);
+  });
+
+  test('differing tile sets still pair by index', () => {
+    const prev = layoutOf(['A', 'B'], ['A', 'B']);
+    const next = layoutOf(['A', 'C'], ['A', null, 'C']);
+    // Tile sets differ, but index 1 matches: treated as a rename by position.
+    assert.deepEqual(diffAreaRenames(prev, next), [['B', 'C']]);
+  });
+
+  test('empty or missing areas yield nothing', () => {
+    assert.deepEqual(diffAreaRenames({}, {}), []);
+    assert.deepEqual(diffAreaRenames(undefined, layoutOf(['A'])), []);
+    assert.deepEqual(diffAreaRenames(layoutOf(['A']), undefined), []);
+    assert.deepEqual(diffAreaRenames(layoutOf([]), layoutOf(['A'])), []);
   });
 });
 

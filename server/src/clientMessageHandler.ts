@@ -4,6 +4,7 @@ import { resendAgentActivity } from './agentActivityResend.js';
 import { buildAgentDiagnostics } from './agentDiagnostics.js';
 import type { AgentRuntime } from './agentRuntime.js';
 import type { AgentStateStore } from './agentStateStore.js';
+import { saveLayoutWithAreaRenames } from './areaRenamePersistence.js';
 import type { LoadedAssets, LoadedCharacterSprites, LoadedPetSprites } from './assetLoader.js';
 import {
   getHooksConsent,
@@ -20,7 +21,7 @@ import {
 } from './directories.js';
 import { collectDirectorySuggestions } from './directorySuggestions.js';
 import { hostDirectory } from './hostDirectory.js';
-import { readLayoutFromFile, writeLayoutToFile } from './layoutPersistence.js';
+import { readLayoutFromFile } from './layoutPersistence.js';
 import type { ConsentEffects } from './providers/hook/consentExecutor.js';
 import { applyConsentChoice } from './providers/hook/consentExecutor.js';
 import { hooksConsentRequest } from './providers/hook/consentGate.js';
@@ -183,7 +184,12 @@ export function handleClientMessage(
 
     case 'saveLayout':
       if (msg.layout) {
-        writeLayoutToFile(msg.layout as Record<string, unknown>);
+        const saved = saveLayoutWithAreaRenames(msg.layout as Record<string, unknown>);
+        // Tell the saver its mappings moved with the label (the host rewrote them
+        // atomically with the layout; the client only updated them optimistically).
+        if (saved.standaloneMappings) {
+          send({ type: 'areaMappingsLoaded', mappings: saved.standaloneMappings });
+        }
       }
       break;
 

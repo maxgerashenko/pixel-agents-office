@@ -8,6 +8,7 @@ import type { HookProvider } from '../../core/src/provider.js';
 import { buildAgentDiagnostics } from '../../server/src/agentDiagnostics.js';
 import { AgentRuntime } from '../../server/src/agentRuntime.js';
 import { AgentStateStore } from '../../server/src/agentStateStore.js';
+import { saveLayoutWithAreaRenames } from '../../server/src/areaRenamePersistence.js';
 import type {
   LoadedAssets,
   LoadedCharacterSprites,
@@ -520,7 +521,13 @@ export class PixelAgentsViewProvider implements vscode.WebviewViewProvider {
         this.adapter.saveSeats(message.seats);
       } else if (message.type === 'saveLayout') {
         this.layoutWatcher?.markOwnWrite();
-        writeLayoutToFile(message.layout as Record<string, unknown>);
+        const saved = saveLayoutWithAreaRenames(message.layout as Record<string, unknown>);
+        if (saved.vscodeMappings) {
+          this.webview?.postMessage({
+            type: 'areaMappingsLoaded',
+            mappings: saved.vscodeMappings,
+          });
+        }
       } else if (message.type === 'setSoundEnabled') {
         this.adapter.setSetting(GLOBAL_KEY_SOUND_ENABLED, message.enabled);
       } else if (message.type === 'setLastSeenVersion') {

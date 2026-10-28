@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
 
+import { diffAreaRenames } from '../../../core/src/areaRenames.js';
 import type { ColorValue } from '../components/ui/types.js';
 import {
   CARPET_DEFAULT_ACCENT_COLOR,
@@ -13,7 +14,6 @@ import type { ExpandDirection } from '../office/editor/editorActions.js';
 import {
   addArea,
   areaStrokeErases,
-  diffAreaRenames,
   dropFurniture,
   eraseArea,
   eraseCarpet,
@@ -163,7 +163,7 @@ export function useEditorActions(
   /** Rebuild the office from a layout, first telling the host about any area
    *  renames so Directory→Area mappings follow the label before agents re-seat. */
   const applyLayoutToOffice = useCallback((os: OfficeState, newLayout: OfficeLayout) => {
-    const renames = diffAreaRenames(os.getLayout().areas, newLayout.areas);
+    const renames = diffAreaRenames(os.getLayout(), newLayout);
     if (renames.length > 0) onAreasRenamedRef.current?.(renames);
     os.rebuildFromLayout(newLayout);
   }, []);
