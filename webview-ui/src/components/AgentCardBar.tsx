@@ -54,7 +54,7 @@ export function AgentCardBar({
 
   return (
     <div
-      className="relative z-30 h-full shrink-0 flex flex-col items-end gap-4 pt-4 overflow-y-auto pointer-events-none"
+      className="relative z-30 h-full shrink-0 flex flex-col items-end pt-4 overflow-y-auto pointer-events-none"
       style={{
         width: AGENT_CARD_BAR_WIDTH_PX,
         marginLeft: -AGENT_CARD_BAR_WIDTH_PX,
@@ -62,18 +62,22 @@ export function AgentCardBar({
         paddingRight: (TERMINAL_SIDEBAR_WIDTH_PX - AGENT_CARD_BASE_WIDTH_PX) / 2,
       }}
     >
-      {agentIds.map((agentId) => (
-        <AgentCard
-          key={agentId}
-          agentId={agentId}
-          variant={cardVariant(agentId, { activeId: activeAgentId, focusedId: focusedAgentId })}
-          appearance={getAppearance(agentId)}
-          name={getName(agentId)}
-          status={statusFor(agentId)}
-          onSelect={onSelect}
-          onClose={onClose}
-        />
-      ))}
+      {/* Shrink-wrapped to the widest card and stretching the rest to it, so
+          every card shares the longest name's width. */}
+      <div className="flex flex-col items-stretch gap-4 w-max max-w-full">
+        {agentIds.map((agentId) => (
+          <AgentCard
+            key={agentId}
+            agentId={agentId}
+            variant={cardVariant(agentId, { activeId: activeAgentId, focusedId: focusedAgentId })}
+            appearance={getAppearance(agentId)}
+            name={getName(agentId)}
+            status={statusFor(agentId)}
+            onSelect={onSelect}
+            onClose={onClose}
+          />
+        ))}
+      </div>
     </div>
   );
 }
