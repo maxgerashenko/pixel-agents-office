@@ -1,5 +1,6 @@
 import { AGENT_CARD_NAME_MAX_WIDTH_PX } from '../constants.js';
 import type { CardVariant } from './cardBar.js';
+import { cardShortName } from './cardBar.js';
 import { CharacterMugShot } from './CharacterMugShot.js';
 import { Button } from './ui/Button.js';
 
@@ -23,9 +24,9 @@ const STATUS_DOT: Record<TabStatus, string> = {
 };
 
 const CARD_VARIANT: Record<CardVariant, string> = {
-  default: 'bg-btn-bg border-transparent hover:bg-btn-hover',
-  focused: 'bg-active-bg border-transparent',
-  active: 'bg-active-bg border-accent',
+  default: 'bg-bg/70 border-transparent hover:bg-btn-hover/80',
+  focused: 'bg-active-bg/75 border-transparent',
+  active: 'bg-active-bg/75 border-accent',
 };
 
 interface AgentCardProps {
@@ -93,10 +94,10 @@ export function AgentCard({
       {/* Name under the mug shot row, in the office label's small text. */}
       {name !== undefined && (
         <span
-          className="self-stretch min-w-0 truncate text-left text-2xs leading-none text-text px-8 pt-2"
+          className="self-stretch min-w-0 truncate text-right text-2xs leading-none text-text px-8 pt-2"
           style={{ maxWidth: AGENT_CARD_NAME_MAX_WIDTH_PX }}
         >
-          {name}
+          {cardShortName(name)}
         </span>
       )}
     </div>
