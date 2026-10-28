@@ -350,7 +350,7 @@ export const TERMINAL_DRAWER_MAX_WIDTH_RATIO = 0.8;
 export const TERMINAL_SIDEBAR_WIDTH_PX = 72;
 /** Max width of the agent name on a desktop card, in px; longer names
  *  truncate with an ellipsis (the full name is the card's tooltip). */
-export const AGENT_CARD_NAME_MAX_WIDTH_PX = 140;
+export const AGENT_CARD_NAME_MAX_WIDTH_PX = 200;
 /** Width of the card bar's overlay column: wide enough for the 72px sidebar
  *  column plus a named card's name block (max width + the card's gap). Cards
  *  right-align inside it, so the mug-shot column keeps its place. */
