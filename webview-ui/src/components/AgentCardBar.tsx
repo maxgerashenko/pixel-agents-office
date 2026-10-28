@@ -62,9 +62,9 @@ export function AgentCardBar({
         paddingRight: (TERMINAL_SIDEBAR_WIDTH_PX - AGENT_CARD_BASE_WIDTH_PX) / 2,
       }}
     >
-      {/* Shrink-wrapped to the widest card and stretching the rest to it, so
-          every card shares the longest name's width. */}
-      <div className="flex flex-col items-stretch gap-4 w-max max-w-full">
+      {/* One grid, shrink-wrapped: every card subgrids its two columns, so all
+          share the longest name's width and the mug shots line up. */}
+      <div className="grid grid-cols-[max-content_max-content] gap-y-4 w-max max-w-full">
         {agentIds.map((agentId) => (
           <AgentCard
             key={agentId}
