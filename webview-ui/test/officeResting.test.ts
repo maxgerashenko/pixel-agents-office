@@ -1,5 +1,6 @@
 /**
- * Where idle agents go: benches/sofas for rest, never into a marked Area.
+ * Where idle agents go: benches/sofas for rest, never into a marked Area or
+ * the 1-tile buffer around it.
  *
  * Like teammateSeating and greeter, this tests the OfficeState domain model —
  * seat roles, claims and the wander FSM over simulated minutes are invariants
@@ -13,7 +14,7 @@ import assert from 'node:assert/strict';
 import { beforeAll, test } from 'vitest';
 
 import { OfficeState } from '../src/office/engine/officeState.js';
-import { zoneAt } from '../src/office/engine/seatPlacement.js';
+import { isNearArea, zoneAt } from '../src/office/engine/seatPlacement.js';
 import type { LoadedAssetData } from '../src/office/layout/furnitureCatalog.js';
 import { buildDynamicCatalog } from '../src/office/layout/furnitureCatalog.js';
 import type { OfficeLayout, PlacedFurniture } from '../src/office/types.js';
@@ -197,3 +198,115 @@ test('zoneAt: the Area label at a tile, null outside Areas or without areas', ()
 function areaTilesOf(): Array<string | null> {
   return layout().areaTiles as Array<string | null>;
 }
+
+/** Within one tile (diagonals included) of the Area footprint, or inside it. */
+const nearArea = (col: number, row: number): boolean => col >= 2 && col <= 6 && row <= 4;
+
+test('isNearArea: inside, adjacent and diagonal tiles count; two tiles away does not', () => {
+  const tiles = areaTilesOf();
+  assert.equal(isNearArea(tiles, COLS, ROWS, 4, 1), true); // inside
+  assert.equal(isNearArea(tiles, COLS, ROWS, 2, 1), true); // adjacent (left)
+  assert.equal(isNearArea(tiles, COLS, ROWS, 6, 4), true); // diagonal corner
+  assert.equal(isNearArea(tiles, COLS, ROWS, 4, 4), true); // adjacent (below)
+  assert.equal(isNearArea(tiles, COLS, ROWS, 1, 1), false);
+  assert.equal(isNearArea(tiles, COLS, ROWS, 4, 5), false);
+  assert.equal(isNearArea(tiles, COLS, ROWS, 7, 0), false);
+  assert.equal(isNearArea(undefined, COLS, ROWS, 4, 1), false);
+});
+
+test('wanderTiles exclude the Area and every tile adjacent or diagonal to it', () => {
+  const os = new OfficeState(layout());
+  assert.ok(os.wanderTiles.length > 0);
+  for (const tile of os.wanderTiles) {
+    assert.ok(
+      !nearArea(tile.col, tile.row),
+      `wander tile ${tile.col},${tile.row} is in the buffer`,
+    );
+  }
+  for (let row = 0; row < ROWS; row++) {
+    for (let col = 0; col < COLS; col++) {
+      assert.equal(os.noIdleTileKeys.has(`${col},${row}`), nearArea(col, row), `${col},${row}`);
+    }
+  }
+});
+
+test('an agent standing up from a seat outside the buffer keeps its wander pause', () => {
+  // Chair tiles are not walkable, so they are never wander tiles; only the
+  // buffer may cut the pause short.
+  const os = new OfficeState(layout());
+  addIdleAgent(os, 1, 'w1');
+  const ch = os.characters.get(1)!;
+  const seat = os.seats.get('w1')!;
+  ch.state = CharacterState.IDLE as typeof ch.state;
+  ch.wanderTimer = 1000;
+  simulate(os, 5);
+  assert.equal(ch.state, CharacterState.IDLE);
+  assert.deepEqual([ch.tileCol, ch.tileRow], [seat.seatCol, seat.seatRow]);
+});
+
+test('a sofa next to an Area is not a rest seat', () => {
+  const l = layout();
+  l.furniture = [
+    f('adjacent-sofa', 'SOFA', 6, 4),
+    f('diagonal-sofa', 'SOFA', 2, 4),
+    f('far-sofa', 'SOFA', 8, 6),
+  ];
+  const os = new OfficeState(l);
+  assert.deepEqual([...os.restSeatIds], ['far-sofa']);
+});
+
+test('an idle agent placed in the buffer walks out promptly and never idles in it again', () => {
+  const os = new OfficeState(layout());
+  addIdleAgent(os, 1);
+  const ch = os.characters.get(1)!;
+  // Stand in the buffer (not the Area itself), on the Area's right edge
+  const x = 6;
+  const y = 2;
+  assert.ok(nearArea(x, y) && !inArea(x, y));
+  ch.tileCol = x;
+  ch.tileRow = y;
+  ch.x = x * 16 + 8;
+  ch.y = y * 16 + 8;
+  ch.state = CharacterState.IDLE as typeof ch.state;
+  ch.path = [];
+  ch.wanderTimer = 1000; // a pause this long would strand it without the buffer rule
+
+  let walkedOut = false;
+  const dt = 0.05;
+  for (let t = 0; t < 8; t += dt) {
+    os.update(dt);
+    if (ch.state !== CharacterState.WALK && !nearArea(ch.tileCol, ch.tileRow)) {
+      walkedOut = true;
+      break;
+    }
+  }
+  assert.ok(walkedOut, 'left the buffer within a few seconds');
+
+  simulate(os, 600, () => {
+    if (ch.state !== CharacterState.WALK) {
+      assert.ok(!nearArea(ch.tileCol, ch.tileRow), 'idle on a buffer tile');
+    }
+  });
+});
+
+test('when the buffer covers every tile, idle agents fall back to tiles outside the Area', () => {
+  const l = layout();
+  // Area stripes on columns 1, 4 and 7; column 9 is void, so every walkable tile is within 1 of one
+  const stripe = (c: number): boolean => c === 1 || c === 4 || c === 7;
+  l.areaTiles = Array.from({ length: COLS * ROWS }, (_, i) => (stripe(i % COLS) ? AREA : null));
+  l.tiles = l.tiles.map((t, i) => (i % COLS === 9 ? TileType.VOID : t));
+  l.furniture = [];
+  const os = new OfficeState(l);
+  assert.ok(os.walkableTiles.length > 0);
+  for (const t of os.walkableTiles) assert.ok(isNearArea(l.areaTiles, COLS, ROWS, t.col, t.row));
+  assert.ok(os.wanderTiles.length > 0);
+  for (const t of os.wanderTiles) assert.equal(zoneAt(l.areaTiles, COLS, t.col, t.row), null);
+  assert.ok(os.wanderTiles.length < os.walkableTiles.length);
+});
+
+test('when Areas cover the whole floor, wanderTiles fall back to every walkable tile', () => {
+  const l = layout();
+  l.areaTiles = new Array<string | null>(COLS * ROWS).fill(AREA);
+  const os = new OfficeState(l);
+  assert.equal(os.wanderTiles.length, os.walkableTiles.length);
+});

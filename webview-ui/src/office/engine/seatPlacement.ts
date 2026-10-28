@@ -5,6 +5,8 @@
  * dependency-free — OfficeState's real Seat/Character satisfy them.
  */
 
+import { AREA_IDLE_BUFFER_TILES } from '../../constants.js';
+
 export interface SeatLike {
   seatCol: number;
   seatRow: number;
@@ -103,4 +105,28 @@ export function zoneAt(
   if (!areaTiles || areaTiles.length === 0) return null;
   if (col < 0 || col >= cols || row < 0) return null;
   return areaTiles[row * cols + col] ?? null;
+}
+
+/**
+ * Is this tile inside a marked Area or within AREA_IDLE_BUFFER_TILES of one
+ * (Chebyshev distance, so diagonals count)? Idle agents keep out of these
+ * tiles; paths through them stay unrestricted.
+ */
+export function isNearArea(
+  areaTiles: ReadonlyArray<string | null> | undefined,
+  cols: number,
+  rows: number,
+  col: number,
+  row: number,
+): boolean {
+  if (!areaTiles || areaTiles.length === 0) return false;
+  const r = AREA_IDLE_BUFFER_TILES;
+  for (let dr = -r; dr <= r; dr++) {
+    const rr = row + dr;
+    if (rr < 0 || rr >= rows) continue;
+    for (let dc = -r; dc <= r; dc++) {
+      if (zoneAt(areaTiles, cols, col + dc, rr) !== null) return true;
+    }
+  }
+  return false;
 }
