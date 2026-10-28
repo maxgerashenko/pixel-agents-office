@@ -1,3 +1,4 @@
+import { AGENT_CARD_NAME_MAX_WIDTH_PX } from '../constants.js';
 import type { CardVariant } from './cardBar.js';
 import { CharacterMugShot } from './CharacterMugShot.js';
 import { Button } from './ui/Button.js';
@@ -31,6 +32,9 @@ interface AgentCardProps {
   agentId: number;
   variant: CardVariant;
   appearance: AgentAppearance;
+  /** The agent's name, drawn inside the card to the left of the mug shot.
+   *  Omitted (mobile) = no name block, the card is unchanged. */
+  name?: string;
   status: TabStatus | null;
   /** When false the × is invisible (not removed — the card keeps its width so
    *  the bar doesn't reflow). Mobile only shows it on the active terminal tab
@@ -47,6 +51,7 @@ export function AgentCard({
   agentId,
   variant,
   appearance,
+  name,
   status,
   showClose = true,
   onSelect,
@@ -56,8 +61,16 @@ export function AgentCard({
     <div
       className={`pointer-events-auto flex items-stretch gap-1 p-1 cursor-pointer border-2 shrink-0 ${CARD_VARIANT[variant]}`}
       onClick={() => onSelect(agentId)}
-      title={`Agent ${agentId}`}
+      title={name ?? `Agent ${agentId}`}
     >
+      {name !== undefined && (
+        <span
+          className="self-center truncate text-sm text-text pl-2"
+          style={{ maxWidth: AGENT_CARD_NAME_MAX_WIDTH_PX }}
+        >
+          {name}
+        </span>
+      )}
       <CharacterMugShot palette={appearance.palette} hueShift={appearance.hueShift} />
       {/* Close on top, status dot at the bottom, both centred over the
           same column beside the mug shot. */}

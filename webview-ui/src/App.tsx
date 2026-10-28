@@ -768,6 +768,7 @@ function App() {
               widthPx={terminalDrawer.widthPx}
               onResizeStart={terminalDrawer.onResizeStart}
               getAppearance={terminalDrawer.getAppearance}
+              getName={terminalDrawer.getName}
               statusFor={terminalDrawer.statusFor}
               onStatusChange={terminalDrawer.onStatusChange}
             />
@@ -777,6 +778,7 @@ function App() {
                 agentIds={agents}
                 focusedAgentId={focusedAgentId}
                 getAppearance={terminalDrawer.getAppearance}
+                getName={terminalDrawer.getName}
                 statusFor={terminalDrawer.statusFor}
                 onSelect={handleCardSelect}
                 onClose={handleCloseAgent}

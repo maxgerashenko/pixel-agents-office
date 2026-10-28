@@ -48,6 +48,8 @@ export interface TerminalDrawerController {
   close: () => void;
   onResizeStart: (e: ReactMouseEvent) => void;
   getAppearance: (agentId: number) => AgentAppearance;
+  /** Card name: teammate name, else directory name, else `Agent <id>`. */
+  getName: (agentId: number) => string;
   /** Card status dot: 'disconnected' (red) for a terminal whose socket
    *  dropped, otherwise the agent's activity; null before its first activity. */
   statusFor: (agentId: number) => TabStatus | null;
@@ -175,6 +177,14 @@ export function useTerminalDrawer({
     [getOfficeState],
   );
 
+  const getName = useCallback(
+    (id: number): string => {
+      const ch = getOfficeState().characters.get(id);
+      return ch?.agentName || ch?.directoryName || `Agent ${id}`;
+    },
+    [getOfficeState],
+  );
+
   // Activity for the tab status dot (green idle / blue working / yellow needs
   // attention). null until the agent's first activity, so the dot stays empty.
   const getActivity = useCallback(
@@ -217,6 +227,7 @@ export function useTerminalDrawer({
     close,
     onResizeStart,
     getAppearance,
+    getName,
     statusFor,
     onStatusChange,
   };
