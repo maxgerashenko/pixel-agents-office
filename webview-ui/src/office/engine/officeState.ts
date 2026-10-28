@@ -664,8 +664,10 @@ export class OfficeState {
 
     // Agents start idle: agentToolStart / agentStatus 'active' (resent after
     // layoutLoaded for mid-turn agents) activate them, so a fresh or restored
-    // agent sitting at its prompt isn't drawn as working and shows no label.
+    // agent sitting at its prompt isn't drawn as working, shows no label, and
+    // walks out of any Area instead of sitting at its desk there.
     ch.isActive = false;
+
     if (directoryName) {
       ch.directoryName = directoryName;
     }

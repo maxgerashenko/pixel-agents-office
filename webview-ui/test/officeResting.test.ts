@@ -310,3 +310,69 @@ test('when Areas cover the whole floor, wanderTiles fall back to every walkable 
   const os = new OfficeState(l);
   assert.equal(os.wanderTiles.length, os.walkableTiles.length);
 });
+
+/** An agent whose Directory is mapped to the Area, so it is seated at the in-Area work seat w2. */
+function addMappedAgent(os: OfficeState): void {
+  os.areaMappings = { alpha: [AREA] };
+  os.addAgent(1, undefined, undefined, 'w2', true, 'alpha');
+  assert.equal(os.characters.get(1)!.seatId, 'w2');
+}
+
+const NO_IDLE_KEYS = (os: OfficeState, ch: { tileCol: number; tileRow: number }): boolean =>
+  os.noIdleTileKeys.has(`${ch.tileCol},${ch.tileRow}`);
+
+test('an agent added onto a work seat in an Area, with no status messages, leaves the Area', () => {
+  const os = new OfficeState(layout());
+  addMappedAgent(os);
+  const ch = os.characters.get(1)!;
+  assert.equal(ch.isActive, false, 'a new agent is idle until told otherwise');
+  const seat = os.seats.get('w2')!;
+  assert.deepEqual([ch.tileCol, ch.tileRow], [seat.seatCol, seat.seatRow]);
+  assert.ok(NO_IDLE_KEYS(os, ch), 'starts inside the Area');
+
+  simulate(os, 20);
+  assert.notEqual(ch.state, CharacterState.TYPE, 'not seated');
+  assert.ok(!NO_IDLE_KEYS(os, ch), 'standing outside the Area and its buffer');
+});
+
+test('an agent made active stays at its work seat inside an Area', () => {
+  const os = new OfficeState(layout());
+  addMappedAgent(os);
+  os.setAgentActive(1, true);
+  const ch = os.characters.get(1)!;
+  const seat = os.seats.get('w2')!;
+  simulate(os, 30);
+  assert.equal(ch.state, CharacterState.TYPE);
+  assert.deepEqual([ch.tileCol, ch.tileRow], [seat.seatCol, seat.seatRow]);
+});
+
+test('an idle agent arriving at its own seat inside an Area does not rest there', () => {
+  const os = new OfficeState(layout());
+  addMappedAgent(os);
+  const ch = os.characters.get(1)!;
+  const seat = os.seats.get('w2')!;
+  // Walking back to the seat from the tile below it, as after a user reassignment
+  const from = { col: seat.seatCol, row: seat.seatRow + 1 };
+  ch.tileCol = from.col;
+  ch.tileRow = from.row;
+  ch.x = from.col * 16 + 8;
+  ch.y = from.row * 16 + 8;
+  ch.state = CharacterState.WALK as typeof ch.state;
+  ch.path = [{ col: seat.seatCol, row: seat.seatRow }];
+  ch.moveProgress = 0;
+  ch.seatTimer = 0;
+
+  let arrived = false;
+  simulate(os, 20, () => {
+    if (
+      ch.tileCol === seat.seatCol &&
+      ch.tileRow === seat.seatRow &&
+      ch.state === CharacterState.TYPE
+    ) {
+      arrived = true;
+      assert.equal(ch.seatTimer, 0, 'no rest timer at an Area seat');
+    }
+  });
+  assert.ok(arrived, 'reached the seat');
+  assert.ok(!NO_IDLE_KEYS(os, ch), 'ended up out of the Area');
+});
