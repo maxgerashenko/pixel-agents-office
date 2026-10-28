@@ -305,7 +305,7 @@ export class AgentRuntime {
   // ── Agent removal (shared cleanup) ──
 
   /** Remove an agent: stop watchers, cancel timers, delete from store. */
-  removeAgent(id: number): void {
+  removeAgent(id: number, persist = true): void {
     const agent = this.store.get(id);
     if (!agent) return;
 
@@ -334,7 +334,7 @@ export class AgentRuntime {
 
     // Remove from store (fires agentRemoved event) and persist
     this.store.delete(id);
-    this.store.persist();
+    if (persist) this.store.persist();
   }
 
   /** Remove a single teammate agent. */
@@ -582,8 +582,11 @@ export class AgentRuntime {
       this.staleCheckTimer = null;
     }
 
+    // Tear down in memory only. A shutdown is not the agents leaving: persisting
+    // after each removal rewrote the state file one agent shorter every time and
+    // left it empty, so the next start had nothing to restore.
     for (const id of [...this.store.keys()]) {
-      this.removeAgent(id);
+      this.removeAgent(id, false);
     }
   }
 }
