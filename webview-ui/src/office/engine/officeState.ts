@@ -45,6 +45,7 @@ import { createPet, updatePet } from './petEntity.js';
 import {
   anchorTile,
   closestFreeSeat,
+  isNearArea,
   paintedAreaLabels,
   seatSatisfiesRule,
   workLabelsFor,
@@ -69,11 +70,16 @@ export class OfficeState {
   blockedTiles: Set<string>;
   furniture: FurnitureInstance[];
   walkableTiles: Array<{ col: number; row: number }>;
-  /** Walkable tiles outside every marked Area — where idle agents wander.
-   *  Falls back to all walkable tiles when Areas cover the whole floor. */
+  /** Walkable tiles outside every marked Area and its 1-tile buffer — where
+   *  idle agents wander. Falls back to tiles outside the Areas, then to all
+   *  walkable tiles, when the buffer covers the whole floor. */
   wanderTiles: Array<{ col: number; row: number }> = [];
-  /** Bench/sofa seats away from computers and outside every Area — where idle
-   *  agents rest. */
+  /** "col,row" keys of the tiles an idle agent must walk off: every tile in an
+   *  Area or its buffer (seat tiles included, since chairs aren't walkable).
+   *  Follows the wanderTiles fallback — Area tiles only, then nothing. */
+  noIdleTileKeys = new Set<string>();
+  /** Bench/sofa seats away from computers and not within an Area's 1-tile
+   *  buffer — where idle agents rest. */
   restSeatIds = new Set<string>();
   characters: Map<number, Character> = new Map();
   pets: Pet[] = [];
@@ -354,8 +360,9 @@ export class OfficeState {
 
   /**
    * Derive the rest seats and wander tiles from the layout. A bench/sofa seat
-   * that does not face a computer and sits outside every Area is a rest seat;
-   * everything else (a cushioned chair, an Area's sofa, a bench at a PC) is not.
+   * that does not face a computer and sits outside every Area and its 1-tile
+   * buffer is a rest seat; everything else (a cushioned chair, an Area's or
+   * Area-adjacent sofa, a bench at a PC) is not.
    */
   private refreshSeatRoles(): void {
     const typeByUid = new Map(this.layout.furniture.map((f) => [f.uid, f.type]));
@@ -364,15 +371,37 @@ export class OfficeState {
       if (this.workSeatIds.has(uid)) continue;
       // Multi-tile chairs key extra seats `uid:N` (layoutToSeats)
       const type = typeByUid.get(uid) ?? typeByUid.get(uid.replace(/:\d+$/, ''));
-      if (type && REST_SEAT_TYPE_PATTERN.test(type) && this.seatZone(uid) === null) {
+      if (type && REST_SEAT_TYPE_PATTERN.test(type) && !this.seatNearArea(uid)) {
         this.restSeatIds.add(uid);
       }
     }
-    const { areaTiles, cols } = this.layout;
+    const { areaTiles, cols, rows } = this.layout;
+    const clear = this.walkableTiles.filter(
+      (t) => !isNearArea(areaTiles, cols, rows, t.col, t.row),
+    );
     const outside = this.walkableTiles.filter(
       (t) => zoneAt(areaTiles, cols, t.col, t.row) === null,
     );
-    this.wanderTiles = outside.length > 0 ? outside : this.walkableTiles;
+    this.wanderTiles = clear.length > 0 ? clear : outside.length > 0 ? outside : this.walkableTiles;
+    this.noIdleTileKeys = new Set();
+    if (this.wanderTiles === this.walkableTiles) return;
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < cols; col++) {
+        const banned =
+          this.wanderTiles === clear
+            ? isNearArea(areaTiles, cols, rows, col, row)
+            : zoneAt(areaTiles, cols, col, row) !== null;
+        if (banned) this.noIdleTileKeys.add(`${col},${row}`);
+      }
+    }
+  }
+
+  /** Is this seat's tile inside an Area or within its 1-tile idle buffer? */
+  private seatNearArea(uid: string): boolean {
+    const seat = this.seats.get(uid);
+    if (!seat) return false;
+    const { areaTiles, cols, rows } = this.layout;
+    return isNearArea(areaTiles, cols, rows, seat.seatCol, seat.seatRow);
   }
 
   /**
@@ -1304,7 +1333,8 @@ export class OfficeState {
           this.tileMap,
           this.blockedTiles,
           freeRestSeats,
-          !ch.seatId || this.seatZone(ch.seatId) === null,
+          !ch.seatId || !this.seatNearArea(ch.seatId),
+          this.noIdleTileKeys,
         ),
       );
 

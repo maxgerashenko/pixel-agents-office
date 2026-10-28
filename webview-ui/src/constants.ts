@@ -11,6 +11,8 @@ export const MAX_ROWS = 64;
 export const WALK_SPEED_PX_PER_SEC = 48;
 export const WALK_FRAME_DURATION_SEC = 0.15;
 export const TYPE_FRAME_DURATION_SEC = 0.3;
+/** Tiles (Chebyshev, so diagonals count) around a marked Area that idle agents also keep clear of. */
+export const AREA_IDLE_BUFFER_TILES = 1;
 export const WANDER_PAUSE_MIN_SEC = 2.0;
 export const WANDER_PAUSE_MAX_SEC = 20.0;
 export const WANDER_MOVES_BEFORE_REST_MIN = 3;

@@ -149,16 +149,53 @@ function sitToRest(ch: Character, seat: Seat): void {
   ch.frameTimer = 0;
 }
 
+/** Max candidate tiles tried when leaving the Area buffer (nearest first). */
+const LEAVE_BUFFER_MAX_ATTEMPTS = 5;
+
+/**
+ * Walk an idle character off a tile it may not idle on, to the nearest allowed
+ * tile (Manhattan, then pathfound; the next-nearest if unreachable). Returns
+ * whether a walk started.
+ */
+function leaveBuffer(
+  ch: Character,
+  wanderTiles: Array<{ col: number; row: number }>,
+  tileMap: TileTypeVal[][],
+  blockedTiles: Set<string>,
+): boolean {
+  const dist = (t: { col: number; row: number }) =>
+    Math.abs(t.col - ch.tileCol) + Math.abs(t.row - ch.tileRow);
+  const nearest = wanderTiles
+    .map((t) => ({ t, d: dist(t) }))
+    .sort((a, b) => a.d - b.d)
+    .slice(0, LEAVE_BUFFER_MAX_ATTEMPTS);
+  for (const { t } of nearest) {
+    const path = findPath(ch.tileCol, ch.tileRow, t.col, t.row, tileMap, blockedTiles);
+    if (path.length > 0) {
+      ch.path = path;
+      ch.moveProgress = 0;
+      ch.state = CharacterState.WALK;
+      ch.frame = 0;
+      ch.frameTimer = 0;
+      return true;
+    }
+  }
+  return false;
+}
+
 /**
  * Advance one character's FSM.
  *
  * @param wanderTiles Tiles an idle agent may wander to — the office outside
- *   every marked Area (Areas are for work only).
+ *   every marked Area and its 1-tile buffer (Areas are for work only).
  * @param freeRestSeats Unclaimed rest seats (benches/sofas). Mutated: a claim
  *   removes its seat.
  * @param canRestAtWorkSeat Whether an idle agent with no free rest seat may sit
- *   out its rest at its own work seat — false when that seat is in an Area,
- *   since idle agents never linger in Areas.
+ *   out its rest at its own work seat — false when that seat is in an Area or
+ *   its 1-tile buffer, since idle agents never linger there.
+ * @param noIdleTileKeys "col,row" keys of the tiles idle agents may not stay
+ *   on (an Area and its buffer). An idle (not active) character standing on one
+ *   skips the wander pause and walks straight to the nearest wander tile.
  */
 export function updateCharacter(
   ch: Character,
@@ -169,6 +206,7 @@ export function updateCharacter(
   blockedTiles: Set<string>,
   freeRestSeats: Set<string> = new Set(),
   canRestAtWorkSeat = true,
+  noIdleTileKeys: ReadonlySet<string> = new Set(),
 ): void {
   ch.frameTimer += dt;
 
@@ -255,6 +293,14 @@ export function updateCharacter(
             ch.frameTimer = 0;
           }
         }
+        break;
+      }
+      // Standing in an Area or its buffer: leave now instead of after the pause
+      if (
+        !ch.isActive &&
+        noIdleTileKeys.has(`${ch.tileCol},${ch.tileRow}`) &&
+        leaveBuffer(ch, wanderTiles, tileMap, blockedTiles)
+      ) {
         break;
       }
       // Countdown wander timer
