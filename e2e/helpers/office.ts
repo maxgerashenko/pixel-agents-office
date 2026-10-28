@@ -264,7 +264,7 @@ export async function expectTeammateSeatedNextToLead(
 /** Select a character (agent or sub-agent) through the deterministic test hook
  *  — the same officeState.selectedAgentId a canvas click sets. Sub-agents use
  *  negative ids (first sub is -1). Selection is what reveals a sub-agent's
- *  live activity text in its overlay (hover shows only the subtask title). */
+ *  live activity text in its overlay (unselected, the label shows only the subtask title). */
 export async function selectCharacter(frame: OverlaySurface, agentId: number): Promise<void> {
   await frame.evaluate((id) => {
     window.__pixelAgentsTestHooks?.selectAgent?.(id);

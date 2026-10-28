@@ -85,7 +85,7 @@ export async function launchVSCode(
   // bundled-default reset gate (server/src/layoutPersistence.ts).
   //
   // config.json is ALWAYS seeded: every test wants alwaysShowLabels on (overlay
-  // text is only assertable when labels render without hover), so the e2e
+  // text is only assertable when every label renders, idle agents included), so the e2e
   // baseline enables it in both namespaces instead of each test clicking
   // through the Settings modal. The host Directories are shown for the same
   // reason: the product hides them by default, and the launch helpers click a

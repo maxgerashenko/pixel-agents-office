@@ -147,7 +147,6 @@ export function ToolOverlay({
   );
 
   const selectedId = officeState.selectedAgentId;
-  const hoveredId = officeState.hoveredAgentId;
 
   // All character IDs
   const allIds = [...agents, ...subagentCharacters.map((s) => s.id)];
@@ -159,10 +158,9 @@ export function ToolOverlay({
         if (!ch) return null;
 
         const isSelected = selectedId === id;
-        const isHovered = hoveredId === id;
         const isSub = ch.isSubagent;
         // Working = running a turn or blocked on approval. Working agents show
-        // their label without hover; idle / done / waiting-for-input ones don't.
+        // their label; idle / done / waiting-for-input ones don't.
         const isWorking =
           ch.isActive ||
           ch.bubbleType === 'permission' ||
@@ -204,9 +202,9 @@ export function ToolOverlay({
           );
         }
 
-        // Show the label for working, hovered or selected agents (or all of them
-        // when always-show is on) — the bubble renders regardless.
-        if (!alwaysShowOverlay && !isSelected && !isHovered && !isWorking) {
+        // Show the label for working or selected agents (or all of them when
+        // always-show is on) — the bubble renders regardless.
+        if (!alwaysShowOverlay && !isSelected && !isWorking) {
           return bubbleNode && <Fragment key={id}>{bubbleNode}</Fragment>;
         }
 
@@ -218,11 +216,11 @@ export function ToolOverlay({
         // A "Done" agent (finished turn: waiting bubble without awaitingInput)
         // shows ONLY its floating green checkmark bubble, never the label panel
         // (the panel would cover the bubble). Render an empty positioned marker
-        // so overlay counts stay stable and hover/select can still bring the
+        // so overlay counts stay stable and selecting can still bring the
         // panel back. When always-show is off, the early return above already
         // keeps the panel hidden for agents that are not working.
         const isDone = ch.bubbleType === 'waiting' && !ch.waitingAwaitingInput;
-        if (isDone && !isSelected && !isHovered) {
+        if (isDone && !isSelected) {
           return (
             <Fragment key={id}>
               {bubbleNode}
@@ -248,7 +246,7 @@ export function ToolOverlay({
           if (subHasPermission) {
             activityText = 'Needs approval';
           } else {
-            // Hover shows the subtask title; SELECTING the sub reveals its live
+            // The label shows the subtask title; SELECTING the sub reveals its live
             // tool activity (watched sub-agents stream it via subagentToolStart).
             const sub = subagentCharacters.find((s) => s.id === id);
             const rows = sub ? subagentTools[sub.parentAgentId]?.[sub.parentToolId] : undefined;
@@ -299,12 +297,7 @@ export function ToolOverlay({
                 left: screenX,
                 top: screenY - (hasExtraLines ? 34 : 28),
                 pointerEvents: isSelected ? 'auto' : 'none',
-                opacity:
-                  alwaysShowOverlay && !isWorking && !isSelected && !isHovered
-                    ? isSub
-                      ? 0.5
-                      : 0.75
-                    : 1,
+                opacity: alwaysShowOverlay && !isWorking && !isSelected ? (isSub ? 0.5 : 0.75) : 1,
                 zIndex: isSelected ? OVERLAY_LABEL_SELECTED_Z_INDEX : OVERLAY_LABEL_Z_INDEX,
               }}
               data-testid="agent-overlay"
