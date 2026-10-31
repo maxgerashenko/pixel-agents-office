@@ -68,8 +68,28 @@ export function ZoomControls({ zoom, onZoomChange }: ZoomControlsProps) {
         </div>
       )}
 
-      {/* Vertically stacked round buttons — top-left */}
-      <div className="absolute top-8 left-8 z-10 flex flex-col gap-4">
+      {/* Side-by-side buttons in the bottom-right corner, zoom out (-) on the
+          left and zoom in (+) on the right; the version label sits just above. */}
+      <div className="absolute bottom-10 right-10 z-10 flex flex-row gap-4">
+        <Button
+          size="icon_lg"
+          onClick={() => onZoomChange(zoom - 1)}
+          disabled={minDisabled}
+          className="border-border! shadow-pixel disabled:hover:bg-btn-bg disabled:cursor-default disabled:opacity-(--btn-disabled-opacity)"
+          title="Zoom out (Ctrl+Scroll)"
+        >
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+            <line
+              x1="3"
+              y1="9"
+              x2="15"
+              y2="9"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+            />
+          </svg>
+        </Button>
         <Button
           size="icon_lg"
           onClick={() => onZoomChange(zoom + 1)}
@@ -87,25 +107,6 @@ export function ZoomControls({ zoom, onZoomChange }: ZoomControlsProps) {
               strokeWidth="2"
               strokeLinecap="round"
             />
-            <line
-              x1="3"
-              y1="9"
-              x2="15"
-              y2="9"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-            />
-          </svg>
-        </Button>
-        <Button
-          size="icon_lg"
-          onClick={() => onZoomChange(zoom - 1)}
-          disabled={minDisabled}
-          className="border-border! shadow-pixel disabled:hover:bg-btn-bg disabled:cursor-default disabled:opacity-(--btn-disabled-opacity)"
-          title="Zoom out (Ctrl+Scroll)"
-        >
-          <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
             <line
               x1="3"
               y1="9"

@@ -61,12 +61,13 @@ export function AgentCard({
   const named = name !== undefined;
   return (
     <div
-      // Named (desktop bar): a subgrid of the bar's `1fr | mug shot | 1fr`
-      // columns. The two fr columns stay equal, so the name (spanning all
-      // three, row 2) centres under the mug shot, which sits beside the
-      // close/status column as before; a long name widens both sides alike and
-      // runs under that column. Unnamed (mobile): the plain flex row.
-      className={`pointer-events-auto p-1 cursor-pointer border-2 shrink-0 ${named ? 'grid grid-cols-subgrid col-span-3' : 'flex items-stretch gap-1'} ${CARD_VARIANT[variant]}`}
+      // Named (desktop bar): its own `1fr | mug shot | 1fr` grid. The two fr
+      // columns stay equal, so the name (spanning all three, row 2) centres
+      // under the mug shot, which sits beside the close/status column as
+      // before; a long name widens both sides alike and runs under that
+      // column. Unnamed (mobile): the plain flex row.
+      className={`pointer-events-auto p-1 cursor-pointer border-2 shrink-0 ${named ? 'grid' : 'flex items-stretch gap-1'} ${CARD_VARIANT[variant]}`}
+      style={named ? { gridTemplateColumns: `1fr ${MUGSHOT_DISPLAY_PX}px 1fr` } : undefined}
       onClick={() => onSelect(agentId)}
       title={name ?? `Agent ${agentId}`}
     >
