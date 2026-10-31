@@ -579,3 +579,8 @@ export const USAGE_WARN_PERCENT = 80;
 export const USAGE_DANGER_PERCENT = 95;
 /** How often the meter re-checks whether its window has reset. */
 export const USAGE_EXPIRY_CHECK_MS = 30_000;
+
+// ── Read-only office ────────────────────────────────────────
+/** Tooltip on every control a view-only page shows disabled (opened without the server token). */
+export const READ_ONLY_CONTROL_HINT =
+  'View only: open the full link the server printed (the one ending in ?token=…) to use this.';

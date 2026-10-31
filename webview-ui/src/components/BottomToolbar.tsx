@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 
+import { READ_ONLY_CONTROL_HINT } from '../constants.js';
 import type { Directory } from '../hooks/useExtensionMessages.js';
 import { isBrowserRuntime } from '../runtime.js';
 import { transport } from '../transport/index.js';
@@ -7,6 +8,8 @@ import { LaunchDrawer } from './LaunchDrawer.js';
 import { Button } from './ui/Button.js';
 
 interface BottomToolbarProps {
+  /** View-only office (no server token): every control shows, disabled. */
+  readOnly?: boolean;
   isEditMode: boolean;
   onToggleEditMode: () => void;
   isSettingsOpen: boolean;
@@ -23,6 +26,7 @@ interface BottomToolbarProps {
 }
 
 export function BottomToolbar({
+  readOnly = false,
   isEditMode,
   onToggleEditMode,
   isSettingsOpen,
@@ -66,6 +70,21 @@ export function BottomToolbar({
   // couldn't install) is not something a user would otherwise ever discover.
   const canLaunch = !isBrowserRuntime || terminalAvailable;
   const showUnavailable = isBrowserRuntime && !terminalAvailable;
+
+  // View only: the same three controls, all disabled, the tooltip saying how
+  // to get them back. Nothing here could do anything — the server refuses every
+  // change from an untokened page.
+  if (readOnly) {
+    return (
+      <div className="absolute left-10 bottom-10 z-20 flex items-center gap-4 pixel-panel p-4">
+        {['+ Agent', 'Layout', 'Settings'].map((label) => (
+          <Button key={label} variant="disabled" disabled title={READ_ONLY_CONTROL_HINT}>
+            {label}
+          </Button>
+        ))}
+      </div>
+    );
+  }
 
   return (
     // Bottom-left. The terminal panel docks on the right edge, so it never

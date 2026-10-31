@@ -181,9 +181,9 @@ test.describe('Standalone / hooks consent', () => {
   });
 
   // A read-only office: every change it could send is refused server-side
-  // (clientMessageHandler's refuseReadOnly), so it is shown no controls that
-  // send one -- while the tokened page beside it keeps them all.
-  test('an untokened spectator page shows no toolbar, only a View only label @area:standalone', async ({
+  // (clientMessageHandler's refuseReadOnly), so every control that sends one is
+  // shown disabled -- while the tokened page beside it keeps them all working.
+  test('an untokened spectator page shows the toolbar with every control disabled @area:standalone', async ({
     page,
     standalone,
   }) => {
@@ -191,7 +191,7 @@ test.describe('Standalone / hooks consent', () => {
     const spectator = await openSpectator(page);
     try {
       for (const name of ['Settings', 'Layout', '+ Agent']) {
-        await expect(spectator.getByRole('button', { name, exact: true })).toHaveCount(0);
+        await expect(spectator.getByRole('button', { name, exact: true })).toBeDisabled();
       }
       await expect(spectator.getByText('View only', { exact: true })).toBeVisible();
       // Its dismissal could never be recorded, so the update notice would

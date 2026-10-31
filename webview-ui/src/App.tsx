@@ -19,7 +19,7 @@ import { Modal } from './components/ui/Modal.js';
 import { UsageMeter } from './components/UsageMeter.js';
 import { VersionIndicator } from './components/VersionIndicator.js';
 import { ZoomControls } from './components/ZoomControls.js';
-import { OFFICE_CANVAS_TEST_ID } from './constants.js';
+import { OFFICE_CANVAS_TEST_ID, READ_ONLY_CONTROL_HINT } from './constants.js';
 import { useDirectoryEditor } from './hooks/useDirectoryEditor.js';
 import { useEditorActions } from './hooks/useEditorActions.js';
 import { useEditorKeyboard } from './hooks/useEditorKeyboard.js';
@@ -672,10 +672,12 @@ function App() {
         </div>
       )}
 
-      {/* A read-only office gets no toolbar: launching, layout editing and every
-          setting would be refused by the server anyway. */}
-      {!isMobile && !officeReadOnly && (
+      {/* A read-only office keeps its toolbar but every control is disabled:
+          launching, layout editing and every setting would be refused by the
+          server anyway, and a vanished panel read as a bug. */}
+      {!isMobile && (
         <BottomToolbar
+          readOnly={officeReadOnly}
           isEditMode={editor.isEditMode}
           onToggleEditMode={editor.handleToggleEditMode}
           isSettingsOpen={isSettingsOpen}
@@ -690,11 +692,13 @@ function App() {
 
       {/* Mobile: Settings floats top-left (the layout editor stays desktop-
             only — its tools are drag/hover-driven). */}
-      {isMobile && !isDebugMode && !officeReadOnly && (
+      {isMobile && !isDebugMode && (
         <div className="absolute mobile-safe-top left-8 z-20">
           <Button
             size="sm"
-            variant={isSettingsOpen ? 'active' : 'default'}
+            variant={officeReadOnly ? 'disabled' : isSettingsOpen ? 'active' : 'default'}
+            disabled={officeReadOnly}
+            title={officeReadOnly ? READ_ONLY_CONTROL_HINT : undefined}
             className="border-border! shadow-pixel"
             onClick={() => setIsSettingsOpen((v) => !v)}
           >
