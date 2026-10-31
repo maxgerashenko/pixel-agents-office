@@ -2,8 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { diffAreaRenames, renameAreaInMappings } from '../../../core/src/areaRenames.js';
 import type { HooksConsentRequest } from '../../../core/src/messages.js';
-import type { UsageView } from '../components/usageMeter.js';
-import { asUsageWindow } from '../components/usageMeter.js';
+import type { UsageView } from '../components/usageView.js';
+import { asUsageWindow } from '../components/usageView.js';
 import { playDoneSound, playPermissionSound, setSoundEnabled } from '../notificationSound.js';
 import type { ExistingAgentMeta, PendingAgent } from '../office/engine/existingAgents.js';
 import { reconcileExistingAgents } from '../office/engine/existingAgents.js';

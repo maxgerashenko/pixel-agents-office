@@ -8,7 +8,7 @@ import {
   type UsageSeverity,
   usageSeverity,
   type UsageView,
-} from './usageMeter.js';
+} from './usageView.js';
 
 const FILL_CLASS: Record<UsageSeverity, string> = {
   normal: 'bg-accent-bright',

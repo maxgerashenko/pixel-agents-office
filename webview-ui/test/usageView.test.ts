@@ -7,7 +7,7 @@ import {
   liveWindow,
   pickSessionWindow,
   usageSeverity,
-} from '../src/components/usageMeter.js';
+} from '../src/components/usageView.js';
 
 describe('usageSeverity', () => {
   it('bands at 80 and 95', () => {
