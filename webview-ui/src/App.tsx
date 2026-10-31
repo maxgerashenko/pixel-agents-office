@@ -39,6 +39,7 @@ import { OfficeState } from './office/engine/officeState.js';
 import { exportLayoutToFile } from './office/layout/exportLayout.js';
 import { isRotatable } from './office/layout/furnitureCatalog.js';
 import { migrateLayoutColors } from './office/layout/layoutSerializer.js';
+import type { CanvasRect } from './office/projection.js';
 import { overlayProjection } from './office/projection.js';
 import { getPetCount } from './office/sprites/petSpriteData.js';
 import { EditTool, type OfficeLayout, TILE_SIZE } from './office/types.js';
@@ -364,9 +365,9 @@ function App() {
   const { showTerminal: showMobileTerminal } = mobileShell;
   // Fit-to-width reads the canvas's backing-store width (device pixels — the
   // unit zoom is measured in) at click time, so a docked terminal drawer or a
-  // resized window is already accounted for. Vertically the office must fit,
-  // centred, in the band the panels leave free: below every `top` obstacle and
-  // above every `bottom` one (the toolbar and zoom buttons float over the
+  // resized window is already accounted for. The office takes the largest
+  // zoom at which no panel covers it: it stays below every `top` obstacle and
+  // clear of every `bottom` one (the toolbar and zoom buttons float over the
   // canvas). Notifications are not obstacles — they may cover the office.
   const handleFitWidth = useCallback(() => {
     const canvas = document.querySelector<HTMLCanvasElement>(
@@ -374,23 +375,24 @@ function App() {
     );
     if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
-    let bandTop = rect.top;
-    let bandBottom = rect.bottom;
+    const dpr = window.devicePixelRatio || 1;
+    let top = 0;
+    const obstacles: CanvasRect[] = [];
     document.querySelectorAll(`[${FIT_OBSTACLE_ATTR}]`).forEach((el) => {
       const r = el.getBoundingClientRect();
-      if (r.height === 0) return;
-      if (el.getAttribute(FIT_OBSTACLE_ATTR) === 'top') bandTop = Math.max(bandTop, r.bottom);
-      else bandBottom = Math.min(bandBottom, r.top);
+      if (r.width === 0 || r.height === 0) return;
+      if (el.getAttribute(FIT_OBSTACLE_ATTR) === 'top') {
+        top = Math.max(top, (r.bottom - rect.top) * dpr);
+      } else {
+        obstacles.push({
+          x: (r.left - rect.left) * dpr,
+          y: (r.top - rect.top) * dpr,
+          w: r.width * dpr,
+          h: r.height * dpr,
+        });
+      }
     });
-    if (bandBottom <= bandTop) {
-      editor.handleFitWidth(canvas.width);
-      return;
-    }
-    const dpr = window.devicePixelRatio || 1;
-    editor.handleFitWidth(canvas.width, {
-      height: (bandBottom - bandTop) * dpr,
-      centerOffsetY: ((bandTop + bandBottom) / 2 - (rect.top + rect.bottom) / 2) * dpr,
-    });
+    editor.handleFitWidth({ width: canvas.width, height: canvas.height }, { top, obstacles });
   }, [editor]);
 
   const handleClick = useCallback(

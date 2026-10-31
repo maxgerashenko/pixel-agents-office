@@ -112,25 +112,40 @@ export function layoutContentBounds(layout: {
   };
 }
 
-/** Free vertical band of the canvas, in device px: the height the panels
- *  leave uncovered, and how far its middle sits from the canvas's middle. */
-export interface FitBand {
-  height: number;
-  centerOffsetY: number;
+/** A rectangle in canvas device pixels (origin: the canvas's top-left). */
+export interface CanvasRect {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+/** What the panels around the office leave free, in canvas device pixels:
+ *  `top` is where the space below the top panels starts, `obstacles` are the
+ *  panels floating over the canvas (toolbar, zoom buttons). Notifications are
+ *  never obstacles — they may cover the office. */
+export interface FitSpace {
+  top: number;
+  obstacles: readonly CanvasRect[];
+}
+
+function overlaps(a: CanvasRect, b: CanvasRect): boolean {
+  return a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
 }
 
 /** The view the fit button sets: the largest whole zoom at which the office's
- *  drawn width fits the canvas AND its drawn height fits the free band (so no
- *  panel covers it), panned so the middle of the office sits in the middle of
- *  that band. Zoom stays an integer so sprites stay pixel-perfect, so "fit"
- *  rounds down. Clamped to [minZoom, maxZoom]. Without a band the whole
- *  canvas height is free. */
+ *  drawn width fits the canvas and no panel covers it, centred horizontally.
+ *  Vertically it is centred below the top panels; when a floating panel
+ *  would cover it there, it is centred in the band above the highest
+ *  overlapping one instead, and only when neither placement is clear does
+ *  the zoom drop a step. Zoom stays an integer so sprites stay pixel-perfect.
+ *  Clamped to [minZoom, maxZoom]; without `space` the whole canvas is free. */
 export function fitWidthView(
-  canvasWidth: number,
+  canvas: { width: number; height: number },
   layout: { cols: number; rows: number; tiles: readonly number[] },
   minZoom: number,
   maxZoom: number,
-  band?: FitBand,
+  space: FitSpace = { top: 0, obstacles: [] },
 ): { zoom: number; panX: number; panY: number } {
   const bounds = layoutContentBounds(layout) ?? {
     x: 0,
@@ -138,12 +153,44 @@ export function fitWidthView(
     w: layout.cols * TILE_SIZE,
     h: layout.rows * TILE_SIZE,
   };
-  const widthFit = bounds.w > 0 && canvasWidth > 0 ? Math.floor(canvasWidth / bounds.w) : minZoom;
-  const heightFit = band && bounds.h > 0 ? Math.floor(band.height / bounds.h) : Infinity;
-  const fit = Math.min(widthFit, heightFit);
-  const zoom = Math.max(minZoom, Math.min(maxZoom, fit));
+  const widthFit = bounds.w > 0 && canvas.width > 0 ? Math.floor(canvas.width / bounds.w) : minZoom;
+  const startZoom = Math.max(minZoom, Math.min(maxZoom, widthFit));
+  const cx = canvas.width / 2;
+  const rectAt = (zoom: number, cy: number): CanvasRect => ({
+    x: cx - (bounds.w * zoom) / 2,
+    y: cy - (bounds.h * zoom) / 2,
+    w: bounds.w * zoom,
+    h: bounds.h * zoom,
+  });
+  const clear = (r: CanvasRect) =>
+    r.y >= space.top - 0.5 && !space.obstacles.some((o) => overlaps(r, o));
+
+  let zoom = startZoom;
+  let cy = (space.top + canvas.height) / 2;
+  for (let z = startZoom; z >= minZoom; z--) {
+    const below = (space.top + canvas.height) / 2;
+    if (clear(rectAt(z, below))) {
+      zoom = z;
+      cy = below;
+      break;
+    }
+    // Above the highest floating panel that would cover it.
+    const hits = space.obstacles.filter((o) => overlaps(rectAt(z, below), o));
+    const ceiling = Math.min(canvas.height, ...hits.map((o) => o.y));
+    const above = (space.top + ceiling) / 2;
+    if (clear(rectAt(z, above))) {
+      zoom = z;
+      cy = above;
+      break;
+    }
+    if (z === minZoom) {
+      zoom = z;
+      cy = above;
+    }
+  }
   // Pan is measured from the grid's centre (pan 0 centres the grid).
-  const panX = (layout.cols * TILE_SIZE) / 2 - (bounds.x + bounds.w / 2);
-  const panY = (layout.rows * TILE_SIZE) / 2 - (bounds.y + bounds.h / 2);
-  return { zoom, panX: panX * zoom, panY: panY * zoom + (band?.centerOffsetY ?? 0) };
+  const panX = ((layout.cols * TILE_SIZE) / 2 - (bounds.x + bounds.w / 2)) * zoom;
+  const panY =
+    ((layout.rows * TILE_SIZE) / 2 - (bounds.y + bounds.h / 2)) * zoom + (cy - canvas.height / 2);
+  return { zoom, panX, panY };
 }
