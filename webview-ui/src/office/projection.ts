@@ -112,20 +112,25 @@ export function layoutContentBounds(layout: {
   };
 }
 
-/** The view the fit-to-width button sets: the largest whole zoom at which the
- *  office's drawn width fits the canvas, panned so the middle of the office
- *  sits in the middle of the canvas. Zoom stays an integer so sprites stay
- *  pixel-perfect, so "fit" rounds down — as wide as the grid allows without
- *  cropping. Clamped to [minZoom, maxZoom].
- *
- *  `centerOffsetY` (device px) moves the vertical target off the canvas's
- *  middle — to the middle of the free band between panels that cover it. */
+/** Free vertical band of the canvas, in device px: the height the panels
+ *  leave uncovered, and how far its middle sits from the canvas's middle. */
+export interface FitBand {
+  height: number;
+  centerOffsetY: number;
+}
+
+/** The view the fit button sets: the largest whole zoom at which the office's
+ *  drawn width fits the canvas AND its drawn height fits the free band (so no
+ *  panel covers it), panned so the middle of the office sits in the middle of
+ *  that band. Zoom stays an integer so sprites stay pixel-perfect, so "fit"
+ *  rounds down. Clamped to [minZoom, maxZoom]. Without a band the whole
+ *  canvas height is free. */
 export function fitWidthView(
   canvasWidth: number,
   layout: { cols: number; rows: number; tiles: readonly number[] },
   minZoom: number,
   maxZoom: number,
-  centerOffsetY = 0,
+  band?: FitBand,
 ): { zoom: number; panX: number; panY: number } {
   const bounds = layoutContentBounds(layout) ?? {
     x: 0,
@@ -133,10 +138,12 @@ export function fitWidthView(
     w: layout.cols * TILE_SIZE,
     h: layout.rows * TILE_SIZE,
   };
-  const fit = bounds.w > 0 && canvasWidth > 0 ? Math.floor(canvasWidth / bounds.w) : minZoom;
+  const widthFit = bounds.w > 0 && canvasWidth > 0 ? Math.floor(canvasWidth / bounds.w) : minZoom;
+  const heightFit = band && bounds.h > 0 ? Math.floor(band.height / bounds.h) : Infinity;
+  const fit = Math.min(widthFit, heightFit);
   const zoom = Math.max(minZoom, Math.min(maxZoom, fit));
   // Pan is measured from the grid's centre (pan 0 centres the grid).
   const panX = (layout.cols * TILE_SIZE) / 2 - (bounds.x + bounds.w / 2);
   const panY = (layout.rows * TILE_SIZE) / 2 - (bounds.y + bounds.h / 2);
-  return { zoom, panX: panX * zoom, panY: panY * zoom + centerOffsetY };
+  return { zoom, panX: panX * zoom, panY: panY * zoom + (band?.centerOffsetY ?? 0) };
 }

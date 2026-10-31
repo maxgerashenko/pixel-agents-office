@@ -50,10 +50,13 @@ test('an all-VOID layout falls back to the grid', () => {
   assert.deepEqual(fitWidthView(128, solid(4, 4, V), 1, 10), { zoom: 2, panX: 0, panY: 0 });
 });
 
-test('centerOffsetY moves the vertical target to the free band', () => {
-  assert.deepEqual(fitWidthView(1000, solid(20, 10), 1, 10, -40), {
+test('the free band moves the vertical target and caps the zoom by height', () => {
+  // Width allows 3x (320 px wide); a 500 px band fits 160 px tall only at 3x.
+  assert.deepEqual(fitWidthView(1000, solid(20, 10), 1, 10, { height: 500, centerOffsetY: -40 }), {
     zoom: 3,
     panX: 0,
     panY: -40,
   });
+  // A 400 px band fits 160 px tall only at 2x, though width allows 3x.
+  assert.equal(fitWidthView(1000, solid(20, 10), 1, 10, { height: 400, centerOffsetY: 0 }).zoom, 2);
 });
