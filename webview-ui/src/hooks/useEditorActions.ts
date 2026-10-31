@@ -38,6 +38,7 @@ import {
 import type { EditorState } from '../office/editor/editorState.js';
 import type { OfficeState } from '../office/engine/officeState.js';
 import { getRotatedType, getToggledType } from '../office/layout/furnitureCatalog.js';
+import { fitWidthView } from '../office/projection.js';
 import type {
   EditTool as EditToolType,
   OfficeLayout,
@@ -75,6 +76,9 @@ interface EditorActions extends Omit<FurnitureColorActions, 'pickColorAt'> {
   handleReset: () => void;
   handleSave: () => void;
   handleZoomChange: (zoom: number) => void;
+  /** Zoom so the whole office width fits a canvas `canvasWidth` device pixels
+   *  wide, and re-center the camera on the map. */
+  handleFitWidth: (canvasWidth: number) => void;
   handleEditorTileAction: (col: number, row: number) => void;
   handleEditorEraseAction: (col: number, row: number) => void;
   handleEditorSelectionChange: () => void;
@@ -531,6 +535,20 @@ export function useEditorActions(
     setZoom(Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, newZoom)));
   }, []);
 
+  const handleFitWidth = useCallback(
+    (canvasWidth: number) => {
+      const os = getOfficeState();
+      const view = fitWidthView(canvasWidth, os.getLayout(), ZOOM_MIN, ZOOM_MAX);
+      setZoom(view.zoom);
+      // Middle of the office on the middle of the screen. Release both camera
+      // drivers (character follow and the intro greeter), or they'd pull the
+      // view back off-center on the next frame.
+      os.breakCameraFollow();
+      panRef.current = { x: view.panX, y: view.panY };
+    },
+    [getOfficeState],
+  );
+
   /**
    * A furniture drag released at (col,row): validate, commit, and settle the
    * selection in one place — a copy is left selected so R / T / the colour
@@ -792,6 +810,7 @@ export function useEditorActions(
     handleReset,
     handleSave,
     handleZoomChange,
+    handleFitWidth,
     handleEditorTileAction,
     handleEditorEraseAction,
     handleEditorSelectionChange,
