@@ -511,6 +511,9 @@ export const XTERM_HELPER_TEXTAREA_CLASS = 'xterm-helper-textarea';
 // ── Mobile card bar (MobileAgentBar) ─────────────────────────
 /** Holding a card motionless this long arms drag-to-reorder in the mobile bar. */
 export const CARD_REORDER_LONG_PRESS_MS = 400;
+/** Slide duration when the desktop card row moves an agent that became
+ *  active to the front (FLIP animation), in ms. */
+export const CARD_ROW_REORDER_MS = 300;
 /** Holding a drawer's Directory row this long opens its edit modal — the touch
  *  stand-in for the pencil, which only exists where rows can be hovered. */
 export const DRAWER_EDIT_LONG_PRESS_MS = 500;

@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  activeFirstOrder,
   cardShortName,
   cardVariant,
+  isActiveCardStatus,
   mergeOrder,
   reorderByPointer,
+  sameOrder,
 } from '../src/components/cardBar.js';
 
 describe('cardVariant', () => {
@@ -55,5 +58,41 @@ describe('cardShortName', () => {
   it('shows names without a usable tail whole', () => {
     expect(cardShortName('prototypeRAG')).toBe('prototypeRAG');
     expect(cardShortName('trailing_')).toBe('trailing_');
+  });
+});
+
+describe('activeFirstOrder', () => {
+  it('moves an agent that became active to the front, the rest keep their places', () => {
+    expect(activeFirstOrder([1, 2, 3, 4], [1, 2, 3, 4], [3])).toEqual([3, 1, 2, 4]);
+  });
+
+  it('leaves an agent that went idle where it is', () => {
+    // 3 was promoted earlier and is idle now: nothing became active, nothing moves.
+    expect(activeFirstOrder([3, 1, 2, 4], [1, 2, 3, 4], [])).toEqual([3, 1, 2, 4]);
+  });
+
+  it('puts several newly active agents in front in the given order', () => {
+    expect(activeFirstOrder([1, 2, 3, 4], [1, 2, 3, 4], [4, 2])).toEqual([4, 2, 1, 3]);
+  });
+
+  it('drops closed agents, appends new ones, ignores unknown ids', () => {
+    expect(activeFirstOrder([3, 1, 9], [1, 2, 3], [7])).toEqual([3, 1, 2]);
+    expect(activeFirstOrder([], [1, 2, 3], [2])).toEqual([2, 1, 3]);
+  });
+});
+
+describe('isActiveCardStatus / sameOrder', () => {
+  it('working and attention are active; idle, disconnected and unknown are not', () => {
+    expect(isActiveCardStatus('working')).toBe(true);
+    expect(isActiveCardStatus('attention')).toBe(true);
+    expect(isActiveCardStatus('idle')).toBe(false);
+    expect(isActiveCardStatus('disconnected')).toBe(false);
+    expect(isActiveCardStatus(null)).toBe(false);
+  });
+
+  it('compares element by element', () => {
+    expect(sameOrder([1, 2], [1, 2])).toBe(true);
+    expect(sameOrder([1, 2], [2, 1])).toBe(false);
+    expect(sameOrder([1], [1, 2])).toBe(false);
   });
 });

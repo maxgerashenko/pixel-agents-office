@@ -1,5 +1,6 @@
-/** Pure rules shared by the agent card bars — highlight tier and the mobile
- *  bar's drag-to-reorder order (DOM-free, so they run on the Node runner). */
+/** Pure rules shared by the agent card bars — highlight tier, the mobile
+ *  bar's drag-to-reorder order and the desktop row's active-first order
+ *  (DOM-free, so they run on the Node runner). */
 
 /** Card highlight tiers: 'focused' = the agent's character is selected in the
  *  office (active background, no border); 'active' = its terminal pane is the
@@ -28,6 +29,37 @@ export function mergeOrder(saved: readonly number[], live: readonly number[]): n
     if (!seen.has(id)) ordered.push(id);
   }
   return ordered;
+}
+
+/** Whether a card's status counts as active for the desktop row's order:
+ *  working, or waiting on the user (permission / input). */
+export function isActiveCardStatus(status: string | null): boolean {
+  return status === 'working' || status === 'attention';
+}
+
+/**
+ * The desktop row's order: the previous order (closed agents dropped, new
+ * ones appended), with every agent in `becameActive` moved to the front in
+ * the order given. An agent that goes idle is never moved — it stays where it
+ * is until it becomes active again. Returns `prev`'s contents unchanged when
+ * nothing moved, so callers can compare with `sameOrder`.
+ */
+export function activeFirstOrder(
+  prev: readonly number[],
+  live: readonly number[],
+  becameActive: readonly number[],
+): number[] {
+  const merged = mergeOrder(prev, live);
+  const liveSet = new Set(merged);
+  const front = becameActive.filter((id) => liveSet.has(id));
+  if (front.length === 0) return merged;
+  const frontSet = new Set(front);
+  return [...front, ...merged.filter((id) => !frontSet.has(id))];
+}
+
+/** Element-wise equality of two orders. */
+export function sameOrder(a: readonly number[], b: readonly number[]): boolean {
+  return a.length === b.length && a.every((id, i) => id === b[i]);
 }
 
 /**
