@@ -100,6 +100,8 @@ components:
         - $ref: '#/components/schemas/AgentTeamInfo'
         # Context window
         - $ref: '#/components/schemas/AgentContextUsage'
+        # Provider usage (rate limits)
+        - $ref: '#/components/schemas/UsageUpdate'
         # Layout
         - $ref: '#/components/schemas/LayoutLoaded'
         # Assets
@@ -455,6 +457,48 @@ components:
           type: integer
         maxContextTokens:
           type: integer
+
+    UsageWindow:
+      description: |
+        One rate-limit window. `resetsAt` is Unix epoch MILLISECONDS (the
+        provider's seconds are converted server-side). A window that has
+        already reset carries a stale percentage; clients must not show it.
+      type: object
+      additionalProperties: false
+      required: [usedPercentage, resetsAt]
+      properties:
+        usedPercentage:
+          type: number
+          description: Share of the window consumed, 0-100.
+        resetsAt:
+          type: number
+          description: When the window resets, Unix epoch milliseconds.
+
+    UsageUpdate:
+      description: |
+        Latest rate-limit usage for one provider (Claude: the "Current
+        session" five-hour window and the weekly window), taken from the JSON
+        the provider's status-line command receives and POSTed to
+        `/api/usage/:providerId`. Sent to every client when it changes and
+        during the connect handshake (display data, so read-only clients get it
+        too). Either window may be absent; the handshake sends nothing when no
+        window is still live. Windows the server never reported are omitted, not
+        zeroed.
+      type: object
+      additionalProperties: false
+      required: [type, providerId, updatedAt]
+      properties:
+        type:
+          const: usageUpdate
+        providerId:
+          type: string
+        fiveHour:
+          $ref: '#/components/schemas/UsageWindow'
+        sevenDay:
+          $ref: '#/components/schemas/UsageWindow'
+        updatedAt:
+          type: number
+          description: When the server received this snapshot, Unix epoch milliseconds.
 
     LayoutLoaded:
       description: |

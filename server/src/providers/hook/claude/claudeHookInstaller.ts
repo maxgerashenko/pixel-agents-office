@@ -7,6 +7,7 @@ import { HOOK_SCRIPTS_DIR } from '../../../constants.js';
 import {
   CLAUDE_HOOK_EVENTS,
   CLAUDE_HOOK_SCRIPT_NAME,
+  CLAUDE_STATUSLINE_SCRIPT_NAME,
   LEGACY_HOOK_SCRIPT_NAME,
   SETTINGS_BACKUP_SUFFIX,
   SETTINGS_FRESH_FILE_MODE,
@@ -741,9 +742,25 @@ export function copyHookScript(extensionPath: string): boolean {
     fs.copyFileSync(src, dst);
     fs.chmodSync(dst, 0o700);
     console.log(`[Pixel Agents] Hook script installed at ${dst}`);
+    copyStatuslineScript(extensionPath, dstDir);
     return true;
   } catch (e) {
     console.error(`[Pixel Agents] Failed to copy hook script: ${e}`);
     return false;
+  }
+}
+
+/** Best-effort copy of the optional statusLine tap next to the hook script, so
+ *  a user who opts in (docs/usage-meter.md) has a stable path to point at. Its
+ *  failure never fails the hook install: nothing in settings.json refers to it. */
+function copyStatuslineScript(extensionPath: string, dstDir: string): void {
+  const src = path.join(extensionPath, 'dist', 'hooks', CLAUDE_STATUSLINE_SCRIPT_NAME);
+  const dst = path.join(dstDir, CLAUDE_STATUSLINE_SCRIPT_NAME);
+  try {
+    if (!fs.existsSync(src)) return;
+    fs.copyFileSync(src, dst);
+    fs.chmodSync(dst, 0o700);
+  } catch (e) {
+    console.warn(`[Pixel Agents] Failed to copy statusline script: ${e}`);
   }
 }

@@ -62,6 +62,24 @@ export type AgentEvent =
     }
   | { kind: 'sessionEnd'; reason?: string };
 
+// ── Usage (rate-limit windows) ────────────────────────────────
+
+/** One rate-limit window as a provider reports it. */
+export interface UsageWindow {
+  /** Percentage of the window consumed, clamped to 0-100. */
+  usedPercentage: number;
+  /** When the window resets, as Unix epoch MILLISECONDS. */
+  resetsAt: number;
+}
+
+/** Normalized usage snapshot. Either window may be absent. */
+export interface UsageSnapshot {
+  /** The short rolling window ("Current session"). */
+  fiveHour?: UsageWindow;
+  /** The weekly window. */
+  sevenDay?: UsageWindow;
+}
+
 // ── Hook-based Provider (CLIs with hooks APIs) ────────────────
 
 export interface HookProvider {
@@ -115,6 +133,12 @@ export interface HookProvider {
    *  Return undefined for an unrecognized model; the runtime then keeps its
    *  previous estimate and widens it if a context ever exceeds it. */
   contextWindowForModel?(model: string | undefined): number | undefined;
+
+  /** Parse the raw usage payload this CLI hands its status-line command into a
+   *  normalized snapshot. Return null when the payload carries no usable
+   *  window (the previous snapshot then stands). Optional: a provider with no
+   *  usage source simply omits it. */
+  parseUsage?(raw: unknown): UsageSnapshot | null;
 
   // ── Optional file fallback (heuristic mode) ──
 

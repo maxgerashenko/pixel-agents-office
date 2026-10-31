@@ -25,6 +25,7 @@ export type ServerMessage =
   | SubagentToolPermission
   | AgentTeamInfo
   | AgentContextUsage
+  | UsageUpdate
   | LayoutLoaded
   | FurnitureAssetsLoaded
   | CharacterSpritesLoaded
@@ -199,6 +200,19 @@ export interface AgentContextUsage {
   id: number;
   contextTokens: number;
   maxContextTokens: number;
+}
+
+export interface UsageUpdate {
+  type: 'usageUpdate';
+  providerId: string;
+  fiveHour?: UsageWindow;
+  sevenDay?: UsageWindow;
+  updatedAt: number;
+}
+
+export interface UsageWindow {
+  usedPercentage: number;
+  resetsAt: number;
 }
 
 export interface LayoutLoaded {

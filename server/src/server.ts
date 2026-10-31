@@ -22,6 +22,7 @@ import type { ServerConfig, StandaloneAccess } from './serverConfig.js';
 import { isServerConfig, isServerTarget, sameStandaloneAccess } from './serverConfig.js';
 import { loadOrCreateStandaloneToken } from './serverToken.js';
 import type { PtySessionManager } from './terminal/ptySessionManager.js';
+import { UsageTracker } from './usageTracker.js';
 import { normalizeHostname } from './wsAuth.js';
 
 export type { ServerConfig } from './serverConfig.js';
@@ -35,6 +36,7 @@ type HookEventCallback = (providerId: string, event: Record<string, unknown>) =>
  *
  * Routes (via Fastify in httpServer.ts):
  * - `POST /api/hooks/:providerId` -- hook event (auth required, 64KB body limit)
+ * - `POST /api/usage/:providerId` -- status-line rate-limit payload (auth required, 32KB body limit)
  * - `GET /api/health` -- health check (no auth)
  * - `GET /ws` -- WebSocket for real-time agent state (auth required)
  *
@@ -52,6 +54,12 @@ export class PixelAgentsServer {
   private config: ServerConfig | null = null;
   private ownsServer = false;
   private callback: HookEventCallback | null = null;
+  private usageTracker: UsageTracker | null = null;
+
+  /** The usage tracker of the server THIS instance started (null when it reused another process's server, which then owns the snapshot). */
+  get usage(): UsageTracker | null {
+    return this.usageTracker;
+  }
 
   /** Register a callback for incoming hook events from any provider. */
   onHookEvent(callback: HookEventCallback): void {
@@ -129,6 +137,7 @@ export class PixelAgentsServer {
       ? crypto.randomUUID()
       : loadOrCreateStandaloneToken({ rotate: options?.rotateToken ?? false });
     const store = options?.store;
+    this.usageTracker = store ? new UsageTracker(store) : null;
 
     const { app, port } = await createHttpServer({
       embedded,
@@ -136,6 +145,7 @@ export class PixelAgentsServer {
       port: options?.port,
       token,
       store: store!,
+      usage: this.usageTracker ?? undefined,
       runtime: options?.runtime,
       staticDir: options?.staticDir,
       assetCache: options?.assetCache,
@@ -183,6 +193,7 @@ export class PixelAgentsServer {
     }
     this.config = null;
     this.ownsServer = false;
+    this.usageTracker = null;
   }
 
   /** Returns the current server config, or null if not started. */

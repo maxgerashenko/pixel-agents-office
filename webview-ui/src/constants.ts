@@ -579,3 +579,11 @@ export const VISUAL_VIEWPORT_FULL_EPSILON_PX = 1;
  *  (with an editable focused) = the software keyboard is up. Well above an
  *  address bar collapsing (~56 px), well below any on-screen keyboard. */
 export const KEYBOARD_MIN_HEIGHT_PX = 150;
+
+// ── Usage meter ──────────────────────────────────────────────
+/** Bar turns the warning colour at this percent used. */
+export const USAGE_WARN_PERCENT = 80;
+/** Bar turns the danger colour at this percent used. */
+export const USAGE_DANGER_PERCENT = 95;
+/** How often the meter re-checks whether its window has reset. */
+export const USAGE_EXPIRY_CHECK_MS = 30_000;

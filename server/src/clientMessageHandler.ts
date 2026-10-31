@@ -28,6 +28,7 @@ import { hooksConsentRequest } from './providers/hook/consentGate.js';
 import { claudeProvider, hookProviderById, hookProviders } from './providers/index.js';
 import type { PtySessionManager } from './terminal/ptySessionManager.js';
 import { launchStandaloneAgent } from './terminal/standaloneAgentLauncher.js';
+import type { UsageTracker } from './usageTracker.js';
 
 type WsSend = (message: Record<string, unknown>) => void;
 
@@ -56,6 +57,8 @@ export interface AssetCache {
 }
 
 export interface ClientMessageContext {
+  /** Latest usage snapshots, replayed to each client on webviewReady. Display data, so a read-only client gets it too. */
+  usage?: UsageTracker;
   store: AgentStateStore;
   runtime?: AgentRuntime;
   cache: AssetCache | null;
@@ -459,6 +462,9 @@ function handleWebviewReady(send: WsSend, ctx: ClientMessageContext): void {
   // a change (all refused by refuseReadOnly), so it must know before it draws
   // them.
   send({ type: 'officeAccess', readOnly: ctx.privileged !== true });
+
+  // 0b. Usage meter data (display only). Nothing is sent while no window is live.
+  for (const usageMessage of ctx.usage?.currentMessages() ?? []) send(usageMessage);
 
   // 1. Provider capabilities (must arrive before any agent messages)
   send({
