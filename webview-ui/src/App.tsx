@@ -362,6 +362,16 @@ function App() {
 
   const { reveal: revealTerminal } = terminalDrawer;
   const { showTerminal: showMobileTerminal } = mobileShell;
+  // Fit-to-width reads the canvas's backing-store width (device pixels — the
+  // unit zoom is measured in) at click time, so a docked terminal drawer or a
+  // resized window is already accounted for.
+  const handleFitWidth = useCallback(() => {
+    const canvas = document.querySelector<HTMLCanvasElement>(
+      `[data-testid="${OFFICE_CANVAS_TEST_ID}"]`,
+    );
+    if (canvas) editor.handleFitWidth(canvas.width);
+  }, [editor]);
+
   const handleClick = useCallback(
     (agentId: number) => {
       // If clicked agent is a sub-agent, focus the parent's terminal instead
@@ -524,7 +534,13 @@ function App() {
         <>
           {/* Mobile: pinch replaces the zoom buttons, and the toolbar's
                 jobs move to the card bar (+) and the floating Settings button. */}
-          {!isMobile && <ZoomControls zoom={editor.zoom} onZoomChange={editor.handleZoomChange} />}
+          {!isMobile && (
+            <ZoomControls
+              zoom={editor.zoom}
+              onZoomChange={editor.handleZoomChange}
+              onFitWidth={handleFitWidth}
+            />
+          )}
 
           {/* Vignette overlay */}
           <div
