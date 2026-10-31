@@ -30,8 +30,9 @@ interface AgentCardBarProps {
  *
  * A full-width strip that takes its own layout row (like the usage strip
  * above it), so it never covers the office; nothing, and no row, when there
- * are no agents. More cards than fit scroll sideways, with no visible
- * scrollbar (trackpad swipe, or the mouse wheel, which scrolls the row).
+ * are no agents. More cards than fit scroll sideways, with the
+ * same default scrollbar the old vertical column had (and the mouse wheel
+ * scrolls the row).
  *
  * Order: an agent that becomes active (working, or waiting on the user)
  * slides to the front; one that goes idle stays where it is. The slide is a
@@ -100,7 +101,7 @@ export function AgentCardBar({
   }, [order]);
 
   // A plain mouse wheel only scrolls vertically; turn it sideways so the row
-  // scrolls without a scrollbar. Trackpads already send deltaX.
+  // scrolls without reaching for the scrollbar. Trackpads already send deltaX.
   const handleWheel = (e: ReactWheelEvent<HTMLDivElement>) => {
     if (e.deltaX !== 0 || e.deltaY === 0) return;
     e.currentTarget.scrollLeft += e.deltaY;
@@ -114,7 +115,7 @@ export function AgentCardBar({
 
   return (
     <div
-      className="relative z-20 shrink-0 flex items-start gap-4 px-8 py-4 overflow-x-auto overflow-y-hidden no-scrollbar bg-bg border-b-2 border-border"
+      className="relative z-20 shrink-0 flex items-start gap-4 px-8 py-4 overflow-x-auto overflow-y-hidden bg-bg border-b-2 border-border"
       onWheel={handleWheel}
     >
       {shown.map((agentId) => (
