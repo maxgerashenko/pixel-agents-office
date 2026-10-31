@@ -11,7 +11,6 @@ import { DirectoryModal } from './components/DirectoryModal.js';
 import { EditActionBar } from './components/EditActionBar.js';
 import { IntroBubble } from './components/IntroBubble.js';
 import { MigrationNotice } from './components/MigrationNotice.js';
-import { ReadOnlyNotice } from './components/ReadOnlyNotice.js';
 import { SettingsModal } from './components/SettingsModal.js';
 import { TerminalDrawer } from './components/TerminalDrawer.js';
 import { Tooltip } from './components/Tooltip.js';
@@ -20,7 +19,7 @@ import { Modal } from './components/ui/Modal.js';
 import { UsageMeter } from './components/UsageMeter.js';
 import { VersionIndicator } from './components/VersionIndicator.js';
 import { ZoomControls } from './components/ZoomControls.js';
-import { OFFICE_CANVAS_TEST_ID } from './constants.js';
+import { OFFICE_CANVAS_TEST_ID, READ_ONLY_CONTROL_HINT } from './constants.js';
 import { useDirectoryEditor } from './hooks/useDirectoryEditor.js';
 import { useEditorActions } from './hooks/useEditorActions.js';
 import { useEditorKeyboard } from './hooks/useEditorKeyboard.js';
@@ -667,14 +666,18 @@ function App() {
         </Tooltip>
       )}
 
-      {/* In the toolbar's place: say why the controls are gone and how to get
-          them back, rather than leaving a hole where the panel was. */}
-      {officeReadOnly && !isDebugMode && <ReadOnlyNotice isMobile={isMobile} />}
+      {officeReadOnly && (
+        <div className="absolute mobile-safe-top left-1/2 -translate-x-1/2 z-10 text-sm text-text-muted pointer-events-none select-none whitespace-nowrap">
+          View only
+        </div>
+      )}
 
-      {/* A read-only office gets no toolbar: launching, layout editing and every
-          setting would be refused by the server anyway. */}
-      {!isMobile && !officeReadOnly && (
+      {/* A read-only office keeps its toolbar but every control is disabled:
+          launching, layout editing and every setting would be refused by the
+          server anyway, and a vanished panel read as a bug. */}
+      {!isMobile && (
         <BottomToolbar
+          readOnly={officeReadOnly}
           isEditMode={editor.isEditMode}
           onToggleEditMode={editor.handleToggleEditMode}
           isSettingsOpen={isSettingsOpen}
@@ -689,11 +692,13 @@ function App() {
 
       {/* Mobile: Settings floats top-left (the layout editor stays desktop-
             only — its tools are drag/hover-driven). */}
-      {isMobile && !isDebugMode && !officeReadOnly && (
+      {isMobile && !isDebugMode && (
         <div className="absolute mobile-safe-top left-8 z-20">
           <Button
             size="sm"
-            variant={isSettingsOpen ? 'active' : 'default'}
+            variant={officeReadOnly ? 'disabled' : isSettingsOpen ? 'active' : 'default'}
+            disabled={officeReadOnly}
+            title={officeReadOnly ? READ_ONLY_CONTROL_HINT : undefined}
             className="border-border! shadow-pixel"
             onClick={() => setIsSettingsOpen((v) => !v)}
           >
