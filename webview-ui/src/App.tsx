@@ -762,45 +762,53 @@ function App() {
       ) : (
         <div className="flex flex-col flex-1 min-w-0 h-full">
           <UsageMeter usage={usage} />
+          {/* Agent cards: a horizontal row under the usage strip. With a
+              terminal, the cards are the terminal panel's tabs (agents with a
+              PTY, the shown pane active). Otherwise (VS Code, or a watch-only
+              standalone session) the row lists every agent in the office,
+              external sessions included — the at-a-glance "who needs
+              attention" strip, a click raising the agent's terminal where
+              there is one. */}
+          {terminalAvailable ? (
+            <AgentCardBar
+              agentIds={terminalAgentIds}
+              activeAgentId={terminalDrawer.shownAgentId}
+              getAppearance={terminalDrawer.getAppearance}
+              getName={terminalDrawer.getName}
+              statusFor={terminalDrawer.statusFor}
+              onSelect={terminalDrawer.select}
+              onClose={handleCloseAgent}
+            />
+          ) : (
+            !isDebugMode && (
+              <AgentCardBar
+                agentIds={agents}
+                focusedAgentId={focusedAgentId}
+                getAppearance={terminalDrawer.getAppearance}
+                getName={terminalDrawer.getName}
+                statusFor={terminalDrawer.statusFor}
+                onSelect={handleCardSelect}
+                onClose={handleCloseAgent}
+              />
+            )
+          )}
           <div className="flex flex-1 min-h-0">
             {officeRegion}
 
             {/* Standalone with a terminal: terminalAvailable is only ever true when
               the server reports a working PTY to a tokened session, which VS
               Code's surface never does. In flow as a flex sibling so the office
-              region reflows beside it instead of being overlaid.
-
-              Otherwise (VS Code, or a watch-only standalone session) the card
-              bar stands alone with every agent in the office, external sessions
-              included — the at-a-glance "who needs attention" strip, with a
-              click raising the agent's editor terminal where there is one. */}
-            {terminalAvailable ? (
+              region reflows beside it instead of being overlaid. */}
+            {terminalAvailable && (
               <TerminalDrawer
                 agentIds={terminalAgentIds}
                 shownAgentId={terminalDrawer.shownAgentId}
-                onSelectAgent={terminalDrawer.select}
-                onCloseAgent={handleCloseAgent}
                 isOpen={terminalDrawer.isOpen}
                 onClosePanel={terminalDrawer.close}
                 widthPx={terminalDrawer.widthPx}
                 onResizeStart={terminalDrawer.onResizeStart}
-                getAppearance={terminalDrawer.getAppearance}
-                getName={terminalDrawer.getName}
-                statusFor={terminalDrawer.statusFor}
                 onStatusChange={terminalDrawer.onStatusChange}
               />
-            ) : (
-              !isDebugMode && (
-                <AgentCardBar
-                  agentIds={agents}
-                  focusedAgentId={focusedAgentId}
-                  getAppearance={terminalDrawer.getAppearance}
-                  getName={terminalDrawer.getName}
-                  statusFor={terminalDrawer.statusFor}
-                  onSelect={handleCardSelect}
-                  onClose={handleCloseAgent}
-                />
-              )
             )}
           </div>
         </div>

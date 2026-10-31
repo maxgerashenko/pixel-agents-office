@@ -1,9 +1,3 @@
-import {
-  AGENT_CARD_BAR_WIDTH_PX,
-  AGENT_CARD_BASE_WIDTH_PX,
-  MUGSHOT_DISPLAY_PX,
-  TERMINAL_SIDEBAR_WIDTH_PX,
-} from '../constants.js';
 import type { AgentAppearance, TabStatus } from './AgentCard.js';
 import { AgentCard } from './AgentCard.js';
 import { cardVariant } from './cardBar.js';
@@ -26,20 +20,19 @@ interface AgentCardBarProps {
 }
 
 /**
- * The column of agent cards along the office's right edge — one mug shot and
- * status dot per agent — shared by both desktop hosts.
+ * The row of agent cards across the top of the desktop window, directly under
+ * the usage strip — one mug shot, name and status dot per agent — shared by
+ * both desktop hosts.
  *
- * Transparent and borderless, drawn on top of the office space: the negative
- * margin exactly cancels the column's width (AGENT_CARD_BAR_WIDTH_PX, wide
- * enough for named cards, which right-align), so it takes no layout room and
- * overlays the office's right edge as a flex sibling of the office region.
- * Pointer events pass through the empty parts so the office stays clickable
- * underneath; only the cards are interactive.
+ * A full-width strip that takes its own layout row (like the usage strip
+ * above it), so it never covers the office; nothing, and no row, when there
+ * are no agents. More cards than fit scroll sideways.
  *
- * In standalone, TerminalDrawer owns the bar and the cards double as the
- * terminal panel's tabs (the panel opens to the bar's right). In VS Code the
- * bar stands alone and lists every agent in the office, external sessions
- * included; a card click raises that agent's editor terminal via focusAgent.
+ * In standalone with a terminal, the cards double as the terminal panel's
+ * tabs (App passes the agents with a PTY and the shown pane as active). In VS
+ * Code, or a watch-only standalone session, the bar lists every agent in the
+ * office, external sessions included; a card click raises that agent's
+ * terminal where there is one.
  */
 export function AgentCardBar({
   agentIds,
@@ -54,34 +47,19 @@ export function AgentCardBar({
   if (agentIds.length === 0) return null;
 
   return (
-    <div
-      className="relative z-30 h-full shrink-0 flex flex-col items-end pt-4 overflow-y-auto pointer-events-none"
-      style={{
-        width: AGENT_CARD_BAR_WIDTH_PX,
-        marginLeft: -AGENT_CARD_BAR_WIDTH_PX,
-        // Keeps the mug-shot column where the 72px centred layout put it.
-        paddingRight: (TERMINAL_SIDEBAR_WIDTH_PX - AGENT_CARD_BASE_WIDTH_PX) / 2,
-      }}
-    >
-      {/* One grid, shrink-wrapped: every card subgrids its columns, so all
-          share the longest name's width and the mug shots line up. */}
-      <div
-        className="grid gap-y-4 w-max max-w-full"
-        style={{ gridTemplateColumns: `1fr ${MUGSHOT_DISPLAY_PX}px 1fr` }}
-      >
-        {agentIds.map((agentId) => (
-          <AgentCard
-            key={agentId}
-            agentId={agentId}
-            variant={cardVariant(agentId, { activeId: activeAgentId, focusedId: focusedAgentId })}
-            appearance={getAppearance(agentId)}
-            name={getName(agentId)}
-            status={statusFor(agentId)}
-            onSelect={onSelect}
-            onClose={onClose}
-          />
-        ))}
-      </div>
+    <div className="relative z-20 shrink-0 flex items-start gap-4 px-8 py-4 overflow-x-auto overflow-y-hidden bg-bg border-b-2 border-border">
+      {agentIds.map((agentId) => (
+        <AgentCard
+          key={agentId}
+          agentId={agentId}
+          variant={cardVariant(agentId, { activeId: activeAgentId, focusedId: focusedAgentId })}
+          appearance={getAppearance(agentId)}
+          name={getName(agentId)}
+          status={statusFor(agentId)}
+          onSelect={onSelect}
+          onClose={onClose}
+        />
+      ))}
     </div>
   );
 }
