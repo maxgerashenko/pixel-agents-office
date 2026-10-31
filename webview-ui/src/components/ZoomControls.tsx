@@ -72,7 +72,10 @@ export function ZoomControls({ zoom, onZoomChange, onFitWidth }: ZoomControlsPro
 
       {/* Side-by-side buttons in the bottom-right corner: zoom out (-), fit to
           width (<->), zoom in (+); the version label sits just above. */}
-      <div className="absolute bottom-10 right-10 z-10 flex flex-row gap-4">
+      <div
+        data-fit-obstacle="bottom"
+        className="absolute bottom-10 right-10 z-10 flex flex-row gap-4"
+      >
         <Button
           size="icon_lg"
           onClick={() => onZoomChange(zoom - 1)}
@@ -99,15 +102,17 @@ export function ZoomControls({ zoom, onZoomChange, onFitWidth }: ZoomControlsPro
           title="Fit office to width"
           aria-label="Fit office to width"
         >
-          {/* Two arrowheads pushing out to vertical edge bars: |<->| */}
+          {/* Fit/centre: a rectangle in the middle framed by four outer
+              corner brackets. */}
           <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
             <path
-              d="M2 4v10M16 4v10M5 9h8M7 6.5L4.5 9 7 11.5M11 6.5L13.5 9 11 11.5"
+              d="M2 6V2h4M12 2h4v4M16 12v4h-4M6 16H2v-4"
               stroke="currentColor"
               strokeWidth="2"
               strokeLinecap="round"
               strokeLinejoin="round"
             />
+            <rect x="6" y="7" width="6" height="4" stroke="currentColor" strokeWidth="2" />
           </svg>
         </Button>
         <Button

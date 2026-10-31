@@ -41,6 +41,7 @@ export function UsageMeter({ usage }: UsageMeterProps) {
   const percent = displayPercent(session.usedPercentage);
   return (
     <div
+      data-fit-obstacle="top"
       className="relative z-30 shrink-0 h-34 flex items-center gap-12 px-10 bg-bg border-b-2 border-border shadow-pixel select-none whitespace-nowrap"
       title="Claude usage, current session"
     >

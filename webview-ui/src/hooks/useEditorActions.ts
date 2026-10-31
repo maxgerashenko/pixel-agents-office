@@ -38,6 +38,7 @@ import {
 import type { EditorState } from '../office/editor/editorState.js';
 import type { OfficeState } from '../office/engine/officeState.js';
 import { getRotatedType, getToggledType } from '../office/layout/furnitureCatalog.js';
+import type { FitSpace } from '../office/projection.js';
 import { fitWidthView } from '../office/projection.js';
 import type {
   EditTool as EditToolType,
@@ -76,9 +77,9 @@ interface EditorActions extends Omit<FurnitureColorActions, 'pickColorAt'> {
   handleReset: () => void;
   handleSave: () => void;
   handleZoomChange: (zoom: number) => void;
-  /** Zoom so the whole office width fits a canvas `canvasWidth` device pixels
-   *  wide, and re-center the camera on the map. */
-  handleFitWidth: (canvasWidth: number) => void;
+  /** Zoom as wide as the canvas (device px) allows without a panel covering
+   *  the office, and center the camera on it. */
+  handleFitWidth: (canvas: { width: number; height: number }, space?: FitSpace) => void;
   handleEditorTileAction: (col: number, row: number) => void;
   handleEditorEraseAction: (col: number, row: number) => void;
   handleEditorSelectionChange: () => void;
@@ -536,9 +537,9 @@ export function useEditorActions(
   }, []);
 
   const handleFitWidth = useCallback(
-    (canvasWidth: number) => {
+    (canvas: { width: number; height: number }, space?: FitSpace) => {
       const os = getOfficeState();
-      const view = fitWidthView(canvasWidth, os.getLayout(), ZOOM_MIN, ZOOM_MAX);
+      const view = fitWidthView(canvas, os.getLayout(), ZOOM_MIN, ZOOM_MAX, space);
       setZoom(view.zoom);
       // Middle of the office on the middle of the screen. Release both camera
       // drivers (character follow and the intro greeter), or they'd pull the
