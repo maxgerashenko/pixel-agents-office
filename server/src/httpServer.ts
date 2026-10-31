@@ -247,6 +247,10 @@ function registerWebSocketRoute(
 
     const { store } = options;
 
+    // Display data, so read-only clients count: the usage strip refreshes
+    // while any page is open.
+    const releaseUsageViewer = options.usage?.addViewer();
+
     // Pipe store events to WebSocket client
     const onAgentAdded = (id: number, agent: AgentState) => {
       safeSend(socket, {
@@ -302,6 +306,7 @@ function registerWebSocketRoute(
       store.off('agentAdded', onAgentAdded);
       store.off('agentRemoved', onAgentRemoved);
       store.off('broadcast', onBroadcast);
+      releaseUsageViewer?.();
     });
   });
 }

@@ -140,6 +140,13 @@ export interface HookProvider {
    *  usage source simply omits it. */
   parseUsage?(raw: unknown): UsageSnapshot | null;
 
+  /** Pull-based usage refresh: ask the CLI itself for the current rate-limit
+   *  windows, without a model call. Slow (launches a process), so the server
+   *  polls it on a coarse interval and only while a page is open. MUST NOT
+   *  throw: resolve null when nothing is available (not installed, signed out,
+   *  API-key account, unsupported CLI version). Optional. */
+  fetchUsage?(): Promise<UsageSnapshot | null>;
+
   // ── Optional file fallback (heuristic mode) ──
 
   /** Session directories to scan. Undefined = no file fallback. */
