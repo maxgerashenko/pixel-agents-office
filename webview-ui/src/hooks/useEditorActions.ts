@@ -78,7 +78,7 @@ interface EditorActions extends Omit<FurnitureColorActions, 'pickColorAt'> {
   handleZoomChange: (zoom: number) => void;
   /** Zoom so the whole office width fits a canvas `canvasWidth` device pixels
    *  wide, and re-center the camera on the map. */
-  handleFitWidth: (canvasWidth: number) => void;
+  handleFitWidth: (canvasWidth: number, centerOffsetY?: number) => void;
   handleEditorTileAction: (col: number, row: number) => void;
   handleEditorEraseAction: (col: number, row: number) => void;
   handleEditorSelectionChange: () => void;
@@ -536,9 +536,9 @@ export function useEditorActions(
   }, []);
 
   const handleFitWidth = useCallback(
-    (canvasWidth: number) => {
+    (canvasWidth: number, centerOffsetY = 0) => {
       const os = getOfficeState();
-      const view = fitWidthView(canvasWidth, os.getLayout(), ZOOM_MIN, ZOOM_MAX);
+      const view = fitWidthView(canvasWidth, os.getLayout(), ZOOM_MIN, ZOOM_MAX, centerOffsetY);
       setZoom(view.zoom);
       // Middle of the office on the middle of the screen. Release both camera
       // drivers (character follow and the intro greeter), or they'd pull the

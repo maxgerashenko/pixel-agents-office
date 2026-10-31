@@ -72,7 +72,10 @@ export function ZoomControls({ zoom, onZoomChange, onFitWidth }: ZoomControlsPro
 
       {/* Side-by-side buttons in the bottom-right corner: zoom out (-), fit to
           width (<->), zoom in (+); the version label sits just above. */}
-      <div className="absolute bottom-10 right-10 z-10 flex flex-row gap-4">
+      <div
+        data-fit-obstacle="bottom"
+        className="absolute bottom-10 right-10 z-10 flex flex-row gap-4"
+      >
         <Button
           size="icon_lg"
           onClick={() => onZoomChange(zoom - 1)}

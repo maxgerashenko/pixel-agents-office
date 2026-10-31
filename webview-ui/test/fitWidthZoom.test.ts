@@ -49,3 +49,11 @@ test('an all-VOID layout falls back to the grid', () => {
   assert.equal(layoutContentBounds(solid(4, 4, V)), null);
   assert.deepEqual(fitWidthView(128, solid(4, 4, V), 1, 10), { zoom: 2, panX: 0, panY: 0 });
 });
+
+test('centerOffsetY moves the vertical target to the free band', () => {
+  assert.deepEqual(fitWidthView(1000, solid(20, 10), 1, 10, -40), {
+    zoom: 3,
+    panX: 0,
+    panY: -40,
+  });
+});

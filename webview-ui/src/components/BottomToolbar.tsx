@@ -76,7 +76,10 @@ export function BottomToolbar({
   // change from an untokened page.
   if (readOnly) {
     return (
-      <div className="absolute left-10 bottom-10 z-20 flex items-center gap-4 pixel-panel p-4">
+      <div
+        data-fit-obstacle="bottom"
+        className="absolute left-10 bottom-10 z-20 flex items-center gap-4 pixel-panel p-4"
+      >
         {['+ Agent', 'Layout', 'Settings'].map((label) => (
           <Button key={label} variant="disabled" disabled title={READ_ONLY_CONTROL_HINT}>
             {label}
@@ -89,7 +92,10 @@ export function BottomToolbar({
   return (
     // Bottom-left. The terminal panel docks on the right edge, so it never
     // reaches these buttons and no lift is needed.
-    <div className="absolute left-10 bottom-10 z-20 flex items-center gap-4 pixel-panel p-4">
+    <div
+      data-fit-obstacle="bottom"
+      className="absolute left-10 bottom-10 z-20 flex items-center gap-4 pixel-panel p-4"
+    >
       {showUnavailable && (
         <Button
           variant="disabled"

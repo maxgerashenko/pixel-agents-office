@@ -116,12 +116,16 @@ export function layoutContentBounds(layout: {
  *  office's drawn width fits the canvas, panned so the middle of the office
  *  sits in the middle of the canvas. Zoom stays an integer so sprites stay
  *  pixel-perfect, so "fit" rounds down — as wide as the grid allows without
- *  cropping. Clamped to [minZoom, maxZoom]. */
+ *  cropping. Clamped to [minZoom, maxZoom].
+ *
+ *  `centerOffsetY` (device px) moves the vertical target off the canvas's
+ *  middle — to the middle of the free band between panels that cover it. */
 export function fitWidthView(
   canvasWidth: number,
   layout: { cols: number; rows: number; tiles: readonly number[] },
   minZoom: number,
   maxZoom: number,
+  centerOffsetY = 0,
 ): { zoom: number; panX: number; panY: number } {
   const bounds = layoutContentBounds(layout) ?? {
     x: 0,
@@ -134,5 +138,5 @@ export function fitWidthView(
   // Pan is measured from the grid's centre (pan 0 centres the grid).
   const panX = (layout.cols * TILE_SIZE) / 2 - (bounds.x + bounds.w / 2);
   const panY = (layout.rows * TILE_SIZE) / 2 - (bounds.y + bounds.h / 2);
-  return { zoom, panX: panX * zoom, panY: panY * zoom };
+  return { zoom, panX: panX * zoom, panY: panY * zoom + centerOffsetY };
 }

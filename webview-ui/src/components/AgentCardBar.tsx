@@ -115,6 +115,7 @@ export function AgentCardBar({
 
   return (
     <div
+      data-fit-obstacle="top"
       className="relative z-20 shrink-0 flex items-start gap-4 px-8 py-4 overflow-x-auto overflow-y-hidden bg-bg border-b-2 border-border"
       onWheel={handleWheel}
     >

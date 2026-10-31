@@ -19,7 +19,7 @@ import { Modal } from './components/ui/Modal.js';
 import { UsageMeter } from './components/UsageMeter.js';
 import { VersionIndicator } from './components/VersionIndicator.js';
 import { ZoomControls } from './components/ZoomControls.js';
-import { OFFICE_CANVAS_TEST_ID, READ_ONLY_CONTROL_HINT } from './constants.js';
+import { FIT_OBSTACLE_ATTR, OFFICE_CANVAS_TEST_ID, READ_ONLY_CONTROL_HINT } from './constants.js';
 import { useDirectoryEditor } from './hooks/useDirectoryEditor.js';
 import { useEditorActions } from './hooks/useEditorActions.js';
 import { useEditorKeyboard } from './hooks/useEditorKeyboard.js';
@@ -364,12 +364,27 @@ function App() {
   const { showTerminal: showMobileTerminal } = mobileShell;
   // Fit-to-width reads the canvas's backing-store width (device pixels — the
   // unit zoom is measured in) at click time, so a docked terminal drawer or a
-  // resized window is already accounted for.
+  // resized window is already accounted for. Vertically it centres the office
+  // in the band the panels leave free: below every `top` obstacle and above
+  // every `bottom` one (the toolbar and zoom buttons float over the canvas).
   const handleFitWidth = useCallback(() => {
     const canvas = document.querySelector<HTMLCanvasElement>(
       `[data-testid="${OFFICE_CANVAS_TEST_ID}"]`,
     );
-    if (canvas) editor.handleFitWidth(canvas.width);
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    let bandTop = rect.top;
+    let bandBottom = rect.bottom;
+    document.querySelectorAll(`[${FIT_OBSTACLE_ATTR}]`).forEach((el) => {
+      const r = el.getBoundingClientRect();
+      if (r.height === 0) return;
+      if (el.getAttribute(FIT_OBSTACLE_ATTR) === 'top') bandTop = Math.max(bandTop, r.bottom);
+      else bandBottom = Math.min(bandBottom, r.top);
+    });
+    const dpr = window.devicePixelRatio || 1;
+    const offsetY =
+      bandBottom > bandTop ? ((bandTop + bandBottom) / 2 - (rect.top + rect.bottom) / 2) * dpr : 0;
+    editor.handleFitWidth(canvas.width, offsetY);
   }, [editor]);
 
   const handleClick = useCallback(
