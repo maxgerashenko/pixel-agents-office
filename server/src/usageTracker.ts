@@ -57,7 +57,7 @@ export function writeUsageFile(data: Record<string, StoredUsage>): void {
   const filePath = usageFilePath();
   try {
     fs.mkdirSync(path.dirname(filePath), { recursive: true, mode: 0o700 });
-    const tmpPath = `${filePath}.tmp`;
+    const tmpPath = `${filePath}.${process.pid}.tmp`;
     fs.writeFileSync(tmpPath, JSON.stringify(data, null, 2), { mode: 0o600 });
     fs.renameSync(tmpPath, filePath);
   } catch (err) {

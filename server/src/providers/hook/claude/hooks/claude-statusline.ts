@@ -102,15 +102,22 @@ function postToServer(server: ServerTarget, body: string): Promise<void> {
   });
 }
 
-/** The chained command: everything after the first `--`, joined with spaces. */
+/** The chained command: everything after the first `--`. A single argument is
+ *  the user's whole shell command line (the documented form). Several are an
+ *  argv, so each is quoted: `-- bash "/My Scripts/s.sh"` must not split on the
+ *  space in the path. */
 function chainedCommand(argv: string[]): string | null {
   const i = argv.indexOf('--');
   if (i < 0) return null;
-  const cmd = argv
-    .slice(i + 1)
-    .join(' ')
-    .trim();
+  const rest = argv.slice(i + 1);
+  if (rest.length === 0) return null;
+  const cmd = rest.length === 1 ? rest[0].trim() : rest.map(shellQuote).join(' ');
   return cmd || null;
+}
+
+function shellQuote(arg: string): string {
+  if (process.platform === 'win32') return `"${arg.replace(/"/g, '\\"')}"`;
+  return `'${arg.replace(/'/g, `'\\''`)}'`;
 }
 
 /** Run the user's own statusline with the same stdin; pass stdout through. */

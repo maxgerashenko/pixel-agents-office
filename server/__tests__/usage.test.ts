@@ -255,6 +255,12 @@ describe.skipIf(!fs.existsSync(STATUSLINE_SCRIPT))('claude-statusline.js integra
     expect(r.stdout).toBe(blob);
   });
 
+  it('keeps an argv chained command intact when an argument contains a space', async () => {
+    const r = await runScript(['--', 'node', '-e', 'console.log(process.argv[1])', 'a b'], blob);
+    expect(r.code).toBe(0);
+    expect(r.stdout.trim()).toBe('a b');
+  });
+
   it('posts the raw JSON to a live server with Bearer auth', async () => {
     const received: { auth?: string; url?: string; body: string }[] = [];
     const srv = http.createServer((req, res) => {

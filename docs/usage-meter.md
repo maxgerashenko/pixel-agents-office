@@ -18,7 +18,7 @@ The only exact local source is the JSON Claude Code pipes to a **statusLine comm
 
 Pixel Agents does **not** edit the `statusLine` entry of `~/.claude/settings.json` for you: that would widen what you consented to for hooks. Add it yourself.
 
-The script is copied to `~/.pixel-agents/hooks/claude-statusline.js` whenever hooks are installed (the same step that copies `claude-hook.js`).
+The script is copied to `~/.pixel-agents/hooks/claude-statusline.js` every time the standalone server starts, and whenever hooks are installed (VS Code). It does not need hooks to be enabled.
 
 No statusline yet (prints `5h 54%`):
 

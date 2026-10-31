@@ -658,8 +658,6 @@ function App() {
 
       {/* A read-only office gets no toolbar: launching, layout editing and every
           setting would be refused by the server anyway. */}
-      {/* A read-only office gets no toolbar: launching, layout editing and every
-          setting would be refused by the server anyway. */}
       {!isMobile && !officeReadOnly && (
         <BottomToolbar
           isEditMode={editor.isEditMode}
@@ -737,7 +735,14 @@ function App() {
           nothing, and takes none, until a status-line tap reports a live
           window). Mobile stacks it above the sliding track, so it stays put
           across both pages; desktop wraps the split view in a column below. */}
-      {isMobile && <UsageMeter usage={usage} />}
+      {isMobile && (
+        <div
+          className="shrink-0 bg-bg touch-none"
+          style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
+        >
+          <UsageMeter usage={usage} />
+        </div>
+      )}
       {isMobile ? (
         <MobileShell
           office={officeRegion}
