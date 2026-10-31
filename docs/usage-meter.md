@@ -3,7 +3,7 @@
 Pixel Agents can show Claude's "Current session" usage as a strip across the top of the office:
 
 ```
-Current session   Resets at 6:50 AM   [██████░░░░░░░░░░]   54% used
+Current session   Resets in 2h 15m   [██████░░░░░░░░░░]   54% used
 ```
 
 The strip appears only once data arrives, and disappears when the window resets.

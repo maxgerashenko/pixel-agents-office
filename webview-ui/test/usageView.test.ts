@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   asUsageWindow,
   displayPercent,
-  formatResetTime,
+  formatTimeLeft,
   liveWindow,
   pickSessionWindow,
   usageSeverity,
@@ -20,11 +20,19 @@ describe('usageSeverity', () => {
   });
 });
 
-describe('formatResetTime', () => {
-  it('formats h:mm AM/PM', () => {
-    expect(formatResetTime(Date.UTC(2026, 0, 1, 6, 50), 'UTC')).toBe('6:50 AM');
-    expect(formatResetTime(Date.UTC(2026, 0, 1, 18, 5), 'UTC')).toBe('6:05 PM');
-    expect(formatResetTime(Date.UTC(2026, 0, 1, 0, 0), 'UTC')).toBe('12:00 AM');
+describe('formatTimeLeft', () => {
+  const MIN = 60_000;
+  it('formats hours and minutes', () => {
+    expect(formatTimeLeft(135 * MIN, 0)).toBe('2h 15m');
+    expect(formatTimeLeft(120 * MIN, 0)).toBe('2h');
+    expect(formatTimeLeft(45 * MIN, 0)).toBe('45m');
+  });
+  it('rounds up so a live window never reads 0m', () => {
+    expect(formatTimeLeft(1, 0)).toBe('1m');
+    expect(formatTimeLeft(61 * MIN + 1, 0)).toBe('1h 2m');
+  });
+  it('clamps a past reset to <1m', () => {
+    expect(formatTimeLeft(0, 5 * MIN)).toBe('<1m');
   });
 });
 

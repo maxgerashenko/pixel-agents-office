@@ -23,11 +23,15 @@ export function usageSeverity(percent: number): UsageSeverity {
   return 'normal';
 }
 
-/** "6:50 AM" in the viewer's local time (or `timeZone`, for tests). */
-export function formatResetTime(resetsAtMs: number, timeZone?: string): string {
-  return new Date(resetsAtMs)
-    .toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone })
-    .replace(/\s/g, ' ');
+/** Time until the reset as "2h 15m", "45m" or "<1m". Minutes round up, so a
+ *  window that is still live never reads "0m". */
+export function formatTimeLeft(resetsAtMs: number, now: number): string {
+  const minutes = Math.ceil(Math.max(0, resetsAtMs - now) / 60_000);
+  if (minutes < 1) return '<1m';
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  if (hours === 0) return `${rest}m`;
+  return rest === 0 ? `${hours}h` : `${hours}h ${rest}m`;
 }
 
 /** The window if it has not reset yet, else undefined. A window past its reset

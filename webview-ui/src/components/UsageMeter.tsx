@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { USAGE_EXPIRY_CHECK_MS } from '../constants.js';
 import {
   displayPercent,
-  formatResetTime,
+  formatTimeLeft,
   pickSessionWindow,
   type UsageSeverity,
   usageSeverity,
@@ -46,7 +46,7 @@ export function UsageMeter({ usage }: UsageMeterProps) {
     >
       <span className="text-xs text-text">Current session</span>
       <span className="text-2xs text-text-muted">
-        Resets at {formatResetTime(session.resetsAt)}
+        Resets in {formatTimeLeft(session.resetsAt, now)}
       </span>
       <div
         className="flex-1 min-w-0 h-10 border-2 border-border bg-bg-dark"
