@@ -11,6 +11,7 @@ import { DirectoryModal } from './components/DirectoryModal.js';
 import { EditActionBar } from './components/EditActionBar.js';
 import { IntroBubble } from './components/IntroBubble.js';
 import { MigrationNotice } from './components/MigrationNotice.js';
+import { ReadOnlyNotice } from './components/ReadOnlyNotice.js';
 import { SettingsModal } from './components/SettingsModal.js';
 import { TerminalDrawer } from './components/TerminalDrawer.js';
 import { Tooltip } from './components/Tooltip.js';
@@ -666,11 +667,9 @@ function App() {
         </Tooltip>
       )}
 
-      {officeReadOnly && (
-        <div className="absolute mobile-safe-top left-1/2 -translate-x-1/2 z-10 text-sm text-text-muted pointer-events-none select-none whitespace-nowrap">
-          View only
-        </div>
-      )}
+      {/* In the toolbar's place: say why the controls are gone and how to get
+          them back, rather than leaving a hole where the panel was. */}
+      {officeReadOnly && !isDebugMode && <ReadOnlyNotice isMobile={isMobile} />}
 
       {/* A read-only office gets no toolbar: launching, layout editing and every
           setting would be refused by the server anyway. */}
