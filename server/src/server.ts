@@ -193,6 +193,7 @@ export class PixelAgentsServer {
     }
     this.config = null;
     this.ownsServer = false;
+    this.usageTracker?.dispose();
     this.usageTracker = null;
   }
 

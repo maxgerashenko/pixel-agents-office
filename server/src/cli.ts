@@ -29,6 +29,7 @@ import {
   MAX_PORT,
   MIN_PORT,
   TERMINAL_DISABLED_BY_FLAG_REASON,
+  USAGE_POLL_ENV,
   WILDCARD_HOSTNAMES,
 } from './constants.js';
 import { FileStateAdapter } from './fileStateAdapter.js';
@@ -58,6 +59,8 @@ export interface CliArgs {
   allowedHosts: string[];
   /** --rotate-token: replace the persisted server token before starting. */
   rotateToken: boolean;
+  /** False when --no-usage-poll was passed: no periodic `claude` launch to refresh the usage strip. */
+  usagePoll: boolean;
 }
 
 /** Thrown by parseArgs on an invalid --port. Kept separate from process.exit so
@@ -71,6 +74,7 @@ export function parseArgs(argv: string[]): CliArgs {
     terminal: true,
     allowedHosts: [],
     rotateToken: false,
+    usagePoll: true,
   };
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === '--port' || argv[i] === '-p') {
@@ -105,6 +109,8 @@ export function parseArgs(argv: string[]): CliArgs {
       i++;
     } else if (argv[i] === '--rotate-token') {
       args.rotateToken = true;
+    } else if (argv[i] === '--no-usage-poll') {
+      args.usagePoll = false;
     } else if (argv[i] === '--no-terminal') {
       args.terminal = false;
     } else if (argv[i] === '--help') {
@@ -120,6 +126,8 @@ Options:
                         old one (bookmarks, other devices) stops working
   --no-terminal         Disable the embedded terminal (watch agents only; no
                         launching or attaching from the browser)
+  --no-usage-poll       Do not refresh the usage strip by briefly launching
+                        "claude" once a minute while a page is open
   --help                Show this help message`);
       process.exit(0);
     }
@@ -208,6 +216,7 @@ async function main(): Promise<void> {
     console.error(`[Pixel Agents] ${err instanceof Error ? err.message : String(err)}`);
     process.exit(1);
   }
+  if (!args.usagePoll) process.env[USAGE_POLL_ENV] = '0';
 
   // dist/ contains both the CLI bundle and the assets/ + webview/ directories
   const distRoot = __dirname;

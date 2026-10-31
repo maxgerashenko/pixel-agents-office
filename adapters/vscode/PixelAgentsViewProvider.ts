@@ -255,6 +255,21 @@ export class PixelAgentsViewProvider implements vscode.WebviewViewProvider {
     });
   }
 
+  /** Whether a webview view is alive (the usage strip should keep refreshing). */
+  private usageViewOpen = false;
+  private releaseUsageViewer: (() => void) | null = null;
+
+  /** Hold one usage viewer while a view is open and our server's tracker exists. */
+  private syncUsageViewer(): void {
+    const tracker = this.pixelAgentsServer?.usage;
+    if (this.usageViewOpen && tracker && !this.releaseUsageViewer) {
+      this.releaseUsageViewer = tracker.addViewer();
+    } else if (!this.usageViewOpen && this.releaseUsageViewer) {
+      this.releaseUsageViewer();
+      this.releaseUsageViewer = null;
+    }
+  }
+
   private initServer(): void {
     this.pixelAgentsServer = new PixelAgentsServer();
     this.pixelAgentsServer.onHookEvent((providerId, event) => {
@@ -274,6 +289,7 @@ export class PixelAgentsViewProvider implements vscode.WebviewViewProvider {
         if (hooksEnabled) {
           void this.installHooksIfConsented(config.port, config.token);
         }
+        this.syncUsageViewer();
         console.log(`[Pixel Agents] Server: ready on port ${config.port}`);
       })
       .catch((e) => {
@@ -457,6 +473,14 @@ export class PixelAgentsViewProvider implements vscode.WebviewViewProvider {
     // sendCurrentAgentStatuses + asset loaders).
     this.isWebviewReady = false;
     this.pendingBroadcasts = [];
+    // Usage strip live refresh: poll while this view is alive. The server may
+    // still be starting, so start().then re-runs the sync too.
+    this.usageViewOpen = true;
+    this.syncUsageViewer();
+    webviewView.onDidDispose(() => {
+      this.usageViewOpen = false;
+      this.syncUsageViewer();
+    });
     webviewView.webview.options = { enableScripts: true };
     webviewView.webview.html = getWebviewContent(webviewView.webview, this.extensionUri);
 

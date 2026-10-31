@@ -15,6 +15,7 @@ import {
 } from './claudeHookInstaller.js';
 import { claudeTeamProvider } from './claudeTeamProvider.js';
 import { parseClaudeUsage } from './claudeUsage.js';
+import { fetchClaudeUsage } from './claudeUsagePoll.js';
 import { CONSENT_DISCLOSURE, CONSENT_INSTALL_HEADLINE } from './consentCopy.js';
 import {
   CLAUDE_LARGE_CONTEXT_WINDOW,
@@ -311,6 +312,7 @@ export const claudeProvider: HookProvider = {
   terminalNamePrefix: CLAUDE_TERMINAL_NAME_PREFIX,
   contextWindowForModel,
   parseUsage: parseClaudeUsage,
+  fetchUsage: () => fetchClaudeUsage(),
 
   getSessionDirs,
   getAllSessionRoots,

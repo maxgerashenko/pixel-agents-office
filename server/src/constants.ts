@@ -114,6 +114,16 @@ export const MAX_HOOK_BODY_SIZE = 65_536; // 64KB
 export const MAX_USAGE_BODY_SIZE = 32_768; // 32KB
 /** Persisted last usage snapshot, under SERVER_JSON_DIR. */
 export const USAGE_FILE_NAME = 'usage.json';
+/** How often an open page refreshes usage by asking the provider's own CLI. */
+export const USAGE_POLL_INTERVAL_MS = 60_000;
+/** Ceiling of the exponential back-off after failed polls (30 min). */
+export const USAGE_POLL_MAX_BACKOFF_MS = 30 * 60_000;
+/** Hard limit on one poll (CLI launch + answer); past it the child is killed. */
+export const USAGE_POLL_TIMEOUT_MS = 20_000;
+/** Settings file handed to the polling CLI (disables hooks), under SERVER_JSON_DIR. */
+export const USAGE_POLL_SETTINGS_FILE_NAME = 'usage-poll-settings.json';
+/** Set to '0' to disable usage polling entirely (`--no-usage-poll`). */
+export const USAGE_POLL_ENV = 'PIXEL_AGENTS_USAGE_POLL';
 
 // ── Standalone Embedded Terminal ────────────────────────────
 /** PTY module ids tried in order by the loader. @lydell/node-pty ships prebuilt
