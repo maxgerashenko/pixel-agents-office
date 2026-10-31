@@ -70,6 +70,7 @@ export {
   SERVER_JSON_DIR,
   SERVER_JSON_NAME,
   TASK_DESCRIPTION_DISPLAY_MAX_LENGTH,
+  USAGE_API_PREFIX,
 } from '../../core/src/constants.js';
 
 // ── Multi-Server Discovery ──────────────────────────────────
@@ -109,6 +110,10 @@ export const HOOK_EVENT_BUFFER_MS = 5_000;
  *  the agent is cleaned up instead of staying as a zombie with pendingClear forever. */
 export const SESSION_END_GRACE_MS = 2000;
 export const MAX_HOOK_BODY_SIZE = 65_536; // 64KB
+/** Body limit for POST /api/usage/:providerId. A status-line payload is a few KB. */
+export const MAX_USAGE_BODY_SIZE = 32_768; // 32KB
+/** Persisted last usage snapshot, under SERVER_JSON_DIR. */
+export const USAGE_FILE_NAME = 'usage.json';
 
 // ── Standalone Embedded Terminal ────────────────────────────
 /** PTY module ids tried in order by the loader. @lydell/node-pty ships prebuilt

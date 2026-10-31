@@ -15,12 +15,15 @@ import { handleClientMessage } from './clientMessageHandler.js';
 import {
   HOOK_API_PREFIX,
   MAX_HOOK_BODY_SIZE,
+  MAX_USAGE_BODY_SIZE,
+  USAGE_API_PREFIX,
   WS_CLOSE_FORBIDDEN_ORIGIN,
   WS_CLOSE_UNAUTHORIZED,
 } from './constants.js';
 import type { PtySessionManager } from './terminal/ptySessionManager.js';
 import { registerTerminalRoutes } from './terminal/terminalRoutes.js';
 import type { AgentState } from './types.js';
+import type { UsageTracker } from './usageTracker.js';
 import {
   bearerTokenValid,
   isAllowedWebSocketOrigin,
@@ -47,6 +50,8 @@ export interface HttpServerOptions {
   staticDir?: string;
   /** Cached assets loaded at startup (standalone only) */
   assetCache?: AssetCache;
+  /** Usage (rate-limit) snapshots; absent = POST /api/usage is not served. */
+  usage?: UsageTracker;
   /** Callback when a hook event is received */
   onHookEvent?: (providerId: string, event: Record<string, unknown>) => void;
   /** Invoked when setHooksEnabled is toggled via WebSocket. Standalone installs/uninstalls hooks here. */
@@ -108,6 +113,7 @@ export async function createHttpServer(options: HttpServerOptions): Promise<Http
 
   registerHealthRoute(app);
   registerHookRoute(app, options);
+  registerUsageRoute(app, options);
   registerWebSocketRoute(app, options, allowedHostnames);
   registerTerminalRoutes(app, {
     token: options.token,
@@ -162,6 +168,29 @@ function registerHookRoute(app: FastifyInstance, options: HttpServerOptions): vo
         options.onHookEvent?.(providerId, event);
       }
 
+      reply.send('ok');
+    },
+  );
+}
+
+// ── Usage ──────────────────────────────────────────────────────
+
+function registerUsageRoute(app: FastifyInstance, options: HttpServerOptions): void {
+  app.post<{ Params: { providerId: string }; Body: unknown }>(
+    `${USAGE_API_PREFIX}/:providerId`,
+    {
+      preHandler: bearerAuth(options.token),
+      bodyLimit: MAX_USAGE_BODY_SIZE,
+      schema: {
+        params: {
+          type: 'object',
+          properties: { providerId: { type: 'string', pattern: '^[a-z0-9-]+$' } },
+          required: ['providerId'],
+        },
+      },
+    },
+    async (request, reply) => {
+      options.usage?.ingest(request.params.providerId, request.body);
       reply.send('ok');
     },
   );
@@ -262,6 +291,7 @@ function registerWebSocketRoute(
           onReloadAssets: options.onReloadAssets,
           privileged,
           ptyManager: options.ptyManager,
+          usage: options.usage,
         });
       } catch {
         // Malformed JSON, ignore

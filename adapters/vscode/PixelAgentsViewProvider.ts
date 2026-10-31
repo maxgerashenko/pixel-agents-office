@@ -633,6 +633,10 @@ export class PixelAgentsViewProvider implements vscode.WebviewViewProvider {
         for (const msg of buffered) {
           this.webview?.postMessage(msg);
         }
+        // Usage meter: replay the latest rate-limit snapshot (nothing while none is live).
+        for (const usageMessage of this.pixelAgentsServer?.usage?.currentMessages() ?? []) {
+          this.webview?.postMessage(usageMessage);
+        }
         // Provider capabilities: tool taxonomy for webview animation + subagent rendering.
         // Sent once before restoreAgents so characters render with correct animations
         // from the first frame.

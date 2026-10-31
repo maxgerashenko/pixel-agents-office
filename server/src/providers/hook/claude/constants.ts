@@ -9,6 +9,11 @@
 /** Output filename after esbuild compiles claude-hook.ts to CJS (source is .ts, output is .js) */
 export const CLAUDE_HOOK_SCRIPT_NAME = 'claude-hook.js';
 
+/** Output filename of the optional statusLine tap (claude-statusline.ts). Copied
+ *  beside claude-hook.js but never written into settings.json by us: the user
+ *  opts in by adding a statusLine entry (docs/usage-meter.md). */
+export const CLAUDE_STATUSLINE_SCRIPT_NAME = 'claude-statusline.js';
+
 /** The script name we shipped before the rename to claude-hook.js. Still
  *  recognized as ours so a very old install can be migrated or removed. */
 export const LEGACY_HOOK_SCRIPT_NAME = 'pixel-agents-hook.js';

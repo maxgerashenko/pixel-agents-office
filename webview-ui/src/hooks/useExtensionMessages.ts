@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { diffAreaRenames, renameAreaInMappings } from '../../../core/src/areaRenames.js';
 import type { HooksConsentRequest } from '../../../core/src/messages.js';
+import type { UsageView } from '../components/usageMeter.js';
+import { asUsageWindow } from '../components/usageMeter.js';
 import { playDoneSound, playPermissionSound, setSoundEnabled } from '../notificationSound.js';
 import type { ExistingAgentMeta, PendingAgent } from '../office/engine/existingAgents.js';
 import { reconcileExistingAgents } from '../office/engine/existingAgents.js';
@@ -146,6 +148,8 @@ interface ExtensionMessageState {
   /** Persisted permission posture for this host; the host applies it at launch. */
   bypassPermissions: boolean;
   setBypassPermissions: (v: boolean) => void;
+  /** Latest `usageUpdate` per provider id (rate-limit windows). */
+  usage: Record<string, UsageView>;
   /** Whether the host lists its own Directories (workspace folders / start directory). */
   showHostDirectories: boolean;
   setShowHostDirectories: (v: boolean) => void;
@@ -218,6 +222,7 @@ export function useExtensionMessages(
   const [areaMappings, setAreaMappings] = useState<Record<string, string[]>>({});
   const [showAreas, setShowAreas] = useState(false);
   const [bypassPermissions, setBypassPermissions] = useState(false);
+  const [usage, setUsage] = useState<Record<string, UsageView>>({});
   const [showHostDirectories, setShowHostDirectories] = useState(false);
   // Never sent under VS Code, so it stays false there.
   const [officeReadOnly, setOfficeReadOnly] = useState(false);
@@ -792,6 +797,16 @@ export function useExtensionMessages(
         if (typeof msg.extensionVersion === 'string') {
           setExtensionVersion(msg.extensionVersion as string);
         }
+      } else if (msg.type === 'usageUpdate') {
+        if (typeof msg.providerId === 'string') {
+          const providerId = msg.providerId;
+          const view: UsageView = {
+            fiveHour: asUsageWindow(msg.fiveHour),
+            sevenDay: asUsageWindow(msg.sevenDay),
+            updatedAt: typeof msg.updatedAt === 'number' ? msg.updatedAt : 0,
+          };
+          setUsage((m) => ({ ...m, [providerId]: view }));
+        }
       } else if (msg.type === 'bypassPermissionsUpdated') {
         // Another office (or this one) changed the host's posture: every launch
         // uses it, so the Settings toggle must show it.
@@ -930,6 +945,7 @@ export function useExtensionMessages(
     setShowAreas,
     bypassPermissions,
     setBypassPermissions,
+    usage,
     showHostDirectories,
     setShowHostDirectories,
     officeReadOnly,

@@ -16,6 +16,7 @@ import { TerminalDrawer } from './components/TerminalDrawer.js';
 import { Tooltip } from './components/Tooltip.js';
 import { Button } from './components/ui/Button.js';
 import { Modal } from './components/ui/Modal.js';
+import { UsageMeter } from './components/UsageMeter.js';
 import { VersionIndicator } from './components/VersionIndicator.js';
 import { ZoomControls } from './components/ZoomControls.js';
 import { OFFICE_CANVAS_TEST_ID } from './constants.js';
@@ -132,6 +133,7 @@ function App() {
     terminalAvailable,
     terminalUnavailableReason,
     terminalAgentIds,
+    usage,
   } = useExtensionMessages(getOfficeState, editor.setLastSavedLayout, isEditDirty);
 
   // Show migration notice once layout reset is detected
@@ -729,6 +731,18 @@ function App() {
         isMobile && keyboard.clampHeight !== null ? { height: keyboard.clampHeight } : undefined
       }
     >
+      {/* Usage strip: a full-width row at the top that TAKES layout space (it is
+          nothing, and takes none, until a status-line tap reports a live
+          window). Mobile stacks it above the sliding track, so it stays put
+          across both pages; desktop wraps the split view in a column below. */}
+      {isMobile && (
+        <div
+          className="shrink-0 bg-bg touch-none"
+          style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
+        >
+          <UsageMeter usage={usage} />
+        </div>
+      )}
       {isMobile ? (
         <MobileShell
           office={officeRegion}
@@ -746,10 +760,12 @@ function App() {
           keyboardOpen={keyboard.keyboardOpen}
         />
       ) : (
-        <>
-          {officeRegion}
+        <div className="flex flex-col flex-1 min-w-0 h-full">
+          <UsageMeter usage={usage} />
+          <div className="flex flex-1 min-h-0">
+            {officeRegion}
 
-          {/* Standalone with a terminal: terminalAvailable is only ever true when
+            {/* Standalone with a terminal: terminalAvailable is only ever true when
               the server reports a working PTY to a tokened session, which VS
               Code's surface never does. In flow as a flex sibling so the office
               region reflows beside it instead of being overlaid.
@@ -758,35 +774,36 @@ function App() {
               bar stands alone with every agent in the office, external sessions
               included — the at-a-glance "who needs attention" strip, with a
               click raising the agent's editor terminal where there is one. */}
-          {terminalAvailable ? (
-            <TerminalDrawer
-              agentIds={terminalAgentIds}
-              shownAgentId={terminalDrawer.shownAgentId}
-              onSelectAgent={terminalDrawer.select}
-              onCloseAgent={handleCloseAgent}
-              isOpen={terminalDrawer.isOpen}
-              onClosePanel={terminalDrawer.close}
-              widthPx={terminalDrawer.widthPx}
-              onResizeStart={terminalDrawer.onResizeStart}
-              getAppearance={terminalDrawer.getAppearance}
-              getName={terminalDrawer.getName}
-              statusFor={terminalDrawer.statusFor}
-              onStatusChange={terminalDrawer.onStatusChange}
-            />
-          ) : (
-            !isDebugMode && (
-              <AgentCardBar
-                agentIds={agents}
-                focusedAgentId={focusedAgentId}
+            {terminalAvailable ? (
+              <TerminalDrawer
+                agentIds={terminalAgentIds}
+                shownAgentId={terminalDrawer.shownAgentId}
+                onSelectAgent={terminalDrawer.select}
+                onCloseAgent={handleCloseAgent}
+                isOpen={terminalDrawer.isOpen}
+                onClosePanel={terminalDrawer.close}
+                widthPx={terminalDrawer.widthPx}
+                onResizeStart={terminalDrawer.onResizeStart}
                 getAppearance={terminalDrawer.getAppearance}
                 getName={terminalDrawer.getName}
                 statusFor={terminalDrawer.statusFor}
-                onSelect={handleCardSelect}
-                onClose={handleCloseAgent}
+                onStatusChange={terminalDrawer.onStatusChange}
               />
-            )
-          )}
-        </>
+            ) : (
+              !isDebugMode && (
+                <AgentCardBar
+                  agentIds={agents}
+                  focusedAgentId={focusedAgentId}
+                  getAppearance={terminalDrawer.getAppearance}
+                  getName={terminalDrawer.getName}
+                  statusFor={terminalDrawer.statusFor}
+                  onSelect={handleCardSelect}
+                  onClose={handleCloseAgent}
+                />
+              )
+            )}
+          </div>
+        </div>
       )}
 
       {/* Hooks info modal. Top level, beside the other modals: inside the

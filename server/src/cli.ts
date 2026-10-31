@@ -32,7 +32,12 @@ import {
   WILDCARD_HOSTNAMES,
 } from './constants.js';
 import { FileStateAdapter } from './fileStateAdapter.js';
-import { claudeProvider, copyHookScript, hookProviderById } from './providers/index.js';
+import {
+  claudeProvider,
+  copyHookScript,
+  copyStatuslineScript,
+  hookProviderById,
+} from './providers/index.js';
 import { PixelAgentsServer } from './server.js';
 import { PtySessionManager } from './terminal/ptySessionManager.js';
 import { isLoopbackHost, normalizeHostname } from './wsAuth.js';
@@ -379,6 +384,9 @@ async function main(): Promise<void> {
         grantHooksConsent(claudeProvider.id);
         consent = true;
       }
+      // The usage-meter tap is independent of hooks consent (it writes nothing to
+      // settings.json), so a user who declined hooks can still point statusLine at it.
+      copyStatuslineScript(packageRoot);
       if (!consent) {
         console.log(
           '[Pixel Agents] Hooks not installed: modifying ~/.claude/settings.json needs one-time approval — open the URL below to review and approve it.',

@@ -7,6 +7,7 @@ import { HOOK_SCRIPTS_DIR } from '../../../constants.js';
 import {
   CLAUDE_HOOK_EVENTS,
   CLAUDE_HOOK_SCRIPT_NAME,
+  CLAUDE_STATUSLINE_SCRIPT_NAME,
   LEGACY_HOOK_SCRIPT_NAME,
   SETTINGS_BACKUP_SUFFIX,
   SETTINGS_FRESH_FILE_MODE,
@@ -741,9 +742,37 @@ export function copyHookScript(extensionPath: string): boolean {
     fs.copyFileSync(src, dst);
     fs.chmodSync(dst, 0o700);
     console.log(`[Pixel Agents] Hook script installed at ${dst}`);
+    copyStatuslineScript(extensionPath);
     return true;
   } catch (e) {
     console.error(`[Pixel Agents] Failed to copy hook script: ${e}`);
     return false;
+  }
+}
+
+/** Best-effort copy of the optional statusLine tap next to the hook script, so
+ *  a user who opts in (docs/usage-meter.md) has a stable path to point at. It
+ *  does not depend on hooks being installed (the standalone CLI calls it on
+ *  every start). Written to a temp name and renamed, because Claude spawns the
+ *  script constantly and must never read a half-copied file. Its failure never
+ *  fails the hook install: nothing in settings.json refers to it. */
+export function copyStatuslineScript(extensionPath: string): void {
+  const src = path.join(extensionPath, 'dist', 'hooks', CLAUDE_STATUSLINE_SCRIPT_NAME);
+  const dstDir = path.dirname(getHookScriptPath());
+  const dst = path.join(dstDir, CLAUDE_STATUSLINE_SCRIPT_NAME);
+  const tmp = `${dst}.${process.pid}.tmp`;
+  try {
+    if (!fs.existsSync(src)) return;
+    fs.mkdirSync(dstDir, { recursive: true, mode: 0o700 });
+    fs.copyFileSync(src, tmp);
+    fs.chmodSync(tmp, 0o700);
+    fs.renameSync(tmp, dst);
+  } catch (e) {
+    try {
+      fs.rmSync(tmp, { force: true });
+    } catch {
+      /* best effort */
+    }
+    console.warn(`[Pixel Agents] Failed to copy statusline script: ${e}`);
   }
 }

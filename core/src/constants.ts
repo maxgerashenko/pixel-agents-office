@@ -9,6 +9,8 @@
 // ── Hook API ─────────────────────────────────────────────────
 
 export const HOOK_API_PREFIX = '/api/hooks';
+/** Ingress for a provider's usage (rate-limit) payload: `POST /api/usage/:providerId`. */
+export const USAGE_API_PREFIX = '/api/usage';
 export const SERVER_JSON_DIR = '.pixel-agents';
 export const SERVER_JSON_NAME = 'server.json';
 export const HOOK_SCRIPTS_DIR = '.pixel-agents/hooks';
