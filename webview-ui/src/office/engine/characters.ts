@@ -9,11 +9,12 @@ import {
   WANDER_MOVES_BEFORE_REST_MIN,
   WANDER_PAUSE_MAX_SEC,
   WANDER_PAUSE_MIN_SEC,
+  WORK_SPOT_RECHECK_SEC,
 } from '../../constants.js';
 import { findPath } from '../layout/tileMap.js';
 import type { CharacterSprites } from '../sprites/spriteData.js';
 import { isReadingToolName } from '../toolUtils.js';
-import type { Character, Seat, SpriteData, TileType as TileTypeVal } from '../types.js';
+import type { Character, Seat, SpriteData, TileType as TileTypeVal, WorkSpot } from '../types.js';
 import { CharacterState, Direction, TILE_SIZE } from '../types.js';
 
 /** Whether a tool should show the reading animation (vs typing). Taxonomy comes
@@ -21,6 +22,49 @@ import { CharacterState, Direction, TILE_SIZE } from '../types.js';
 export function isReadingTool(tool: string | null): boolean {
   if (!tool) return false;
   return isReadingToolName(tool);
+}
+
+/**
+ * Plans an agent's way to work when it has no reachable work seat of its own:
+ * a free computer first, else a pairing seat, else a phone spot in its Area.
+ * Sets the claim and starts the walk (or settles in place); returns false when
+ * nothing at all could be planned. With `betterThan`, only spots ranked above
+ * that kind are considered (computer > pair > phone) and false means "stay".
+ */
+export type ClaimWorkSpot = (ch: Character, betterThan?: WorkSpot['kind']) => boolean;
+
+/** Drawn sitting: on a chair (work seat, pairing seat, rest seat), not standing. */
+export function isSeatedPose(ch: Character): boolean {
+  if (ch.state !== CharacterState.TYPE) return false;
+  if (ch.restSeatId) return true;
+  if (ch.workSpot) return ch.workSpot.kind === 'pair';
+  return ch.seatId !== null;
+}
+
+/** Vibe coding on the phone: a working agent on its way to work, or one that
+ *  works standing because no computer or pairing seat was free. */
+export function isOnPhone(ch: Character): boolean {
+  if (!ch.isActive || ch.isGreeter) return false;
+  if (ch.state === CharacterState.WALK) return true;
+  return ch.state === CharacterState.TYPE && !isSeatedPose(ch);
+}
+
+/** Start walking along a path (no-op state reset shared by every walk). */
+function startWalk(ch: Character, path: Array<{ col: number; row: number }>): void {
+  ch.path = path;
+  ch.moveProgress = 0;
+  ch.state = CharacterState.WALK;
+  ch.frame = 0;
+  ch.frameTimer = 0;
+}
+
+/** Settle on a claimed work spot: sit on the pairing seat, or stand and phone. */
+export function settleOnWorkSpot(ch: Character, spot: WorkSpot): void {
+  ch.state = CharacterState.TYPE;
+  ch.dir = spot.dir;
+  ch.frame = 0;
+  ch.frameTimer = 0;
+  ch.workSpotRecheck = WORK_SPOT_RECHECK_SEC;
 }
 
 /** Pixel center of a tile */
@@ -209,8 +253,22 @@ export function updateCharacter(
   freeRestSeats: Set<string> = new Set(),
   canRestAtWorkSeat = true,
   noIdleTileKeys: ReadonlySet<string> = new Set(),
+  claimWorkSpot?: ClaimWorkSpot,
 ): void {
   ch.frameTimer += dt;
+
+  // Work is over: give the pairing seat / phone spot up. A phone agent was
+  // standing, so it goes straight back to idling (and out of the Area).
+  if (!ch.isActive && ch.workSpot) {
+    ch.workSpot = null;
+    if (ch.state === CharacterState.TYPE) {
+      ch.state = CharacterState.IDLE;
+      ch.seatTimer = 0;
+      ch.frame = 0;
+      ch.frameTimer = 0;
+      ch.wanderTimer = randomRange(WANDER_PAUSE_MIN_SEC, WANDER_PAUSE_MAX_SEC);
+    }
+  }
 
   // Work always beats rest: an agent that became active gives up its rest seat
   // and the normal active path (IDLE -> walk to work seat) takes over.
@@ -237,9 +295,28 @@ export function updateCharacter(
         }
         break;
       }
+      // Working, but not at a computer or a claimed spot (e.g. it was standing
+      // when the turn started): plan the way to work instead of typing in the air
+      if (ch.isActive && !ch.workSpot && claimWorkSpot) {
+        const seat = ch.seatId ? seats.get(ch.seatId) : undefined;
+        if (!seat || ch.tileCol !== seat.seatCol || ch.tileRow !== seat.seatRow) {
+          ch.state = CharacterState.IDLE;
+          ch.frame = 0;
+          ch.frameTimer = 0;
+          break;
+        }
+      }
       if (ch.frameTimer >= TYPE_FRAME_DURATION_SEC) {
         ch.frameTimer -= TYPE_FRAME_DURATION_SEC;
         ch.frame = (ch.frame + 1) % 2;
+      }
+      // Pairing or phoning: keep an eye out for a computer that came free
+      if (ch.isActive && ch.workSpot && claimWorkSpot) {
+        ch.workSpotRecheck = (ch.workSpotRecheck ?? WORK_SPOT_RECHECK_SEC) - dt;
+        if (ch.workSpotRecheck <= 0) {
+          ch.workSpotRecheck = WORK_SPOT_RECHECK_SEC;
+          if (claimWorkSpot(ch, ch.workSpot.kind)) break;
+        }
       }
       // If no longer active, stand up and start wandering (after seatTimer expires)
       if (!ch.isActive) {
@@ -262,39 +339,9 @@ export function updateCharacter(
       // No idle animation — static pose
       ch.frame = 0;
       if (ch.seatTimer < 0) ch.seatTimer = 0; // clear turn-end sentinel
-      // If became active, pathfind to seat
+      // Became active: head to work (own computer, else claim a spot)
       if (ch.isActive) {
-        if (!ch.seatId) {
-          // No seat assigned — type in place
-          ch.state = CharacterState.TYPE;
-          ch.frame = 0;
-          ch.frameTimer = 0;
-          break;
-        }
-        const seat = seats.get(ch.seatId);
-        if (seat) {
-          const path = findPath(
-            ch.tileCol,
-            ch.tileRow,
-            seat.seatCol,
-            seat.seatRow,
-            tileMap,
-            blockedTiles,
-          );
-          if (path.length > 0) {
-            ch.path = path;
-            ch.moveProgress = 0;
-            ch.state = CharacterState.WALK;
-            ch.frame = 0;
-            ch.frameTimer = 0;
-          } else {
-            // Already at seat or no path — sit down
-            ch.state = CharacterState.TYPE;
-            ch.dir = seat.facingDir;
-            ch.frame = 0;
-            ch.frameTimer = 0;
-          }
-        }
+        startWork(ch, seats, tileMap, blockedTiles, claimWorkSpot);
         break;
       }
       // Standing in an Area or its buffer: leave now instead of after the pause
@@ -374,17 +421,20 @@ export function updateCharacter(
         ch.y = center.y;
 
         if (ch.isActive) {
-          if (!ch.seatId) {
-            // No seat — type in place
+          const spot = ch.workSpot;
+          const seat = ch.seatId ? seats.get(ch.seatId) : undefined;
+          if (spot && ch.tileCol === spot.col && ch.tileRow === spot.row) {
+            settleOnWorkSpot(ch, spot);
+            break;
+          } else if (!spot && seat && ch.tileCol === seat.seatCol && ch.tileRow === seat.seatRow) {
+            ch.state = CharacterState.TYPE;
+            ch.dir = seat.facingDir;
+          } else if (!spot && !seat && !claimWorkSpot) {
+            // Nowhere to go (sub-agents) — work in place
             ch.state = CharacterState.TYPE;
           } else {
-            const seat = seats.get(ch.seatId);
-            if (seat && ch.tileCol === seat.seatCol && ch.tileRow === seat.seatRow) {
-              ch.state = CharacterState.TYPE;
-              ch.dir = seat.facingDir;
-            } else {
-              ch.state = CharacterState.IDLE;
-            }
+            // Not there yet: the IDLE branch plans the way to work
+            ch.state = CharacterState.IDLE;
           }
         } else {
           // Arrived at a claimed rest seat — sit down and rest
@@ -451,17 +501,22 @@ export function updateCharacter(
         ch.moveProgress = 0;
       }
 
-      // If became active while wandering, repath to seat
-      if (ch.isActive && ch.seatId) {
-        const seat = seats.get(ch.seatId);
-        if (seat) {
+      // If became active while wandering, repath to the work spot / seat
+      if (ch.isActive) {
+        const seat = ch.seatId ? seats.get(ch.seatId) : undefined;
+        const target = ch.workSpot
+          ? { col: ch.workSpot.col, row: ch.workSpot.row }
+          : seat
+            ? { col: seat.seatCol, row: seat.seatRow }
+            : null;
+        if (target) {
           const lastStep = ch.path[ch.path.length - 1];
-          if (!lastStep || lastStep.col !== seat.seatCol || lastStep.row !== seat.seatRow) {
+          if (!lastStep || lastStep.col !== target.col || lastStep.row !== target.row) {
             const newPath = findPath(
               ch.tileCol,
               ch.tileRow,
-              seat.seatCol,
-              seat.seatRow,
+              target.col,
+              target.row,
               tileMap,
               blockedTiles,
             );
@@ -470,6 +525,9 @@ export function updateCharacter(
               ch.moveProgress = 0;
             }
           }
+        } else if (claimWorkSpot && ch.path.length > 1) {
+          // No seat or spot yet: finish this step, then the IDLE branch plans
+          ch.path = ch.path.slice(0, 1);
         }
       }
       break;
@@ -477,15 +535,79 @@ export function updateCharacter(
   }
 }
 
+/**
+ * An active agent heads to work. A claimed work spot wins (walk there, or
+ * settle when already on it); otherwise its own work seat; otherwise — no
+ * seat, or no way to it — `claimWorkSpot` plans one. When even that finds
+ * nothing the agent vibe codes on its phone where it stands, never "types"
+ * standing in the air. Agents without a planner (sub-agents) work in place.
+ */
+function startWork(
+  ch: Character,
+  seats: Map<string, Seat>,
+  tileMap: TileTypeVal[][],
+  blockedTiles: Set<string>,
+  claimWorkSpot: ClaimWorkSpot | undefined,
+): void {
+  const spot = ch.workSpot;
+  if (spot) {
+    if (ch.tileCol === spot.col && ch.tileRow === spot.row) {
+      settleOnWorkSpot(ch, spot);
+      return;
+    }
+    const path = findPath(ch.tileCol, ch.tileRow, spot.col, spot.row, tileMap, blockedTiles);
+    if (path.length > 0) {
+      startWalk(ch, path);
+      return;
+    }
+    ch.workSpot = null; // unreachable now — plan again below
+  }
+  const seat = ch.seatId ? seats.get(ch.seatId) : undefined;
+  if (seat) {
+    if (ch.tileCol === seat.seatCol && ch.tileRow === seat.seatRow) {
+      ch.state = CharacterState.TYPE;
+      ch.dir = seat.facingDir;
+      ch.frame = 0;
+      ch.frameTimer = 0;
+      return;
+    }
+    const path = findPath(
+      ch.tileCol,
+      ch.tileRow,
+      seat.seatCol,
+      seat.seatRow,
+      tileMap,
+      blockedTiles,
+    );
+    if (path.length > 0) {
+      startWalk(ch, path);
+      return;
+    }
+  }
+  if (claimWorkSpot) {
+    if (claimWorkSpot(ch)) return;
+    const here: WorkSpot = { kind: 'phone', col: ch.tileCol, row: ch.tileRow, dir: ch.dir };
+    ch.workSpot = here;
+    settleOnWorkSpot(ch, here);
+    return;
+  }
+  // No planner (sub-agents): work in place
+  ch.state = CharacterState.TYPE;
+  ch.frame = 0;
+  ch.frameTimer = 0;
+}
+
 /** Get the correct sprite frame for a character's current state and direction */
 export function getCharacterSprite(ch: Character, sprites: CharacterSprites): SpriteData {
   switch (ch.state) {
     case CharacterState.TYPE:
+      if (isOnPhone(ch)) return sprites.phone[ch.dir][ch.frame % 2];
       if (isReadingTool(ch.currentTool)) {
         return sprites.reading[ch.dir][ch.frame % 2];
       }
       return sprites.typing[ch.dir][ch.frame % 2];
     case CharacterState.WALK:
+      if (isOnPhone(ch)) return sprites.phoneWalk[ch.dir][ch.frame % 4];
       return sprites.walk[ch.dir][ch.frame % 4];
     case CharacterState.IDLE:
       return sprites.walk[ch.dir][1];

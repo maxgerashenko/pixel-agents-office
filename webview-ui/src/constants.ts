@@ -588,3 +588,22 @@ export const USAGE_EXPIRY_CHECK_MS = 30_000;
 /** Tooltip on every control a view-only page shows disabled (opened without the server token). */
 export const READ_ONLY_CONTROL_HINT =
   'View only: open the full link the server printed (the one ending in ?token=…) to use this.';
+
+// ── Work start ──────────────────────────────────────────────
+/** How often an agent working at a pairing seat or on its phone looks for a
+ *  better spot (a computer that came free, then a pairing seat). */
+export const WORK_SPOT_RECHECK_SEC = 3.0;
+/** A pairing seat sits within this many tiles (Manhattan) of a computer seat. */
+export const PAIR_SEAT_MAX_DIST = 2;
+/** Phone ("vibe coding") overlay drawn on a working agent's walk/stand sprite. */
+export const PHONE_CASE_COLOR = '#1b1b24';
+export const PHONE_SCREEN_COLOR = '#7fe0ff';
+export const PHONE_SCREEN_ALT_COLOR = '#d4f8ff';
+/** Hand colour under the phone when the sprite has no skin pixel to sample. */
+export const PHONE_HAND_FALLBACK_COLOR = '#e9a384';
+/** Candidate phone spots tried (best first) before vibe coding where it stands. */
+export const PHONE_SPOT_MAX_ATTEMPTS = 8;
+/** Phone-spot scoring (lower wins; tile distance adds 1 per tile): standing
+ *  away from any desk, and each occupied neighbouring tile, cost this much. */
+export const PHONE_SCORE_AWAY_FROM_DESK = 200;
+export const PHONE_SCORE_PER_NEIGHBOUR = 300;

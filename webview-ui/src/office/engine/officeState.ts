@@ -12,8 +12,12 @@ import {
   INACTIVE_SEAT_TIMER_MIN_SEC,
   INACTIVE_SEAT_TIMER_RANGE_SEC,
   MAX_PET_ID_LENGTH,
+  PAIR_SEAT_MAX_DIST,
   PET_HIT_HALF_WIDTH,
   PET_HIT_HEIGHT,
+  PHONE_SCORE_AWAY_FROM_DESK,
+  PHONE_SCORE_PER_NEIGHBOUR,
+  PHONE_SPOT_MAX_ATTEMPTS,
   REST_SEAT_TYPE_PATTERN,
   WAITING_BUBBLE_DURATION_SEC,
 } from '../../constants.js';
@@ -37,9 +41,10 @@ import type {
   PlacedPet,
   Seat,
   TileType as TileTypeVal,
+  WorkSpot,
 } from '../types.js';
 import { CharacterState, Direction, PetState, TILE_SIZE } from '../types.js';
-import { createCharacter, updateCharacter } from './characters.js';
+import { createCharacter, isSeatedPose, settleOnWorkSpot, updateCharacter } from './characters.js';
 import { advanceMatrixEffect, startMatrixEffect } from './matrixEffectState.js';
 import { createPet, updatePet } from './petEntity.js';
 import {
@@ -51,6 +56,14 @@ import {
   workLabelsFor,
   zoneAt,
 } from './seatPlacement.js';
+
+/** The four orthogonal neighbours of a tile, as [dCol, dRow]. */
+const NEIGHBOURS: ReadonlyArray<readonly [number, number]> = [
+  [0, -1],
+  [0, 1],
+  [-1, 0],
+  [1, 0],
+];
 
 /** Internal helper: facing-tile coords for a seat. Returns null for invalid direction. */
 function seatFacingOffset(direction: Direction): { dCol: number; dRow: number } {
@@ -207,6 +220,7 @@ export class OfficeState {
     // a non-work seat the user picked by hand stays theirs.
     for (const ch of this.characters.values()) {
       ch.restSeatId = null; // rest claims don't survive a seat rebuild
+      ch.workSpot = null; // nor do pairing / phone spots (replanned next frame)
       const lostItsComputer =
         ch.seatId !== null &&
         previousWorkSeatIds.has(ch.seatId) &&
@@ -328,10 +342,13 @@ export class OfficeState {
     const rest = ch.restSeatId ? this.seats.get(ch.restSeatId) : undefined;
     const restKey = rest ? `${rest.seatCol},${rest.seatRow}` : null;
     const restWasBlocked = restKey ? this.blockedTiles.delete(restKey) : false;
+    const pairKey = ch.workSpot?.seatUid ? `${ch.workSpot.col},${ch.workSpot.row}` : null;
+    const pairWasBlocked = pairKey ? this.blockedTiles.delete(pairKey) : false;
     if (key) this.blockedTiles.delete(key);
     const result = fn();
     if (key) this.blockedTiles.add(key);
     if (restKey && restWasBlocked) this.blockedTiles.add(restKey);
+    if (pairKey && pairWasBlocked) this.blockedTiles.add(pairKey);
     return result;
   }
 
@@ -348,6 +365,213 @@ export class OfficeState {
       }
     }
     return out;
+  }
+
+  // ── Work start ────────────────────────────────────────────────
+  // A working agent with no reachable work seat of its own claims, in order:
+  // a free computer in its Area, a pairing seat beside a computer there, a
+  // free spot in the Area (vibe coding on the phone). Unmapped agents do the
+  // same outside every Area. See updateCharacter's startWork.
+
+  /** Rank of a way to work: lower is better. */
+  private static readonly SPOT_RANK = { seat: 0, pair: 1, phone: 2 } as const;
+
+  /** Path from the character to a tile, with that tile unblocked for the query
+   *  (seat tiles are chairs and blocked). Empty when standing on it already. */
+  private pathTo(ch: Character, col: number, row: number): Array<{ col: number; row: number }> {
+    const key = `${col},${row}`;
+    const wasBlocked = this.blockedTiles.delete(key);
+    const path = findPath(ch.tileCol, ch.tileRow, col, row, this.tileMap, this.blockedTiles);
+    if (wasBlocked) this.blockedTiles.add(key);
+    return path;
+  }
+
+  /** Tiles of every desk ("table") in the layout. */
+  private deskTileKeys(): Set<string> {
+    const out = new Set<string>();
+    for (const item of this.layout.furniture) {
+      const entry = getCatalogEntry(item.type);
+      if (!entry?.isDesk) continue;
+      for (let dr = 0; dr < entry.footprintH; dr++) {
+        for (let dc = 0; dc < entry.footprintW; dc++) out.add(`${item.col + dc},${item.row + dr}`);
+      }
+    }
+    return out;
+  }
+
+  /** Is the tile allowed for this agent's work by the Area rule? */
+  private tileAllowedForWork(ch: Character, col: number, row: number): boolean {
+    const zone = zoneAt(this.layout.areaTiles, this.layout.cols, col, row);
+    return seatSatisfiesRule(zone, this.workLabels(ch.directoryName));
+  }
+
+  /** Seat uids some other character sits on or has claimed (work, rest, pair). */
+  private takenSeatUids(except: Character): Set<string> {
+    const out = new Set<string>();
+    for (const [uid, seat] of this.seats) if (seat.assigned) out.add(uid);
+    for (const other of this.characters.values()) {
+      if (other === except) continue;
+      if (other.restSeatId) out.add(other.restSeatId);
+      if (other.workSpot?.seatUid) out.add(other.workSpot.seatUid);
+    }
+    return out;
+  }
+
+  /**
+   * The work-start planner handed to the FSM (see ClaimWorkSpot). Arrow
+   * property so it can be passed without rebinding every frame.
+   */
+  readonly claimWorkSpot = (ch: Character, betterThan?: WorkSpot['kind']): boolean => {
+    const limit = betterThan ? OfficeState.SPOT_RANK[betterThan] : Infinity;
+
+    // 1. A free computer allowed by the Area rule, nearest first
+    const free = this.allowedFreeSeats(ch.directoryName)
+      .map((uid) => ({ uid, seat: this.seats.get(uid)! }))
+      .sort(
+        (a, b) =>
+          Math.abs(a.seat.seatCol - ch.tileCol) +
+          Math.abs(a.seat.seatRow - ch.tileRow) -
+          (Math.abs(b.seat.seatCol - ch.tileCol) + Math.abs(b.seat.seatRow - ch.tileRow)),
+      );
+    for (const { uid, seat } of free) {
+      const here = ch.tileCol === seat.seatCol && ch.tileRow === seat.seatRow;
+      const path = here ? [] : this.pathTo(ch, seat.seatCol, seat.seatRow);
+      if (!here && path.length === 0) continue;
+      if (ch.seatId) {
+        const old = this.seats.get(ch.seatId);
+        if (old) old.assigned = false;
+      }
+      seat.assigned = true;
+      ch.seatId = uid;
+      ch.workSpot = null;
+      if (here) {
+        ch.state = CharacterState.TYPE;
+        ch.dir = seat.facingDir;
+        ch.frame = 0;
+        ch.frameTimer = 0;
+      } else {
+        this.startPath(ch, path);
+      }
+      return true;
+    }
+    if (limit <= OfficeState.SPOT_RANK.pair) return false;
+
+    // 2. A pairing seat: a free non-computer seat on the working side, within
+    // PAIR_SEAT_MAX_DIST of a computer seat or touching a desk. Seats next to
+    // a computer someone is working at come first.
+    const desks = this.deskTileKeys();
+    const taken = this.takenSeatUids(ch);
+    const workSeats: Array<[string, Seat]> = [];
+    for (const uid of this.workSeatIds) {
+      const seat = this.seats.get(uid);
+      if (seat && this.tileAllowedForWork(ch, seat.seatCol, seat.seatRow))
+        workSeats.push([uid, seat]);
+    }
+    const busy = new Set<string>();
+    for (const other of this.characters.values()) {
+      if (other !== ch && other.isActive && other.seatId && this.workSeatIds.has(other.seatId)) {
+        busy.add(other.seatId);
+      }
+    }
+    const pairs: Array<{ uid: string; seat: Seat; score: number }> = [];
+    for (const [uid, seat] of this.seats) {
+      if (taken.has(uid) || this.workSeatIds.has(uid) || this.restSeatIds.has(uid)) continue;
+      if (!this.tileAllowedForWork(ch, seat.seatCol, seat.seatRow)) continue;
+      let nearest = Infinity;
+      let nearBusy = false;
+      for (const [wsUid, ws] of workSeats) {
+        const d = Math.abs(ws.seatCol - seat.seatCol) + Math.abs(ws.seatRow - seat.seatRow);
+        if (d < nearest) nearest = d;
+        if (d <= PAIR_SEAT_MAX_DIST && busy.has(wsUid)) nearBusy = true;
+      }
+      const { dCol, dRow } = seatFacingOffset(seat.facingDir);
+      const atDesk = desks.has(`${seat.seatCol + dCol},${seat.seatRow + dRow}`);
+      if (nearest > PAIR_SEAT_MAX_DIST && !atDesk) continue;
+      const toCh = Math.abs(seat.seatCol - ch.tileCol) + Math.abs(seat.seatRow - ch.tileRow);
+      // busy partner first, then closeness to a computer, then to the agent
+      pairs.push({ uid, seat, score: (nearBusy ? 0 : 1000) + nearest * 100 + toCh });
+    }
+    pairs.sort((a, b) => a.score - b.score);
+    for (const { uid, seat } of pairs) {
+      const spot: WorkSpot = {
+        kind: 'pair',
+        col: seat.seatCol,
+        row: seat.seatRow,
+        dir: seat.facingDir,
+        seatUid: uid,
+      };
+      if (this.goToSpot(ch, spot)) return true;
+    }
+    if (limit <= OfficeState.SPOT_RANK.phone) return false;
+
+    // 3. Vibe coding on the phone at a free tile the rule allows, nearest
+    // first — beside a desk when there is one.
+    const occupied = new Set<string>();
+    for (const other of this.characters.values()) {
+      if (other === ch) continue;
+      occupied.add(`${other.tileCol},${other.tileRow}`);
+      if (other.workSpot) occupied.add(`${other.workSpot.col},${other.workSpot.row}`);
+    }
+    const besideDesk = (t: { col: number; row: number }) =>
+      desks.has(`${t.col},${t.row - 1}`) ||
+      desks.has(`${t.col},${t.row + 1}`) ||
+      desks.has(`${t.col - 1},${t.row}`) ||
+      desks.has(`${t.col + 1},${t.row}`);
+    // Elbow room: a neighbour on any side (a seated agent included) counts
+    // against a tile, so phoners spread out instead of queueing in a line.
+    const crowd = (t: { col: number; row: number }) =>
+      NEIGHBOURS.filter(([dc, dr]) => occupied.has(`${t.col + dc},${t.row + dr}`)).length;
+    const tiles = this.walkableTiles
+      .filter(
+        (t) => !occupied.has(`${t.col},${t.row}`) && this.tileAllowedForWork(ch, t.col, t.row),
+      )
+      .map((t) => ({
+        t,
+        score:
+          (besideDesk(t) ? 0 : PHONE_SCORE_AWAY_FROM_DESK) +
+          crowd(t) * PHONE_SCORE_PER_NEIGHBOUR +
+          Math.abs(t.col - ch.tileCol) +
+          Math.abs(t.row - ch.tileRow),
+      }))
+      .sort((a, b) => a.score - b.score)
+      .slice(0, PHONE_SPOT_MAX_ATTEMPTS);
+    for (const { t } of tiles) {
+      const spot: WorkSpot = {
+        kind: 'phone',
+        col: t.col,
+        row: t.row,
+        dir: this.faceDesk(t, desks),
+      };
+      if (this.goToSpot(ch, spot)) return true;
+    }
+    return false;
+  };
+
+  /** Claim a spot and walk there (or settle when already on it); false when unreachable. */
+  private goToSpot(ch: Character, spot: WorkSpot): boolean {
+    const here = ch.tileCol === spot.col && ch.tileRow === spot.row;
+    const path = here ? [] : this.pathTo(ch, spot.col, spot.row);
+    if (!here && path.length === 0) return false;
+    ch.workSpot = spot;
+    if (here) settleOnWorkSpot(ch, spot);
+    else this.startPath(ch, path);
+    return true;
+  }
+
+  private startPath(ch: Character, path: Array<{ col: number; row: number }>): void {
+    ch.path = path;
+    ch.moveProgress = 0;
+    ch.state = CharacterState.WALK;
+    ch.frame = 0;
+    ch.frameTimer = 0;
+  }
+
+  /** Face an adjacent desk when standing beside one, else down (toward the viewer). */
+  private faceDesk(t: { col: number; row: number }, desks: Set<string>): Direction {
+    if (desks.has(`${t.col},${t.row - 1}`)) return Direction.UP;
+    if (desks.has(`${t.col - 1},${t.row}`)) return Direction.LEFT;
+    if (desks.has(`${t.col + 1},${t.row}`)) return Direction.RIGHT;
+    return Direction.DOWN;
   }
 
   /** Find the area label assigned to a seat's tile, or null. Public for e2e
@@ -1003,6 +1227,12 @@ export class OfficeState {
     if (ch) {
       ch.isActive = active;
       if (!active) {
+        // Work is over: the pairing seat / phone spot goes (the FSM walks a
+        // phone agent straight back to idling out of the Area)
+        if (ch.workSpot) {
+          ch.workSpot = null;
+          if (ch.state === CharacterState.TYPE) ch.state = CharacterState.IDLE;
+        }
         // Sentinel -1: signals turn just ended, skip next seat rest timer.
         // Prevents the WALK handler from setting a 2-4 min rest on arrival.
         ch.seatTimer = -1;
@@ -1341,6 +1571,7 @@ export class OfficeState {
           freeRestSeats,
           !ch.seatId || !this.seatNearArea(ch.seatId),
           this.noIdleTileKeys,
+          ch.isSubagent ? undefined : this.claimWorkSpot,
         ),
       );
 
@@ -1408,7 +1639,7 @@ export class OfficeState {
       if (ch.matrixEffect === 'despawn') continue;
       // Character sprite is 16x24, anchored bottom-center
       // Apply sitting offset to match visual position
-      const sittingOffset = ch.state === CharacterState.TYPE ? CHARACTER_SITTING_OFFSET_PX : 0;
+      const sittingOffset = isSeatedPose(ch) ? CHARACTER_SITTING_OFFSET_PX : 0;
       const anchorY = ch.y + sittingOffset;
       const left = ch.x - CHARACTER_HIT_HALF_WIDTH;
       const right = ch.x + CHARACTER_HIT_HALF_WIDTH;
