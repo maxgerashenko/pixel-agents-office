@@ -19,12 +19,17 @@ const FILL_CLASS: Record<UsageSeverity, string> = {
   danger: 'bg-danger',
 };
 
+/** Pixels of a 7×7 pixel-art disc. */
+const DOT_DISC = 'M2 0h3v1h1v1h1v3h-1v1h-1v1h-3v-1h-1v-1h-1v-3h1v-1h1z';
+/** The last-hour dot is as tall as the token bar, borders included. */
+const LAST_HOUR_DOT_PX = 14;
+
 /** Grid size and stroke of the session ring, in sprite pixels (drawn at 2×). */
 const RING_GRID = 15;
 const RING_THICKNESS = 4;
 
 /** The hours before the last one: a pixel ring filling clockwise as they pass,
- *  sliding green → red; once full (the last hour) it turns the last-hour colour. */
+ *  sliding green → red; once full (the last hour) it takes the token bar's purple. */
 function SessionRing({ percent }: { percent: number }) {
   const full = percent >= 100;
   const { filled, empty } = ringPixelPaths(RING_GRID, RING_THICKNESS, percent);
@@ -38,7 +43,7 @@ function SessionRing({ percent }: { percent: number }) {
     >
       <path className="fill-border" d={empty} />
       <path
-        className={full ? 'fill-usage-last-hour' : undefined}
+        className={full ? 'fill-accent-bright' : undefined}
         style={full ? undefined : { fill: usageRingColor(ringHue(percent)) }}
         d={filled}
       />
@@ -105,7 +110,7 @@ export function UsageMeter({ usage }: UsageMeterProps) {
       >
         {/* Last hour of the window: dark purple fill behind the token fill, so it
             only shows on the empty side once time passes the tokens; while
-            behind, a thin line marks it inside the token fill. */}
+            behind, a bar-high dot marks it inside the token fill. */}
         {lastHourPercent !== null && lastHourPercent > percent && (
           <div
             className="absolute inset-y-0 left-0 bg-usage-last-hour"
@@ -117,10 +122,17 @@ export function UsageMeter({ usage }: UsageMeterProps) {
           style={{ width: `${percent}%` }}
         />
         {lastHourPercent !== null && lastHourPercent <= percent && (
-          <div
-            className="absolute -inset-y-2 w-3 bg-usage-last-hour"
-            style={{ left: `calc(${lastHourPercent}% - 1px)` }}
-          />
+          <svg
+            width={LAST_HOUR_DOT_PX}
+            height={LAST_HOUR_DOT_PX}
+            viewBox="0 0 7 7"
+            shapeRendering="crispEdges"
+            className="absolute -top-2 fill-usage-last-hour"
+            style={{ left: `calc(${lastHourPercent}% - ${LAST_HOUR_DOT_PX / 2}px)` }}
+            aria-hidden
+          >
+            <path d={DOT_DISC} />
+          </svg>
         )}
       </div>
       <span className="text-2xs text-text-muted">{percent}% used</span>
