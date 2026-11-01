@@ -586,6 +586,10 @@ export const USAGE_EXPIRY_CHECK_MS = 30_000;
 /** Length of Claude's "current session" rate-limit window, in hours. The meter
  *  shows one dot per hour before the last; the last hour runs inside the bar. */
 export const USAGE_SESSION_HOURS = 5;
+/** The session ring turns yellow once this share of its hours has passed. */
+export const USAGE_RING_YELLOW_PERCENT = 50;
+/** The session ring turns red once this share of its hours has passed. */
+export const USAGE_RING_RED_PERCENT = 75;
 
 // ── Read-only office ────────────────────────────────────────
 /** Tooltip on every control a view-only page shows disabled (opened without the server token). */

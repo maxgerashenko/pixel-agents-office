@@ -7,6 +7,7 @@ import {
   liveWindow,
   pickSessionWindow,
   ringPixelPaths,
+  ringStage,
   sessionClock,
   usageSeverity,
 } from '../src/components/usageView.js';
@@ -105,5 +106,16 @@ describe('ringPixelPaths', () => {
   it("fills clockwise from 12 o'clock (right half first)", () => {
     expect(ringPixelPaths(15, 4, 25).filled).toContain('M8 0h1v1h-1z');
     expect(ringPixelPaths(15, 4, 25).filled).not.toContain('M6 0h1v1h-1z');
+  });
+});
+
+describe('ringStage', () => {
+  it('goes green, yellow at 50, red at 75', () => {
+    expect(ringStage(0)).toBe('green');
+    expect(ringStage(49.9)).toBe('green');
+    expect(ringStage(50)).toBe('yellow');
+    expect(ringStage(74.9)).toBe('yellow');
+    expect(ringStage(75)).toBe('red');
+    expect(ringStage(100)).toBe('red');
   });
 });

@@ -6,6 +6,8 @@ import {
   formatTimeLeft,
   pickSessionWindow,
   ringPixelPaths,
+  type RingStage,
+  ringStage,
   sessionClock,
   type UsageSeverity,
   usageSeverity,
@@ -18,11 +20,23 @@ const FILL_CLASS: Record<UsageSeverity, string> = {
   danger: 'bg-danger',
 };
 
+const RING_FILL_CLASS: Record<RingStage, string> = {
+  green: 'fill-status-success',
+  yellow: 'fill-status-permission',
+  red: 'fill-danger',
+};
+const RING_TEXT_CLASS: Record<RingStage, string> = {
+  green: 'text-status-success',
+  yellow: 'text-status-permission',
+  red: 'text-danger',
+};
+
 /** Grid size and stroke of the session ring, in sprite pixels (drawn at 2×). */
 const RING_GRID = 15;
 const RING_THICKNESS = 4;
 
-/** The hours before the last one: a pixel ring filling clockwise as they pass. */
+/** The hours before the last one: a pixel ring filling clockwise as they pass,
+ *  green → yellow → red. */
 function SessionRing({ percent }: { percent: number }) {
   const { filled, empty } = ringPixelPaths(RING_GRID, RING_THICKNESS, percent);
   return (
@@ -34,7 +48,7 @@ function SessionRing({ percent }: { percent: number }) {
       aria-hidden
     >
       <path className="fill-border" d={empty} />
-      <path className="fill-status-success" d={filled} />
+      <path className={RING_FILL_CLASS[ringStage(percent)]} d={filled} />
     </svg>
   );
 }
@@ -78,7 +92,10 @@ export function UsageMeter({ usage }: UsageMeterProps) {
       >
         <SessionRing percent={earlyPercent} />
       </div>
-      <span className="text-sm text-status-success" title={`Resets in ${timeLeft}`}>
+      <span
+        className={`text-sm ${RING_TEXT_CLASS[ringStage(earlyPercent)]}`}
+        title={`Resets in ${timeLeft}`}
+      >
         {timeLeft}
       </span>
       <div

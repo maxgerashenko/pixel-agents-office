@@ -1,4 +1,10 @@
-import { USAGE_DANGER_PERCENT, USAGE_SESSION_HOURS, USAGE_WARN_PERCENT } from '../constants.js';
+import {
+  USAGE_DANGER_PERCENT,
+  USAGE_RING_RED_PERCENT,
+  USAGE_RING_YELLOW_PERCENT,
+  USAGE_SESSION_HOURS,
+  USAGE_WARN_PERCENT,
+} from '../constants.js';
 
 /** One rate-limit window as the server broadcasts it (`usageUpdate`). */
 export interface UsageWindowView {
@@ -55,6 +61,15 @@ export function sessionClock(resetsAtMs: number, now: number): SessionClock {
     lastHourPercent:
       elapsedMs >= lastHourStartMs ? ((elapsedMs - lastHourStartMs) / HOUR_MS) * 100 : null,
   };
+}
+
+export type RingStage = 'green' | 'yellow' | 'red';
+
+/** Ring colour: green, yellow from USAGE_RING_YELLOW_PERCENT, red from USAGE_RING_RED_PERCENT. */
+export function ringStage(percent: number): RingStage {
+  if (percent >= USAGE_RING_RED_PERCENT) return 'red';
+  if (percent >= USAGE_RING_YELLOW_PERCENT) return 'yellow';
+  return 'green';
 }
 
 /** SVG path data for a pixel-art ring on a `size`×`size` grid, `thickness`
