@@ -61,7 +61,7 @@ interface UsageMeterProps {
 /**
  * Claude's "Current session" (five-hour) usage as a full-width strip at the top
  * of the app: a ring filling over the first four hours, the time left, and the token bar, which
- * also carries the last hour's progress in green. It is an ordinary flex child, so it pushes the office below it
+ * also carries the last hour's progress in red. It is an ordinary flex child, so it pushes the office below it
  * rather than covering it. Renders nothing (and takes no space) until a
  * status-line tap has reported a window that has not reset yet; re-checks on a
  * timer so it disappears at the reset.
@@ -109,12 +109,12 @@ export function UsageMeter({ usage }: UsageMeterProps) {
           lastHourPercent === null ? undefined : `Last hour: ${Math.round(lastHourPercent)}% passed`
         }
       >
-        {/* Last hour of the window: green fill behind the token fill, so it
+        {/* Last hour of the window: red fill behind the token fill, so it
             only shows on the empty side once time passes the tokens; while
             behind, a thin line marks it inside the token fill. */}
         {lastHourPercent !== null && lastHourPercent > percent && (
           <div
-            className="absolute inset-y-0 left-0 bg-status-success"
+            className="absolute inset-y-0 left-0 bg-danger"
             style={{ width: `${lastHourPercent}%` }}
           />
         )}
@@ -124,7 +124,7 @@ export function UsageMeter({ usage }: UsageMeterProps) {
         />
         {lastHourPercent !== null && lastHourPercent <= percent && (
           <div
-            className="absolute -inset-y-2 w-3 bg-status-success"
+            className="absolute -inset-y-2 w-3 bg-danger"
             style={{ left: `calc(${lastHourPercent}% - 1px)` }}
           />
         )}
