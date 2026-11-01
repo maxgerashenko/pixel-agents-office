@@ -583,6 +583,9 @@ export const USAGE_WARN_PERCENT = 80;
 export const USAGE_DANGER_PERCENT = 95;
 /** How often the meter re-checks whether its window has reset. */
 export const USAGE_EXPIRY_CHECK_MS = 30_000;
+/** Length of Claude's "current session" rate-limit window, in hours. The meter
+ *  shows one dot per hour before the last; the last hour runs inside the bar. */
+export const USAGE_SESSION_HOURS = 5;
 
 // ── Read-only office ────────────────────────────────────────
 /** Tooltip on every control a view-only page shows disabled (opened without the server token). */
