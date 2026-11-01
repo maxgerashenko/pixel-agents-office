@@ -167,6 +167,18 @@ export interface OfficeLayout {
   areaTiles?: Array<string | null>;
 }
 
+/** A non-computer place to work (see Character.workSpot). */
+export interface WorkSpot {
+  /** 'pair': a free seat on the working side next to a computer (pair
+   *  programming). 'phone': standing in the Area, vibe coding on the phone. */
+  kind: 'pair' | 'phone';
+  col: number;
+  row: number;
+  dir: Direction;
+  /** The pairing seat's uid (kind 'pair' only). */
+  seatUid?: string;
+}
+
 export interface Character {
   id: number;
   state: CharacterState;
@@ -205,6 +217,13 @@ export interface Character {
   /** Rest seat (bench/sofa) this idle agent has claimed, or null. Transient:
    *  never persisted, released the moment the agent becomes active. */
   restSeatId?: string | null;
+  /** Where a working agent with no reachable work seat of its own works: a
+   *  pairing seat beside a taken computer, or a standing spot where it vibe
+   *  codes on its phone. Claimed when it starts working, released the moment
+   *  it stops; never persisted. */
+  workSpot?: WorkSpot | null;
+  /** Seconds until a pairing / phone agent next looks for a better spot. */
+  workSpotRecheck?: number;
   /** Active speech bubble type, or null if none showing */
   bubbleType: 'permission' | 'waiting' | null;
   /** Only meaningful while bubbleType === 'waiting': true when the agent went

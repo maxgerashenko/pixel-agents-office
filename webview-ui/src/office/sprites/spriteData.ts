@@ -1,5 +1,11 @@
 import type { ColorValue } from '../../components/ui/types.js';
-import { PALETTE_COUNT } from '../../constants.js';
+import {
+  PALETTE_COUNT,
+  PHONE_CASE_COLOR,
+  PHONE_HAND_FALLBACK_COLOR,
+  PHONE_SCREEN_ALT_COLOR,
+  PHONE_SCREEN_COLOR,
+} from '../../constants.js';
 import { adjustSprite } from '../colorize.js';
 import type { Direction, SpriteData } from '../types.js';
 import { Direction as Dir } from '../types.js';
@@ -64,12 +70,89 @@ export interface CharacterSprites {
   walk: Record<Direction, [SpriteData, SpriteData, SpriteData, SpriteData]>;
   typing: Record<Direction, [SpriteData, SpriteData]>;
   reading: Record<Direction, [SpriteData, SpriteData]>;
+  /** Walking while vibe coding on the phone (working agent on its way to work). */
+  phoneWalk: Record<Direction, [SpriteData, SpriteData, SpriteData, SpriteData]>;
+  /** Standing and vibe coding on the phone (no computer or pairing seat free);
+   *  the two frames flicker the screen. */
+  phone: Record<Direction, [SpriteData, SpriteData]>;
+}
+
+type BaseSprites = Omit<CharacterSprites, 'phoneWalk' | 'phone'>;
+
+/** Where the hand sits on the down-facing walk sprite (sampled for skin). */
+const HAND_SAMPLE = { row: 22, col: 2 } as const;
+
+/**
+ * Draw a phone held in front of the character. Facing down it is held at the
+ * chest with the screen toward the viewer; facing right it is held out in
+ * front of the face (left is the mirror). Facing up the body hides it.
+ */
+function withPhone(
+  sprite: SpriteData,
+  dir: 'down' | 'right',
+  screen: string,
+  skin: string,
+): SpriteData {
+  const out = sprite.map((row) => [...row]);
+  const put = (row: number, col: number, color: string) => {
+    if (out[row] && col >= 0 && col < out[row].length) out[row][col] = color;
+  };
+  if (dir === 'down') {
+    for (let r = 20; r <= 23; r++) for (let c = 9; c <= 11; c++) put(r, c, PHONE_CASE_COLOR);
+    put(21, 10, screen);
+    put(22, 10, screen);
+    put(24, 9, skin);
+    put(24, 10, skin);
+  } else {
+    for (let r = 19; r <= 22; r++) put(r, 12, PHONE_CASE_COLOR);
+    put(19, 11, PHONE_CASE_COLOR);
+    put(20, 11, screen);
+    put(21, 11, screen);
+    put(22, 11, skin);
+  }
+  return out;
+}
+
+/** Add the phone variants to a resolved sprite set. */
+function addPhoneSprites(base: BaseSprites): CharacterSprites {
+  const sample = base.walk[Dir.DOWN][1][HAND_SAMPLE.row]?.[HAND_SAMPLE.col];
+  const skin = sample || PHONE_HAND_FALLBACK_COLOR;
+  const down = (s: SpriteData, screen = PHONE_SCREEN_COLOR) => withPhone(s, 'down', screen, skin);
+  const right = (s: SpriteData, screen = PHONE_SCREEN_COLOR) => withPhone(s, 'right', screen, skin);
+  const walkDown = base.walk[Dir.DOWN];
+  const walkUp = base.walk[Dir.UP];
+  const walkRight = base.walk[Dir.RIGHT];
+  const rightWalk = walkRight.map((s) => right(s)) as [
+    SpriteData,
+    SpriteData,
+    SpriteData,
+    SpriteData,
+  ];
+  const rightStand: [SpriteData, SpriteData] = [
+    right(walkRight[1]),
+    right(walkRight[1], PHONE_SCREEN_ALT_COLOR),
+  ];
+  return {
+    ...base,
+    phoneWalk: {
+      [Dir.DOWN]: walkDown.map((s) => down(s)),
+      [Dir.UP]: walkUp,
+      [Dir.RIGHT]: rightWalk,
+      [Dir.LEFT]: rightWalk.map(flipSpriteHorizontal),
+    } as Record<Direction, [SpriteData, SpriteData, SpriteData, SpriteData]>,
+    phone: {
+      [Dir.DOWN]: [down(walkDown[1]), down(walkDown[1], PHONE_SCREEN_ALT_COLOR)],
+      [Dir.UP]: [walkUp[1], walkUp[1]],
+      [Dir.RIGHT]: rightStand,
+      [Dir.LEFT]: [flipSpriteHorizontal(rightStand[0]), flipSpriteHorizontal(rightStand[1])],
+    } as Record<Direction, [SpriteData, SpriteData]>,
+  };
 }
 
 const spriteCache = new Map<string, CharacterSprites>();
 
 /** Apply hue shift to every sprite in a CharacterSprites set */
-function hueShiftSprites(sprites: CharacterSprites, hueShift: number): CharacterSprites {
+function hueShiftSprites(sprites: BaseSprites, hueShift: number): BaseSprites {
   const color: ColorValue = { h: hueShift, s: 0, b: 0, c: 0 };
   const shift = (s: SpriteData) => adjustSprite(s, color);
   const shiftWalk = (
@@ -120,7 +203,7 @@ export function getCharacterSprites(paletteIndex: number, hueShift = 0): Charact
   const cached = spriteCache.get(cacheKey);
   if (cached) return cached;
 
-  let sprites: CharacterSprites;
+  let sprites: BaseSprites;
 
   if (loadedCharacters) {
     // Use pre-colored character sprites directly (no palette swapping)
@@ -182,6 +265,8 @@ export function getCharacterSprites(paletteIndex: number, hueShift = 0): Charact
     sprites = hueShiftSprites(sprites, hueShift);
   }
 
-  spriteCache.set(cacheKey, sprites);
-  return sprites;
+  // Phone overlays go on after the hue shift so the phone keeps its colours
+  const full = addPhoneSprites(sprites);
+  spriteCache.set(cacheKey, full);
+  return full;
 }
