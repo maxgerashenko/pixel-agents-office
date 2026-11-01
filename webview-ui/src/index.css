@@ -42,6 +42,9 @@
   --color-status-success: #89d185;
   --color-status-error: var(--color-danger);
 
+  /* Usage meter: the session's last hour (ring when full, bar layer) */
+  --color-usage-last-hour: #4b1fb0;
+
   /* Shadow */
   --shadow-pixel: 2px 2px 0px #0a0a14;
 
@@ -88,6 +91,7 @@
   --color-status-active: var(--color-status-active);
   --color-status-success: var(--color-status-success);
   --color-status-error: var(--color-status-error);
+  --color-usage-last-hour: var(--color-usage-last-hour);
 
   /* Shadow */
   --shadow-pixel: var(--shadow-pixel);

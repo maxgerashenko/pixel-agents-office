@@ -6,8 +6,8 @@ import {
   formatTimeLeft,
   liveWindow,
   pickSessionWindow,
+  ringHue,
   ringPixelPaths,
-  ringStage,
   sessionClock,
   usageSeverity,
 } from '../src/components/usageView.js';
@@ -109,13 +109,11 @@ describe('ringPixelPaths', () => {
   });
 });
 
-describe('ringStage', () => {
-  it('goes green, yellow at 50, red at 75', () => {
-    expect(ringStage(0)).toBe('green');
-    expect(ringStage(49.9)).toBe('green');
-    expect(ringStage(50)).toBe('yellow');
-    expect(ringStage(74.9)).toBe('yellow');
-    expect(ringStage(75)).toBe('red');
-    expect(ringStage(100)).toBe('red');
+describe('ringHue', () => {
+  it('slides from green (120) to red (0) as the ring fills', () => {
+    expect(ringHue(0)).toBe(120);
+    expect(ringHue(50)).toBe(60);
+    expect(ringHue(100)).toBe(0);
+    expect(ringHue(150)).toBe(0);
   });
 });

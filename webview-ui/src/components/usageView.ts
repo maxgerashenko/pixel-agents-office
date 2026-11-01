@@ -1,7 +1,7 @@
 import {
   USAGE_DANGER_PERCENT,
-  USAGE_RING_RED_PERCENT,
-  USAGE_RING_YELLOW_PERCENT,
+  USAGE_RING_END_HUE,
+  USAGE_RING_START_HUE,
   USAGE_SESSION_HOURS,
   USAGE_WARN_PERCENT,
 } from '../constants.js';
@@ -63,13 +63,11 @@ export function sessionClock(resetsAtMs: number, now: number): SessionClock {
   };
 }
 
-export type RingStage = 'green' | 'yellow' | 'red';
-
-/** Ring colour: green, yellow from USAGE_RING_YELLOW_PERCENT, red from USAGE_RING_RED_PERCENT. */
-export function ringStage(percent: number): RingStage {
-  if (percent >= USAGE_RING_RED_PERCENT) return 'red';
-  if (percent >= USAGE_RING_YELLOW_PERCENT) return 'yellow';
-  return 'green';
+/** Ring hue for a fill share: slides from USAGE_RING_START_HUE (empty) to
+ *  USAGE_RING_END_HUE (full). */
+export function ringHue(percent: number): number {
+  const share = Math.min(100, Math.max(0, percent)) / 100;
+  return USAGE_RING_START_HUE + (USAGE_RING_END_HUE - USAGE_RING_START_HUE) * share;
 }
 
 /** SVG path data for a pixel-art ring on a `size`×`size` grid, `thickness`

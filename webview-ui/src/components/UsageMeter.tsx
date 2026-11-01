@@ -1,13 +1,12 @@
 import { useEffect, useState } from 'react';
 
-import { USAGE_EXPIRY_CHECK_MS, USAGE_SESSION_HOURS } from '../constants.js';
+import { USAGE_EXPIRY_CHECK_MS, USAGE_SESSION_HOURS, usageRingColor } from '../constants.js';
 import {
   displayPercent,
   formatTimeLeft,
   pickSessionWindow,
+  ringHue,
   ringPixelPaths,
-  type RingStage,
-  ringStage,
   sessionClock,
   type UsageSeverity,
   usageSeverity,
@@ -20,24 +19,14 @@ const FILL_CLASS: Record<UsageSeverity, string> = {
   danger: 'bg-danger',
 };
 
-const RING_FILL_CLASS: Record<RingStage, string> = {
-  green: 'fill-status-success',
-  yellow: 'fill-status-permission',
-  red: 'fill-danger',
-};
-const RING_TEXT_CLASS: Record<RingStage, string> = {
-  green: 'text-status-success',
-  yellow: 'text-status-permission',
-  red: 'text-danger',
-};
-
 /** Grid size and stroke of the session ring, in sprite pixels (drawn at 2×). */
 const RING_GRID = 15;
 const RING_THICKNESS = 4;
 
 /** The hours before the last one: a pixel ring filling clockwise as they pass,
- *  green → yellow → red. */
+ *  sliding green → red; once full (the last hour) it turns the last-hour colour. */
 function SessionRing({ percent }: { percent: number }) {
+  const full = percent >= 100;
   const { filled, empty } = ringPixelPaths(RING_GRID, RING_THICKNESS, percent);
   return (
     <svg
@@ -48,7 +37,11 @@ function SessionRing({ percent }: { percent: number }) {
       aria-hidden
     >
       <path className="fill-border" d={empty} />
-      <path className={RING_FILL_CLASS[ringStage(percent)]} d={filled} />
+      <path
+        className={full ? 'fill-usage-last-hour' : undefined}
+        style={full ? undefined : { fill: usageRingColor(ringHue(percent)) }}
+        d={filled}
+      />
     </svg>
   );
 }
@@ -61,7 +54,7 @@ interface UsageMeterProps {
 /**
  * Claude's "Current session" (five-hour) usage as a full-width strip at the top
  * of the app: a ring filling over the first four hours, the time left, and the token bar, which
- * also carries the last hour's progress in red. It is an ordinary flex child, so it pushes the office below it
+ * also carries the last hour's progress in dark purple. It is an ordinary flex child, so it pushes the office below it
  * rather than covering it. Renders nothing (and takes no space) until a
  * status-line tap has reported a window that has not reset yet; re-checks on a
  * timer so it disappears at the reset.
@@ -93,7 +86,8 @@ export function UsageMeter({ usage }: UsageMeterProps) {
         <SessionRing percent={earlyPercent} />
       </div>
       <span
-        className={`text-sm ${RING_TEXT_CLASS[ringStage(earlyPercent)]}`}
+        className="text-sm"
+        style={{ color: usageRingColor(ringHue(earlyPercent)) }}
         title={`Resets in ${timeLeft}`}
       >
         {timeLeft}
@@ -109,12 +103,12 @@ export function UsageMeter({ usage }: UsageMeterProps) {
           lastHourPercent === null ? undefined : `Last hour: ${Math.round(lastHourPercent)}% passed`
         }
       >
-        {/* Last hour of the window: red fill behind the token fill, so it
+        {/* Last hour of the window: dark purple fill behind the token fill, so it
             only shows on the empty side once time passes the tokens; while
             behind, a thin line marks it inside the token fill. */}
         {lastHourPercent !== null && lastHourPercent > percent && (
           <div
-            className="absolute inset-y-0 left-0 bg-danger"
+            className="absolute inset-y-0 left-0 bg-usage-last-hour"
             style={{ width: `${lastHourPercent}%` }}
           />
         )}
@@ -124,7 +118,7 @@ export function UsageMeter({ usage }: UsageMeterProps) {
         />
         {lastHourPercent !== null && lastHourPercent <= percent && (
           <div
-            className="absolute -inset-y-2 w-3 bg-danger"
+            className="absolute -inset-y-2 w-3 bg-usage-last-hour"
             style={{ left: `calc(${lastHourPercent}% - 1px)` }}
           />
         )}
