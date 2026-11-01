@@ -583,6 +583,15 @@ export const USAGE_WARN_PERCENT = 80;
 export const USAGE_DANGER_PERCENT = 95;
 /** How often the meter re-checks whether its window has reset. */
 export const USAGE_EXPIRY_CHECK_MS = 30_000;
+/** Length of Claude's "current session" rate-limit window, in hours. The meter
+ *  shows one dot per hour before the last; the last hour runs inside the bar. */
+export const USAGE_SESSION_HOURS = 5;
+/** Session ring hue when empty (green) and just before full (red); the fill
+ *  slides between them as the first hours pass. */
+export const USAGE_RING_START_HUE = 120;
+export const USAGE_RING_END_HUE = 0;
+/** Session ring colour for a hue on the green → red slide. */
+export const usageRingColor = (hue: number): string => `hsl(${hue}, 75%, 55%)`;
 
 // ── Read-only office ────────────────────────────────────────
 /** Tooltip on every control a view-only page shows disabled (opened without the server token). */

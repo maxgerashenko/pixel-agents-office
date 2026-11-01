@@ -6,6 +6,9 @@ import {
   formatTimeLeft,
   liveWindow,
   pickSessionWindow,
+  ringHue,
+  ringPixelPaths,
+  sessionClock,
   usageSeverity,
 } from '../src/components/usageView.js';
 
@@ -65,5 +68,52 @@ describe('displayPercent / asUsageWindow', () => {
     expect(asUsageWindow(null)).toBeUndefined();
     expect(asUsageWindow({ usedPercentage: 'x', resetsAt: 2 })).toBeUndefined();
     expect(asUsageWindow({ usedPercentage: 1, resetsAt: NaN })).toBeUndefined();
+  });
+});
+
+describe('sessionClock', () => {
+  const MIN = 60_000;
+  const resetIn = (minutesLeft: number) => sessionClock(minutesLeft * MIN, 0);
+  it('fills the ring over the hours before the last one', () => {
+    expect(resetIn(300)).toEqual({ earlyPercent: 0, lastHourPercent: null });
+    expect(resetIn(240)).toEqual({ earlyPercent: 25, lastHourPercent: null });
+    expect(resetIn(180)).toEqual({ earlyPercent: 50, lastHourPercent: null });
+  });
+  it('reports the share of the last hour passed once it starts', () => {
+    expect(resetIn(60)).toEqual({ earlyPercent: 100, lastHourPercent: 0 });
+    expect(resetIn(45)).toEqual({ earlyPercent: 100, lastHourPercent: 25 });
+    expect(resetIn(15)).toEqual({ earlyPercent: 100, lastHourPercent: 75 });
+  });
+  it('clamps a reset further out than the window, or already past', () => {
+    expect(resetIn(400)).toEqual({ earlyPercent: 0, lastHourPercent: null });
+    expect(resetIn(-5)).toEqual({ earlyPercent: 100, lastHourPercent: 100 });
+  });
+});
+
+describe('ringPixelPaths', () => {
+  const count = (d: string) => (d.match(/M/g) ?? []).length;
+  it('splits the same ring pixels between filled and empty', () => {
+    const none = ringPixelPaths(15, 4, 0);
+    const half = ringPixelPaths(15, 4, 50);
+    const full = ringPixelPaths(15, 4, 100);
+    const total = count(none.empty);
+    expect(total).toBeGreaterThan(0);
+    expect(count(none.filled)).toBe(0);
+    expect(count(full.filled)).toBe(total);
+    expect(count(half.filled) + count(half.empty)).toBe(total);
+    expect(Math.abs(count(half.filled) - total / 2)).toBeLessThanOrEqual(2);
+  });
+  it("fills clockwise from 12 o'clock (right half first)", () => {
+    expect(ringPixelPaths(15, 4, 25).filled).toContain('M8 0h1v1h-1z');
+    expect(ringPixelPaths(15, 4, 25).filled).not.toContain('M6 0h1v1h-1z');
+  });
+});
+
+describe('ringHue', () => {
+  it('slides from green (120) to red (0) as the ring fills', () => {
+    expect(ringHue(0)).toBe(120);
+    expect(ringHue(50)).toBe(60);
+    expect(ringHue(100)).toBe(0);
+    expect(ringHue(150)).toBe(0);
   });
 });

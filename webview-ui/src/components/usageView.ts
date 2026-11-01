@@ -1,4 +1,10 @@
-import { USAGE_DANGER_PERCENT, USAGE_WARN_PERCENT } from '../constants.js';
+import {
+  USAGE_DANGER_PERCENT,
+  USAGE_RING_END_HUE,
+  USAGE_RING_START_HUE,
+  USAGE_SESSION_HOURS,
+  USAGE_WARN_PERCENT,
+} from '../constants.js';
 
 /** One rate-limit window as the server broadcasts it (`usageUpdate`). */
 export interface UsageWindowView {
@@ -32,6 +38,64 @@ export function formatTimeLeft(resetsAtMs: number, now: number): string {
   const rest = minutes % 60;
   if (hours === 0) return `${rest}m`;
   return rest === 0 ? `${hours}h` : `${hours}h ${rest}m`;
+}
+
+const HOUR_MS = 3_600_000;
+
+/** Where the five-hour window stands, derived from its reset time. */
+export interface SessionClock {
+  /** Share of the hours BEFORE the last one passed (0-100): the ring. */
+  earlyPercent: number;
+  /** Share of the LAST hour passed (0-100), or null before the last hour starts. */
+  lastHourPercent: number | null;
+}
+
+/** The window started USAGE_SESSION_HOURS before its reset. Every hour but the
+ *  last fills the ring; the last hour runs inside the token bar instead. */
+export function sessionClock(resetsAtMs: number, now: number): SessionClock {
+  const totalMs = USAGE_SESSION_HOURS * HOUR_MS;
+  const elapsedMs = Math.min(totalMs, Math.max(0, totalMs - (resetsAtMs - now)));
+  const lastHourStartMs = (USAGE_SESSION_HOURS - 1) * HOUR_MS;
+  return {
+    earlyPercent: (Math.min(elapsedMs, lastHourStartMs) / lastHourStartMs) * 100,
+    lastHourPercent:
+      elapsedMs >= lastHourStartMs ? ((elapsedMs - lastHourStartMs) / HOUR_MS) * 100 : null,
+  };
+}
+
+/** Ring hue for a fill share: slides from USAGE_RING_START_HUE (empty) to
+ *  USAGE_RING_END_HUE (full). */
+export function ringHue(percent: number): number {
+  const share = Math.min(100, Math.max(0, percent)) / 100;
+  return USAGE_RING_START_HUE + (USAGE_RING_END_HUE - USAGE_RING_START_HUE) * share;
+}
+
+/** SVG path data for a pixel-art ring on a `size`×`size` grid, `thickness`
+ *  pixels wide, split into the part filled clockwise from 12 o'clock up to
+ *  `percent` and the rest. One `h1v1h-1z` square per pixel. */
+export function ringPixelPaths(
+  size: number,
+  thickness: number,
+  percent: number,
+): { filled: string; empty: string } {
+  const r = size / 2;
+  const share = Math.min(100, Math.max(0, percent)) / 100;
+  let filled = '';
+  let empty = '';
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const dx = x + 0.5 - r;
+      const dy = y + 0.5 - r;
+      const d = Math.hypot(dx, dy);
+      if (d > r - 0.2 || d < r - thickness) continue;
+      let turn = Math.atan2(dx, -dy) / (2 * Math.PI);
+      if (turn < 0) turn += 1;
+      const px = `M${x} ${y}h1v1h-1z`;
+      if (turn < share) filled += px;
+      else empty += px;
+    }
+  }
+  return { filled, empty };
 }
 
 /** The window if it has not reset yet, else undefined. A window past its reset
