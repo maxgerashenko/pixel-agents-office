@@ -1,10 +1,4 @@
-import {
-  USAGE_DANGER_PERCENT,
-  USAGE_RING_END_HUE,
-  USAGE_RING_START_HUE,
-  USAGE_SESSION_HOURS,
-  USAGE_WARN_PERCENT,
-} from '../constants.js';
+import { USAGE_RING_END_HUE, USAGE_RING_START_HUE, USAGE_SESSION_HOURS } from '../constants.js';
 
 /** One rate-limit window as the server broadcasts it (`usageUpdate`). */
 export interface UsageWindowView {
@@ -18,15 +12,6 @@ export interface UsageView {
   fiveHour?: UsageWindowView;
   sevenDay?: UsageWindowView;
   updatedAt: number;
-}
-
-export type UsageSeverity = 'normal' | 'warning' | 'danger';
-
-/** Bar colour band: warning from USAGE_WARN_PERCENT, danger from USAGE_DANGER_PERCENT. */
-export function usageSeverity(percent: number): UsageSeverity {
-  if (percent >= USAGE_DANGER_PERCENT) return 'danger';
-  if (percent >= USAGE_WARN_PERCENT) return 'warning';
-  return 'normal';
 }
 
 /** Time until the reset as "2h 15m", "45m" or "<1m". Minutes round up, so a

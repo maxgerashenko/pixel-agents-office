@@ -8,16 +8,8 @@ import {
   ringHue,
   ringPixelPaths,
   sessionClock,
-  type UsageSeverity,
-  usageSeverity,
   type UsageView,
 } from './usageView.js';
-
-const FILL_CLASS: Record<UsageSeverity, string> = {
-  normal: 'bg-accent-bright',
-  warning: 'bg-warning',
-  danger: 'bg-danger',
-};
 
 /** Grid size and stroke of the session ring, in sprite pixels (drawn at 2×). */
 const RING_GRID = 15;
@@ -113,10 +105,7 @@ export function UsageMeter({ usage }: UsageMeterProps) {
             style={{ width: `${lastHourPercent}%` }}
           />
         )}
-        <div
-          className={`relative h-full ${FILL_CLASS[usageSeverity(session.usedPercentage)]}`}
-          style={{ width: `${percent}%` }}
-        />
+        <div className="relative h-full bg-accent-bright" style={{ width: `${percent}%` }} />
         {lastHourPercent !== null && lastHourPercent <= percent && (
           <div
             className="absolute inset-y-0 left-0 bg-usage-last-hour-behind"
