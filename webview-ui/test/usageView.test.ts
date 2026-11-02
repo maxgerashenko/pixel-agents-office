@@ -9,19 +9,7 @@ import {
   ringHue,
   ringPixelPaths,
   sessionClock,
-  usageSeverity,
 } from '../src/components/usageView.js';
-
-describe('usageSeverity', () => {
-  it('bands at 80 and 95', () => {
-    expect(usageSeverity(0)).toBe('normal');
-    expect(usageSeverity(79.9)).toBe('normal');
-    expect(usageSeverity(80)).toBe('warning');
-    expect(usageSeverity(94.9)).toBe('warning');
-    expect(usageSeverity(95)).toBe('danger');
-    expect(usageSeverity(100)).toBe('danger');
-  });
-});
 
 describe('formatTimeLeft', () => {
   const MIN = 60_000;

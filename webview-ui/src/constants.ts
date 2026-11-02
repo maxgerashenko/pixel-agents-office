@@ -577,14 +577,10 @@ export const VISUAL_VIEWPORT_FULL_EPSILON_PX = 1;
 export const KEYBOARD_MIN_HEIGHT_PX = 150;
 
 // ── Usage meter ──────────────────────────────────────────────
-/** Bar turns the warning colour at this percent used. */
-export const USAGE_WARN_PERCENT = 80;
-/** Bar turns the danger colour at this percent used. */
-export const USAGE_DANGER_PERCENT = 95;
 /** How often the meter re-checks whether its window has reset. */
 export const USAGE_EXPIRY_CHECK_MS = 30_000;
 /** Length of Claude's "current session" rate-limit window, in hours. The meter
- *  shows one dot per hour before the last; the last hour runs inside the bar. */
+ *  fills a ring over the hours before the last; the last hour runs inside the bar. */
 export const USAGE_SESSION_HOURS = 5;
 /** Session ring hue when empty (green) and just before full (red); the fill
  *  slides between them as the first hours pass. */

@@ -8,16 +8,8 @@ import {
   ringHue,
   ringPixelPaths,
   sessionClock,
-  type UsageSeverity,
-  usageSeverity,
   type UsageView,
 } from './usageView.js';
-
-const FILL_CLASS: Record<UsageSeverity, string> = {
-  normal: 'bg-accent-bright',
-  warning: 'bg-warning',
-  danger: 'bg-danger',
-};
 
 /** Grid size and stroke of the session ring, in sprite pixels (drawn at 2×). */
 const RING_GRID = 15;
@@ -103,22 +95,20 @@ export function UsageMeter({ usage }: UsageMeterProps) {
           lastHourPercent === null ? undefined : `Last hour: ${Math.round(lastHourPercent)}% passed`
         }
       >
-        {/* Last hour of the window: a pink layer sharing the bar with the
-            token fill. The shorter of the two is drawn in front, so both
-            stay visible whichever is ahead. */}
+        {/* Last hour of the window: a layer sharing the bar with the token
+            fill. The shorter of the two is drawn in front, so both stay
+            visible: yellow while the hour is behind the tokens, pink once
+            it is ahead. */}
         {lastHourPercent !== null && lastHourPercent > percent && (
           <div
             className="absolute inset-y-0 left-0 bg-usage-last-hour"
             style={{ width: `${lastHourPercent}%` }}
           />
         )}
-        <div
-          className={`relative h-full ${FILL_CLASS[usageSeverity(session.usedPercentage)]}`}
-          style={{ width: `${percent}%` }}
-        />
+        <div className="relative h-full bg-accent-bright" style={{ width: `${percent}%` }} />
         {lastHourPercent !== null && lastHourPercent <= percent && (
           <div
-            className="absolute inset-y-0 left-0 bg-usage-last-hour"
+            className="absolute inset-y-0 left-0 bg-usage-last-hour-behind"
             style={{ width: `${lastHourPercent}%` }}
           />
         )}
