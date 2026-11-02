@@ -103,9 +103,10 @@ export function UsageMeter({ usage }: UsageMeterProps) {
           lastHourPercent === null ? undefined : `Last hour: ${Math.round(lastHourPercent)}% passed`
         }
       >
-        {/* Last hour of the window: a pink layer sharing the bar with the
-            token fill. The shorter of the two is drawn in front, so both
-            stay visible whichever is ahead. */}
+        {/* Last hour of the window: a layer sharing the bar with the token
+            fill. The shorter of the two is drawn in front, so both stay
+            visible: yellow while the hour is behind the tokens, pink once
+            it is ahead. */}
         {lastHourPercent !== null && lastHourPercent > percent && (
           <div
             className="absolute inset-y-0 left-0 bg-usage-last-hour"
@@ -118,7 +119,7 @@ export function UsageMeter({ usage }: UsageMeterProps) {
         />
         {lastHourPercent !== null && lastHourPercent <= percent && (
           <div
-            className="absolute inset-y-0 left-0 bg-usage-last-hour"
+            className="absolute inset-y-0 left-0 bg-usage-last-hour-behind"
             style={{ width: `${lastHourPercent}%` }}
           />
         )}
