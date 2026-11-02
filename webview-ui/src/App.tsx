@@ -395,6 +395,23 @@ function App() {
     editor.handleFitWidth({ width: canvas.width, height: canvas.height }, { top, obstacles });
   }, [editor]);
 
+  // On load, frame the office the way the fit button does — once, when the
+  // layout first arrives. Deferred a frame so the canvas has its backing-store
+  // size and the toolbars are laid out (they are the fit's obstacles). Skipped
+  // if the intro greeter already holds the camera, which fitting would cancel.
+  // The latest callback rides in a ref so re-renders (a new `editor` object
+  // each time) don't cancel the pending frame.
+  const handleFitWidthRef = useRef(handleFitWidth);
+  handleFitWidthRef.current = handleFitWidth;
+  useEffect(() => {
+    if (!layoutReady) return;
+    const frame = requestAnimationFrame(() => {
+      if (getOfficeState().greeterCameraTarget) return;
+      handleFitWidthRef.current();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [layoutReady]);
+
   const handleClick = useCallback(
     (agentId: number) => {
       // If clicked agent is a sub-agent, focus the parent's terminal instead
