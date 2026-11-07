@@ -87,7 +87,7 @@ export function reorderByPointer(
 }
 
 /** The short name a card shows: the part after the last underscore
- *  ("Agent_sonnet5.5_CODE" → "CODE"); names without one, or ending in one,
+ *  ("Agent_sonnet_CODE" → "CODE"); names without one, or ending in one,
  *  show whole. The card's tooltip keeps the full name. */
 export function cardShortName(name: string): string {
   const tail = name.slice(name.lastIndexOf('_') + 1);
