@@ -39,6 +39,14 @@ import {
   SELECTED_OUTLINE_ALPHA,
   SELECTION_DASH_PATTERN,
   SELECTION_HIGHLIGHT_COLOR,
+  TABLE_TENNIS_BALL_COLOR,
+  TABLE_TENNIS_BALL_SHADOW_COLOR,
+  TABLE_TENNIS_BALL_SIZE_PX,
+  TABLE_TENNIS_SCORE_BG_COLOR,
+  TABLE_TENNIS_SCORE_BORDER_COLOR,
+  TABLE_TENNIS_SCORE_COLOR,
+  TABLE_TENNIS_SCORE_FONT_PX,
+  TABLE_TENNIS_SCORE_WIN_COLOR,
   VOID_TILE_DASH_PATTERN,
   VOID_TILE_OUTLINE_COLOR,
 } from '../../constants.js';
@@ -67,6 +75,7 @@ import { getWallInstances, hasWallSprites, wallColorToHex } from '../wallTiles.j
 import { getCharacterSprite, isSeatedPose } from './characters.js';
 import { renderMatrixEffect } from './matrixEffect.js';
 import { getPetSpriteData } from './petEntity.js';
+import type { TableBall, TableScore } from './tableTennis.js';
 
 // ── Settings ────────────────────────────────────────────────────
 
@@ -341,6 +350,47 @@ interface ZDrawable {
 }
 
 /** @internal */
+/**
+ * Table-tennis scoreboards over the net: white "left - right" on a table-green plate,
+ * the final score in gold while the winner celebrates. Drawn above the scene.
+ */
+function renderTableScores(
+  ctx: CanvasRenderingContext2D,
+  scores: TableScore[],
+  offsetX: number,
+  offsetY: number,
+  zoom: number,
+): void {
+  const fontSize = TABLE_TENNIS_SCORE_FONT_PX * zoom;
+  const pad = zoom;
+  ctx.save();
+  ctx.font = `${fontSize}px 'FS Pixel Sans'`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'alphabetic';
+  for (const s of scores) {
+    const text = `${s.scores[0]} - ${s.scores[1]}`;
+    const cx = Math.round(offsetX + s.x * zoom);
+    const cy = Math.round(offsetY + s.y * zoom);
+    // Fit the plate to the digits' ink, not the font box: equal margin above
+    // and below the numbers
+    const m = ctx.measureText(text);
+    const ascent = Math.ceil(m.actualBoundingBoxAscent);
+    const inkH = ascent + Math.ceil(m.actualBoundingBoxDescent);
+    const w = Math.ceil(m.width) + pad * 4;
+    const h = inkH + pad * 4;
+    const left = Math.round(cx - w / 2);
+    const top = Math.round(cy - h / 2);
+    // Table-green plate with the table's white line as a 1px border
+    ctx.fillStyle = TABLE_TENNIS_SCORE_BORDER_COLOR;
+    ctx.fillRect(left - pad, top - pad, w + pad * 2, h + pad * 2);
+    ctx.fillStyle = TABLE_TENNIS_SCORE_BG_COLOR;
+    ctx.fillRect(left, top, w, h);
+    ctx.fillStyle = s.winner === null ? TABLE_TENNIS_SCORE_COLOR : TABLE_TENNIS_SCORE_WIN_COLOR;
+    ctx.fillText(text, cx, top + pad * 2 + ascent);
+  }
+  ctx.restore();
+}
+
 export function renderScene(
   ctx: CanvasRenderingContext2D,
   furniture: FurnitureInstance[],
@@ -351,8 +401,25 @@ export function renderScene(
   selectedAgentId: number | null,
   hoveredAgentId: number | null,
   pets: Pet[] = [],
+  balls: TableBall[] = [],
 ): void {
   const drawables: ZDrawable[] = [];
+
+  // Table-tennis balls: a shadow on the table top and the ball above it, both
+  // sorted just after the table so the players stay in front
+  for (const b of balls) {
+    drawables.push({
+      zY: b.zY,
+      draw: (c) => {
+        const size = TABLE_TENNIS_BALL_SIZE_PX * zoom;
+        const left = Math.round(offsetX + b.x * zoom - size / 2);
+        c.fillStyle = TABLE_TENNIS_BALL_SHADOW_COLOR;
+        c.fillRect(left, Math.round(offsetY + b.y * zoom - size / 2), size, size);
+        c.fillStyle = TABLE_TENNIS_BALL_COLOR;
+        c.fillRect(left, Math.round(offsetY + (b.y - b.z) * zoom - size / 2), size, size);
+      },
+    });
+  }
 
   // Furniture
   for (const f of furniture) {
@@ -870,6 +937,8 @@ export function renderFrame(
   showAreas?: boolean,
   activeAreaLabel?: string | null,
   pets?: Pet[],
+  balls?: TableBall[],
+  scores?: TableScore[],
 ): { offsetX: number; offsetY: number } {
   // Clear
   ctx.clearRect(0, 0, canvasWidth, canvasHeight);
@@ -926,7 +995,12 @@ export function renderFrame(
     selectedId,
     hoveredId,
     pets ?? [],
+    balls ?? [],
   );
+
+  if (scores && scores.length > 0) {
+    renderTableScores(ctx, scores, offsetX, offsetY, zoom);
+  }
 
   // Character speech bubbles render in ToolOverlay (DOM, above the labels).
   // Pet heart bubbles (canvas overlay pass)

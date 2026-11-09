@@ -636,3 +636,50 @@ export const PHONE_SPOT_MAX_ATTEMPTS = 8;
  *  away from any desk, and each occupied neighbouring tile, cost this much. */
 export const PHONE_SCORE_AWAY_FROM_DESK = 200;
 export const PHONE_SCORE_PER_NEIGHBOUR = 300;
+
+// ── Table tennis ────────────────────────────────────────────
+/** Furniture type that hosts a 1v1 game (matched against the catalog type). */
+export const TABLE_TENNIS_TYPE_PATTERN = /TABLE_TENNIS/i;
+/** A resting agent that finds an empty table waits this long for an opponent. */
+export const TABLE_TENNIS_WAIT_MAX_SEC = 30;
+/** Chance a bored agent walks to a table with nobody waiting (it then waits). */
+export const TABLE_TENNIS_START_CHANCE = 0.7;
+/** A game is won at this many points, by at least this lead. */
+export const TABLE_TENNIS_WIN_POINTS = 11;
+export const TABLE_TENNIS_WIN_BY = 2;
+/** Each player serves this many points in a row (one each from deuce). */
+export const TABLE_TENNIS_SERVES_PER_TURN = 2;
+/** A point's rally lasts a random number of table crossings in this range. */
+export const TABLE_TENNIS_RALLY_MIN_HITS = 1;
+export const TABLE_TENNIS_RALLY_MAX_HITS = 8;
+/** Breather between points (ball out of play), and after the winning point. */
+export const TABLE_TENNIS_POINT_PAUSE_SEC = 1.2;
+export const TABLE_TENNIS_GAME_OVER_PAUSE_SEC = 3;
+/** Scoreboard above the net: sprite-pixel font size and how far above the
+ *  table's sprite top it floats. */
+export const TABLE_TENNIS_SCORE_FONT_PX = 6;
+export const TABLE_TENNIS_SCORE_LIFT_PX = 5;
+export const TABLE_TENNIS_SCORE_COLOR = '#ffffff';
+export const TABLE_TENNIS_SCORE_WIN_COLOR = '#ffd84a';
+export const TABLE_TENNIS_SCORE_BG_COLOR = '#267a54';
+export const TABLE_TENNIS_SCORE_BORDER_COLOR = '#ecf0ec';
+/** A player swings while the ball is within this fraction of the table of it. */
+export const TABLE_TENNIS_SWING_NEAR = 0.18;
+/** Seconds for the ball to cross the table once. */
+export const TABLE_TENNIS_BALL_CROSS_SEC = 0.9;
+/** Ball height at the paddle, in sprite pixels above the table surface. */
+export const TABLE_TENNIS_BALL_HIT_HEIGHT_PX = 4;
+/** Extra lift of the ball's arc before / after it bounces on the far half. */
+export const TABLE_TENNIS_BALL_ARC_PX = 7;
+export const TABLE_TENNIS_BALL_REBOUND_PX = 3;
+/** Where along its flight (0 = hit, 1 = opponent's paddle) the ball bounces. */
+export const TABLE_TENNIS_BALL_BOUNCE_AT = 0.65;
+/** Ball size in sprite pixels. */
+export const TABLE_TENNIS_BALL_SIZE_PX = 2;
+/** Ball colour (canvas draw). */
+export const TABLE_TENNIS_BALL_COLOR = '#f4f4f4';
+export const TABLE_TENNIS_BALL_SHADOW_COLOR = 'rgba(0, 0, 0, 0.35)';
+/** Paddle colours: rubber face, its darker rim, wooden handle. */
+export const TABLE_TENNIS_PADDLE_COLOR = '#d23a3a';
+export const TABLE_TENNIS_PADDLE_RIM_COLOR = '#8e2026';
+export const TABLE_TENNIS_PADDLE_HANDLE_COLOR = '#9a6a35';

@@ -20,6 +20,7 @@ import {
   PHONE_SPOT_MAX_ATTEMPTS,
   PLAY_FURNITURE_TYPE_PATTERN,
   REST_SEAT_TYPE_PATTERN,
+  TABLE_TENNIS_START_CHANCE,
   WAITING_BUBBLE_DURATION_SEC,
 } from '../../constants.js';
 import { arcadePlaySpot } from '../layout/arcadePlacement.js';
@@ -47,7 +48,14 @@ import type {
 } from '../types.js';
 import { CharacterState, Direction, PetState, TILE_SIZE } from '../types.js';
 import type { PlaySpot } from './characters.js';
-import { createCharacter, isSeatedPose, settleOnWorkSpot, updateCharacter } from './characters.js';
+import {
+  createCharacter,
+  isSeatedPose,
+  leaveTable,
+  settleAtPlaySlot,
+  settleOnWorkSpot,
+  updateCharacter,
+} from './characters.js';
 import { advanceMatrixEffect, startMatrixEffect } from './matrixEffectState.js';
 import type { PetHome } from './petEntity.js';
 import { createPet, findPetHome, isNearPetHome, updatePet } from './petEntity.js';
@@ -60,6 +68,14 @@ import {
   workLabelsFor,
   zoneAt,
 } from './seatPlacement.js';
+import type { TableBall, TableGame, TableScore, TableTennisTable } from './tableTennis.js';
+import {
+  advanceTableGame,
+  ballInPlay,
+  deriveTables,
+  newTableGame,
+  swingFrame,
+} from './tableTennis.js';
 
 /** The four orthogonal neighbours of a tile, as [dCol, dRow]. */
 const NEIGHBOURS: ReadonlyArray<readonly [number, number]> = [
@@ -98,6 +114,10 @@ export class OfficeState {
   /** Bench/sofa seats away from computers and not within an Area's 1-tile
    *  buffer — where idle agents rest. */
   restSeatIds = new Set<string>();
+  /** Table-tennis tables whose both ends are somewhere idle agents may stand. */
+  tennisTables: TableTennisTable[] = [];
+  /** Per-table game clocks (wait for an opponent, rally length). */
+  private tableGames = new Map<string, TableGame>();
   /** Standing spots in front of arcade machines outside every Area and its
    *  buffer — where idle agents play. Keyed `play:<furniture uid>`. */
   playSpots = new Map<string, PlaySpot>();
@@ -227,6 +247,7 @@ export class OfficeState {
     // a non-work seat the user picked by hand stays theirs.
     for (const ch of this.characters.values()) {
       ch.restSeatId = null; // rest claims don't survive a seat rebuild
+      if (ch.playSlot) leaveTable(ch); // nor do table claims
       ch.playSpotId = null;
       ch.workSpot = null; // nor do pairing / phone spots (replanned next frame)
       const lostItsComputer =
@@ -658,16 +679,153 @@ export class OfficeState {
     );
     this.wanderTiles = clear.length > 0 ? clear : outside.length > 0 ? outside : this.walkableTiles;
     this.noIdleTileKeys = new Set();
-    if (this.wanderTiles === this.walkableTiles) return;
-    for (let row = 0; row < rows; row++) {
-      for (let col = 0; col < cols; col++) {
-        const banned =
-          this.wanderTiles === clear
-            ? isNearArea(areaTiles, cols, rows, col, row)
-            : zoneAt(areaTiles, cols, col, row) !== null;
-        if (banned) this.noIdleTileKeys.add(`${col},${row}`);
+    if (this.wanderTiles !== this.walkableTiles) {
+      for (let row = 0; row < rows; row++) {
+        for (let col = 0; col < cols; col++) {
+          const banned =
+            this.wanderTiles === clear
+              ? isNearArea(areaTiles, cols, rows, col, row)
+              : zoneAt(areaTiles, cols, col, row) !== null;
+          if (banned) this.noIdleTileKeys.add(`${col},${row}`);
+        }
       }
     }
+    // Table-tennis ends follow the same rule as resting: never in an Area
+    this.tennisTables = deriveTables(
+      this.layout.furniture,
+      (col, row) => isWalkable(col, row, this.tileMap, this.blockedTiles),
+      this.noIdleTileKeys,
+    );
+    for (const uid of [...this.tableGames.keys()]) {
+      if (!this.tennisTables.some((t) => t.uid === uid)) this.tableGames.delete(uid);
+    }
+  }
+
+  /** Characters currently holding a claim on each end of a table. */
+  private tablePlayers(uid: string): [Character | null, Character | null] {
+    const out: [Character | null, Character | null] = [null, null];
+    for (const ch of this.characters.values()) {
+      if (ch.playSlot?.tableUid === uid) out[ch.playSlot.index] = ch;
+    }
+    return out;
+  }
+
+  private static atSlot(ch: Character | null): ch is Character {
+    return (
+      ch !== null &&
+      ch.playSlot != null &&
+      ch.state === CharacterState.TYPE &&
+      ch.tileCol === ch.playSlot.col &&
+      ch.tileRow === ch.playSlot.row
+    );
+  }
+
+  /**
+   * The bored-agent table planner handed to the FSM (see ClaimTable): join a
+   * table where an opponent already waits, else sometimes walk to an empty one
+   * and wait. Arrow property so it can be passed without rebinding.
+   */
+  readonly claimTable = (ch: Character): boolean => {
+    if (ch.isActive || ch.isSubagent) return false;
+    let best: { slot: TableTennisTable['slots'][number]; score: number } | null = null;
+    for (const table of this.tennisTables) {
+      const [a, b] = this.tablePlayers(table.uid);
+      const taken = [a, b].filter((p) => p !== null).length;
+      if (taken >= 2) continue;
+      const slot = a ? table.slots[1] : b ? table.slots[0] : null;
+      const candidates = slot ? [slot] : table.slots;
+      for (const s of candidates) {
+        const dist = Math.abs(s.col - ch.tileCol) + Math.abs(s.row - ch.tileRow);
+        // A waiting opponent beats an empty table; then nearest first
+        const score = (taken === 1 ? 0 : 1000) + dist;
+        if (!best || score < best.score) best = { slot: s, score };
+      }
+    }
+    if (!best) return false;
+    if (best.score >= 1000 && Math.random() >= TABLE_TENNIS_START_CHANCE) return false;
+    const slot = best.slot;
+    if (ch.tileCol === slot.col && ch.tileRow === slot.row) {
+      ch.playSlot = slot;
+      settleAtPlaySlot(ch, slot);
+      return true;
+    }
+    const path = findPath(
+      ch.tileCol,
+      ch.tileRow,
+      slot.col,
+      slot.row,
+      this.tileMap,
+      this.blockedTiles,
+    );
+    if (path.length === 0) return false;
+    ch.playSlot = slot;
+    ch.path = path;
+    ch.moveProgress = 0;
+    ch.state = CharacterState.WALK;
+    ch.frame = 0;
+    ch.frameTimer = 0;
+    return true;
+  };
+
+  /** Run each table's game: start rallies, time out lonely waits, end games. */
+  private updateTableGames(dt: number): void {
+    // A claim on a table that no longer exists (edited away) is void
+    for (const ch of this.characters.values()) {
+      if (ch.playSlot && !this.tennisTables.some((t) => t.uid === ch.playSlot!.tableUid)) {
+        leaveTable(ch);
+      }
+    }
+    for (const table of this.tennisTables) {
+      let game = this.tableGames.get(table.uid);
+      if (!game) {
+        game = newTableGame();
+        this.tableGames.set(table.uid, game);
+      }
+      const players = this.tablePlayers(table.uid);
+      const here = players.filter((p) => OfficeState.atSlot(p));
+      const verdict = advanceTableGame(game, here.length, dt);
+      const playing = verdict === 'playing';
+      const ball = playing ? ballInPlay(table, game) : null;
+      players.forEach((p, i) => {
+        if (!p) return;
+        p.playing = playing && OfficeState.atSlot(p);
+        if (p.playing) p.frame = ball ? swingFrame(ball.near[i]) : 0;
+      });
+      if (verdict === 'give-up' || verdict === 'finished') {
+        for (const p of players) if (p) leaveTable(p);
+      }
+    }
+  }
+
+  /** Balls in flight, in world pixels with a height above the table. */
+  getTableTennisBalls(): TableBall[] {
+    const out: TableBall[] = [];
+    for (const table of this.tennisTables) {
+      const game = this.tableGames.get(table.uid);
+      if (!game) continue;
+      const players = this.tablePlayers(table.uid);
+      if (!players[0]?.playing || !players[1]?.playing) continue;
+      const ball = ballInPlay(table, game);
+      if (ball) out.push(ball);
+    }
+    return out;
+  }
+
+  /** Scoreboards over the net of every table with a game on. */
+  getTableTennisScores(): TableScore[] {
+    const out: TableScore[] = [];
+    for (const table of this.tennisTables) {
+      const game = this.tableGames.get(table.uid);
+      const players = this.tablePlayers(table.uid);
+      if (!game || !players[0]?.playing || !players[1]?.playing) continue;
+      out.push({
+        x: table.scoreX,
+        y: table.scoreY,
+        scores: [game.scores[0], game.scores[1]],
+        winner: game.winner,
+      });
+    }
+    return out;
   }
 
   /** Is this seat's tile inside an Area or within its 1-tile idle buffer? */
@@ -1640,6 +1798,8 @@ export class OfficeState {
       if (ch.playSpotId) freePlaySpots.delete(ch.playSpotId);
     }
 
+    this.updateTableGames(dt);
+
     const toDelete: number[] = [];
     for (const ch of this.characters.values()) {
       const effect = advanceMatrixEffect(ch, dt);
@@ -1661,6 +1821,7 @@ export class OfficeState {
           !ch.seatId || !this.seatNearArea(ch.seatId),
           this.noIdleTileKeys,
           ch.isSubagent ? undefined : this.claimWorkSpot,
+          ch.isSubagent ? undefined : this.claimTable,
           this.playSpots,
           freePlaySpots,
         ),
