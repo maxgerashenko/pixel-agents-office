@@ -623,13 +623,23 @@ export const TABLE_TENNIS_START_CHANCE = 0.7;
 /** How long a game runs once both players are at the table. */
 export const TABLE_TENNIS_GAME_MIN_SEC = 20;
 export const TABLE_TENNIS_GAME_MAX_SEC = 40;
-/** Players' sway animation rate while a rally is on. */
-export const TABLE_TENNIS_SWING_SEC = 0.45;
+/** A player swings while the ball is within this fraction of the table of it. */
+export const TABLE_TENNIS_SWING_NEAR = 0.18;
 /** Seconds for the ball to cross the table once. */
 export const TABLE_TENNIS_BALL_CROSS_SEC = 0.9;
-/** Peak height of the ball's arc, in sprite pixels. */
+/** Ball height at the paddle, in sprite pixels above the table surface. */
+export const TABLE_TENNIS_BALL_HIT_HEIGHT_PX = 4;
+/** Extra lift of the ball's arc before / after it bounces on the far half. */
 export const TABLE_TENNIS_BALL_ARC_PX = 7;
+export const TABLE_TENNIS_BALL_REBOUND_PX = 3;
+/** Where along its flight (0 = hit, 1 = opponent's paddle) the ball bounces. */
+export const TABLE_TENNIS_BALL_BOUNCE_AT = 0.65;
 /** Ball size in sprite pixels. */
 export const TABLE_TENNIS_BALL_SIZE_PX = 2;
 /** Ball colour (canvas draw). */
 export const TABLE_TENNIS_BALL_COLOR = '#f4f4f4';
+export const TABLE_TENNIS_BALL_SHADOW_COLOR = 'rgba(0, 0, 0, 0.35)';
+/** Paddle colours: rubber face, its darker rim, wooden handle. */
+export const TABLE_TENNIS_PADDLE_COLOR = '#d23a3a';
+export const TABLE_TENNIS_PADDLE_RIM_COLOR = '#8e2026';
+export const TABLE_TENNIS_PADDLE_HANDLE_COLOR = '#9a6a35';

@@ -40,6 +40,7 @@ import {
   SELECTION_DASH_PATTERN,
   SELECTION_HIGHLIGHT_COLOR,
   TABLE_TENNIS_BALL_COLOR,
+  TABLE_TENNIS_BALL_SHADOW_COLOR,
   TABLE_TENNIS_BALL_SIZE_PX,
   VOID_TILE_DASH_PATTERN,
   VOID_TILE_OUTLINE_COLOR,
@@ -69,6 +70,7 @@ import { getWallInstances, hasWallSprites, wallColorToHex } from '../wallTiles.j
 import { getCharacterSprite, isSeatedPose } from './characters.js';
 import { renderMatrixEffect } from './matrixEffect.js';
 import { getPetSpriteData } from './petEntity.js';
+import type { TableBall } from './tableTennis.js';
 
 // ── Settings ────────────────────────────────────────────────────
 
@@ -353,24 +355,22 @@ export function renderScene(
   selectedAgentId: number | null,
   hoveredAgentId: number | null,
   pets: Pet[] = [],
-  balls: Array<{ x: number; y: number; z: number }> = [],
+  balls: TableBall[] = [],
 ): void {
   const drawables: ZDrawable[] = [];
 
-  // Table-tennis balls: sorted just above the table's far edge so a player at
-  // the near end never hides them
+  // Table-tennis balls: a shadow on the table top and the ball above it, both
+  // sorted just after the table so the players stay in front
   for (const b of balls) {
     drawables.push({
-      zY: b.y + TILE_SIZE,
+      zY: b.zY,
       draw: (c) => {
         const size = TABLE_TENNIS_BALL_SIZE_PX * zoom;
+        const left = Math.round(offsetX + b.x * zoom - size / 2);
+        c.fillStyle = TABLE_TENNIS_BALL_SHADOW_COLOR;
+        c.fillRect(left, Math.round(offsetY + b.y * zoom - size / 2), size, size);
         c.fillStyle = TABLE_TENNIS_BALL_COLOR;
-        c.fillRect(
-          Math.round(offsetX + b.x * zoom - size / 2),
-          Math.round(offsetY + (b.y - b.z) * zoom - size / 2),
-          size,
-          size,
-        );
+        c.fillRect(left, Math.round(offsetY + (b.y - b.z) * zoom - size / 2), size, size);
       },
     });
   }
@@ -891,7 +891,7 @@ export function renderFrame(
   showAreas?: boolean,
   activeAreaLabel?: string | null,
   pets?: Pet[],
-  balls?: Array<{ x: number; y: number; z: number }>,
+  balls?: TableBall[],
 ): { offsetX: number; offsetY: number } {
   // Clear
   ctx.clearRect(0, 0, canvasWidth, canvasHeight);

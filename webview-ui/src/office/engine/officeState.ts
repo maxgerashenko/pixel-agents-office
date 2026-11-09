@@ -64,8 +64,14 @@ import {
   workLabelsFor,
   zoneAt,
 } from './seatPlacement.js';
-import type { TableGame, TableTennisTable } from './tableTennis.js';
-import { advanceTableGame, deriveTables, newTableGame, tableBall } from './tableTennis.js';
+import type { TableBall, TableGame, TableTennisTable } from './tableTennis.js';
+import {
+  advanceTableGame,
+  deriveTables,
+  newTableGame,
+  swingFrame,
+  tableBall,
+} from './tableTennis.js';
 
 /** The four orthogonal neighbours of a tile, as [dCol, dRow]. */
 const NEIGHBOURS: ReadonlyArray<readonly [number, number]> = [
@@ -729,7 +735,12 @@ export class OfficeState {
       const here = players.filter((p) => OfficeState.atSlot(p));
       const verdict = advanceTableGame(game, here.length, dt);
       const playing = verdict === 'playing';
-      for (const p of players) if (p) p.playing = playing && OfficeState.atSlot(p);
+      const ball = playing ? tableBall(table, game.elapsed) : null;
+      players.forEach((p, i) => {
+        if (!p) return;
+        p.playing = playing && OfficeState.atSlot(p);
+        if (ball && p.playing) p.frame = swingFrame(ball.near[i]);
+      });
       if (verdict === 'give-up' || verdict === 'finished') {
         for (const p of players) if (p) leaveTable(p);
       }
@@ -737,8 +748,8 @@ export class OfficeState {
   }
 
   /** Balls in flight, in world pixels with a height above the table. */
-  getTableTennisBalls(): Array<{ x: number; y: number; z: number }> {
-    const out: Array<{ x: number; y: number; z: number }> = [];
+  getTableTennisBalls(): TableBall[] {
+    const out: TableBall[] = [];
     for (const table of this.tennisTables) {
       const game = this.tableGames.get(table.uid);
       if (!game) continue;

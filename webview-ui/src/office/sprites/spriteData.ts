@@ -5,6 +5,9 @@ import {
   PHONE_HAND_FALLBACK_COLOR,
   PHONE_SCREEN_ALT_COLOR,
   PHONE_SCREEN_COLOR,
+  TABLE_TENNIS_PADDLE_COLOR,
+  TABLE_TENNIS_PADDLE_HANDLE_COLOR,
+  TABLE_TENNIS_PADDLE_RIM_COLOR,
 } from '../../constants.js';
 import { adjustSprite } from '../colorize.js';
 import type { Direction, SpriteData } from '../types.js';
@@ -75,9 +78,37 @@ export interface CharacterSprites {
   /** Standing and vibe coding on the phone (no computer or pairing seat free);
    *  the two frames flicker the screen. */
   phone: Record<Direction, [SpriteData, SpriteData]>;
+  /** Table tennis, standing with a paddle: [ready, swing]. Facing up/down the
+   *  paddle is hidden (players only ever face left or right). */
+  paddle: Record<Direction, [SpriteData, SpriteData]>;
 }
 
-type BaseSprites = Omit<CharacterSprites, 'phoneWalk' | 'phone'>;
+type BaseSprites = Omit<CharacterSprites, 'phoneWalk' | 'phone' | 'paddle'>;
+
+/**
+ * Draw a table-tennis paddle in the hand of a right-facing character (left is
+ * the mirror). Ready: blade low beside the hand, over the table edge. Swing:
+ * arm out and blade raised forward to meet the ball.
+ */
+function withPaddle(sprite: SpriteData, swing: boolean, skin: string): SpriteData {
+  const out = sprite.map((row) => [...row]);
+  const put = (row: number, col: number, color: string) => {
+    if (out[row] && col >= 0 && col < out[row].length) out[row][col] = color;
+  };
+  const top = swing ? 15 : 18;
+  // Blade: 3x3 rubber face with a darker rim on the outer column and bottom
+  for (let r = top; r < top + 3; r++) {
+    for (let c = 13; c <= 15; c++) {
+      const rim = c === 15 || r === top + 2;
+      put(r, c, rim ? TABLE_TENNIS_PADDLE_RIM_COLOR : TABLE_TENNIS_PADDLE_COLOR);
+    }
+  }
+  put(top + 3, 13, TABLE_TENNIS_PADDLE_HANDLE_COLOR);
+  // Hand on the handle (pushed out on the swing)
+  put(top + 4, swing ? 13 : 12, skin);
+  if (swing) put(top + 4, 12, skin);
+  return out;
+}
 
 /** Where the hand sits on the down-facing walk sprite (sampled for skin). */
 const HAND_SAMPLE = { row: 22, col: 2 } as const;
@@ -132,8 +163,16 @@ function addPhoneSprites(base: BaseSprites): CharacterSprites {
     right(walkRight[1]),
     right(walkRight[1], PHONE_SCREEN_ALT_COLOR),
   ];
+  const ready = withPaddle(walkRight[1], false, skin);
+  const swing = withPaddle(walkRight[2], true, skin);
   return {
     ...base,
+    paddle: {
+      [Dir.DOWN]: [walkDown[1], walkDown[1]],
+      [Dir.UP]: [walkUp[1], walkUp[1]],
+      [Dir.RIGHT]: [ready, swing],
+      [Dir.LEFT]: [flipSpriteHorizontal(ready), flipSpriteHorizontal(swing)],
+    } as Record<Direction, [SpriteData, SpriteData]>,
     phoneWalk: {
       [Dir.DOWN]: walkDown.map((s) => down(s)),
       [Dir.UP]: walkUp,

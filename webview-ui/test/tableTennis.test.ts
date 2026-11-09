@@ -9,7 +9,9 @@ import assert from 'node:assert/strict';
 
 import { beforeAll, test } from 'vitest';
 
+import { TABLE_TENNIS_BALL_BOUNCE_AT, TABLE_TENNIS_BALL_CROSS_SEC } from '../src/constants.js';
 import { OfficeState } from '../src/office/engine/officeState.js';
+import { swingFrame, tableBall } from '../src/office/engine/tableTennis.js';
 import type { LoadedAssetData } from '../src/office/layout/furnitureCatalog.js';
 import { buildDynamicCatalog } from '../src/office/layout/furnitureCatalog.js';
 import type { OfficeLayout, PlacedFurniture } from '../src/office/types.js';
@@ -97,14 +99,16 @@ test('two idle agents meet at a table, face each other and rally with a ball', (
   addIdleAgent(os, 2);
   let rallied = false;
   let sawBall = false;
+  let swung = false;
   simulate(os, 3000, () => {
     const players = [...os.characters.values()].filter((c) => c.playing);
     if (players.length === 2) {
       rallied = true;
       const [a, b] = players.sort((x, y) => x.tileCol - y.tileCol);
       assert.equal(a.state, CharacterState.TYPE);
-      assert.equal(a.tileCol, 3);
-      assert.equal(b.tileCol, 7);
+      assert.deepEqual([a.tileCol, a.tileRow], [3, 5], 'left end, level with the centre line');
+      assert.deepEqual([b.tileCol, b.tileRow], [7, 5], 'right end, level with the centre line');
+      if (a.frame === 1 || b.frame === 1) swung = true;
       assert.notEqual(a.dir, b.dir, 'players face each other');
       if (os.getTableTennisBalls().length === 1) sawBall = true;
     }
@@ -115,6 +119,23 @@ test('two idle agents meet at a table, face each other and rally with a ball', (
   });
   assert.ok(rallied, 'two agents played');
   assert.ok(sawBall, 'a ball was in play');
+  assert.ok(swung, 'players swung their paddles');
+});
+
+test('the ball leaves a paddle, bounces on the far half and reaches the other paddle', () => {
+  const os = new OfficeState(layout());
+  const table = os.tennisTables[0];
+  const at = (sec: number) => tableBall(table, sec);
+  assert.equal(at(0).x, table.ballLeftX);
+  assert.ok(at(0).z > 0, 'hit above the table');
+  assert.equal(at(0).near[0], 1);
+  const bounce = at(TABLE_TENNIS_BALL_CROSS_SEC * TABLE_TENNIS_BALL_BOUNCE_AT);
+  assert.ok(Math.abs(bounce.z) < 1e-9, 'touches the table');
+  assert.ok(bounce.x > (table.ballLeftX + table.ballRightX) / 2, 'on the far half');
+  const back = at(TABLE_TENNIS_BALL_CROSS_SEC);
+  assert.ok(Math.abs(back.x - table.ballRightX) < 1e-9);
+  assert.equal(swingFrame(back.near[1]), 1, 'receiver swings as it arrives');
+  assert.equal(swingFrame(back.near[0]), 0, 'server is back to ready');
 });
 
 test('a lone agent gives up waiting for an opponent and carries on', () => {

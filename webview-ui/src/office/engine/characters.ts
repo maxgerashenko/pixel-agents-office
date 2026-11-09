@@ -2,7 +2,6 @@ import {
   DEFAULT_MAX_CONTEXT_TOKENS,
   SEAT_REST_MAX_SEC,
   SEAT_REST_MIN_SEC,
-  TABLE_TENNIS_SWING_SEC,
   TYPE_FRAME_DURATION_SEC,
   WALK_FRAME_DURATION_SEC,
   WALK_SPEED_PX_PER_SEC,
@@ -331,16 +330,9 @@ export function updateCharacter(
   switch (ch.state) {
     case CharacterState.TYPE: {
       if (ch.playSlot) {
-        // At a table end: sway while a rally is on (officeState sets `playing`),
-        // otherwise stand and wait for an opponent
-        if (ch.playing) {
-          if (ch.frameTimer >= TABLE_TENNIS_SWING_SEC) {
-            ch.frameTimer -= TABLE_TENNIS_SWING_SEC;
-            ch.frame = (ch.frame + 1) % 2;
-          }
-        } else {
-          ch.frame = 0;
-        }
+        // At a table end: officeState drives the swing frame from the ball
+        // while a rally is on; waiting for an opponent is the ready pose
+        if (!ch.playing) ch.frame = 0;
         break;
       }
       if (ch.restSeatId) {
@@ -674,8 +666,8 @@ function startWork(
 export function getCharacterSprite(ch: Character, sprites: CharacterSprites): SpriteData {
   switch (ch.state) {
     case CharacterState.TYPE:
-      // Table tennis: standing, swaying between the two outer walk frames
-      if (ch.playSlot) return sprites.walk[ch.dir][ch.playing && ch.frame % 2 === 1 ? 2 : 1];
+      // Table tennis: paddle ready, or swinging as the ball arrives
+      if (ch.playSlot) return sprites.paddle[ch.dir][ch.playing ? ch.frame % 2 : 0];
       if (isOnPhone(ch)) return sprites.phone[ch.dir][ch.frame % 2];
       if (isReadingTool(ch.currentTool)) {
         return sprites.reading[ch.dir][ch.frame % 2];
