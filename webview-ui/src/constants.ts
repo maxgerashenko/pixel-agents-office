@@ -620,9 +620,24 @@ export const TABLE_TENNIS_TYPE_PATTERN = /TABLE_TENNIS/i;
 export const TABLE_TENNIS_WAIT_MAX_SEC = 30;
 /** Chance a bored agent walks to a table with nobody waiting (it then waits). */
 export const TABLE_TENNIS_START_CHANCE = 0.7;
-/** How long a game runs once both players are at the table. */
-export const TABLE_TENNIS_GAME_MIN_SEC = 20;
-export const TABLE_TENNIS_GAME_MAX_SEC = 40;
+/** A game is won at this many points, by at least this lead. */
+export const TABLE_TENNIS_WIN_POINTS = 11;
+export const TABLE_TENNIS_WIN_BY = 2;
+/** Each player serves this many points in a row (one each from deuce). */
+export const TABLE_TENNIS_SERVES_PER_TURN = 2;
+/** A point's rally lasts a random number of table crossings in this range. */
+export const TABLE_TENNIS_RALLY_MIN_HITS = 1;
+export const TABLE_TENNIS_RALLY_MAX_HITS = 8;
+/** Breather between points (ball out of play), and after the winning point. */
+export const TABLE_TENNIS_POINT_PAUSE_SEC = 1.2;
+export const TABLE_TENNIS_GAME_OVER_PAUSE_SEC = 3;
+/** Scoreboard above the net: sprite-pixel font size and how far above the
+ *  table's sprite top it floats. */
+export const TABLE_TENNIS_SCORE_FONT_PX = 6;
+export const TABLE_TENNIS_SCORE_LIFT_PX = 5;
+export const TABLE_TENNIS_SCORE_COLOR = '#ffffff';
+export const TABLE_TENNIS_SCORE_WIN_COLOR = '#ffd84a';
+export const TABLE_TENNIS_SCORE_BG_COLOR = 'rgba(20, 20, 32, 0.8)';
 /** A player swings while the ball is within this fraction of the table of it. */
 export const TABLE_TENNIS_SWING_NEAR = 0.18;
 /** Seconds for the ball to cross the table once. */

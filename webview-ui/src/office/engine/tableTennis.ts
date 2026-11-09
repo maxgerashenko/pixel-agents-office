@@ -11,11 +11,17 @@ import {
   TABLE_TENNIS_BALL_CROSS_SEC,
   TABLE_TENNIS_BALL_HIT_HEIGHT_PX,
   TABLE_TENNIS_BALL_REBOUND_PX,
-  TABLE_TENNIS_GAME_MAX_SEC,
-  TABLE_TENNIS_GAME_MIN_SEC,
+  TABLE_TENNIS_GAME_OVER_PAUSE_SEC,
+  TABLE_TENNIS_POINT_PAUSE_SEC,
+  TABLE_TENNIS_RALLY_MAX_HITS,
+  TABLE_TENNIS_RALLY_MIN_HITS,
+  TABLE_TENNIS_SCORE_LIFT_PX,
+  TABLE_TENNIS_SERVES_PER_TURN,
   TABLE_TENNIS_SWING_NEAR,
   TABLE_TENNIS_TYPE_PATTERN,
   TABLE_TENNIS_WAIT_MAX_SEC,
+  TABLE_TENNIS_WIN_BY,
+  TABLE_TENNIS_WIN_POINTS,
 } from '../../constants.js';
 import { getCatalogEntry } from '../layout/furnitureCatalog.js';
 import type { PlacedFurniture, PlaySlot } from '../types.js';
@@ -38,6 +44,9 @@ export interface TableTennisTable {
   ballY: number;
   /** Z-sort key for the ball: just in front of the table, behind the players. */
   ballZY: number;
+  /** Scoreboard anchor: above the net, over the table's sprite top. */
+  scoreX: number;
+  scoreY: number;
 }
 
 /**
@@ -75,6 +84,12 @@ export function deriveTables(
       ballRightX: right.col * TILE_SIZE + TILE_SIZE / 2 - BALL_END_INSET_PX,
       ballY: item.row * TILE_SIZE + TABLE_SURFACE_CENTER_PX,
       ballZY: (item.row + entry.footprintH) * TILE_SIZE + BALL_Z_AFTER_TABLE,
+      scoreX: (item.col + entry.footprintW / 2) * TILE_SIZE,
+      scoreY:
+        item.row * TILE_SIZE +
+        entry.footprintH * TILE_SIZE -
+        entry.sprite.length -
+        TABLE_TENNIS_SCORE_LIFT_PX,
     });
   }
   return tables;
@@ -83,20 +98,67 @@ export function deriveTables(
 export interface TableGame {
   /** Seconds the one player at the table has waited for an opponent. */
   waited: number;
-  /** Seconds the rally has run. */
+  /** Points per slot. */
+  scores: [number, number];
+  /** Which slot serves the current point. */
+  server: 0 | 1;
+  /** Table crossings this point's rally lasts (decided at the serve). */
+  rallyHits: number;
+  /** Seconds into the current rally. */
   elapsed: number;
-  /** How long this game lasts. */
-  duration: number;
+  /** Seconds left of the breather before the next serve (0 = ball in play). */
+  pause: number;
+  /** Set once a player has won; the score stays up through the final pause. */
+  winner: 0 | 1 | null;
+}
+
+function randomRallyHits(): number {
+  const span = TABLE_TENNIS_RALLY_MAX_HITS - TABLE_TENNIS_RALLY_MIN_HITS + 1;
+  return TABLE_TENNIS_RALLY_MIN_HITS + Math.floor(Math.random() * span);
 }
 
 export function newTableGame(): TableGame {
   return {
     waited: 0,
+    scores: [0, 0],
+    server: 0,
+    rallyHits: randomRallyHits(),
     elapsed: 0,
-    duration:
-      TABLE_TENNIS_GAME_MIN_SEC +
-      Math.random() * (TABLE_TENNIS_GAME_MAX_SEC - TABLE_TENNIS_GAME_MIN_SEC),
+    pause: TABLE_TENNIS_POINT_PAUSE_SEC,
+    winner: null,
   };
+}
+
+/** The winner of a game at this score (to 11, win by 2), or null. */
+export function gameWinner(scores: readonly [number, number]): 0 | 1 | null {
+  const [a, b] = scores;
+  if (Math.max(a, b) < TABLE_TENNIS_WIN_POINTS || Math.abs(a - b) < TABLE_TENNIS_WIN_BY) {
+    return null;
+  }
+  return a > b ? 0 : 1;
+}
+
+/** Who serves next: turns of two points, one each once both reach deuce. */
+export function nextServer(scores: readonly [number, number]): 0 | 1 {
+  const played = scores[0] + scores[1];
+  const deuce = TABLE_TENNIS_WIN_POINTS - 1;
+  if (scores[0] >= deuce && scores[1] >= deuce) return (played % 2) as 0 | 1;
+  return (Math.floor(played / TABLE_TENNIS_SERVES_PER_TURN) % 2) as 0 | 1;
+}
+
+/** Award a point (random winner when none is given) and set up the next one. */
+export function scorePoint(game: TableGame, winner: 0 | 1 = Math.random() < 0.5 ? 0 : 1): void {
+  game.scores[winner] += 1;
+  game.elapsed = 0;
+  game.winner = gameWinner(game.scores);
+  game.pause =
+    game.winner === null ? TABLE_TENNIS_POINT_PAUSE_SEC : TABLE_TENNIS_GAME_OVER_PAUSE_SEC;
+  game.server = nextServer(game.scores);
+  game.rallyHits = randomRallyHits();
+}
+
+function resetTableGame(game: TableGame): void {
+  Object.assign(game, newTableGame(), { waited: game.waited });
 }
 
 /** What the table needs done after a tick. */
@@ -104,17 +166,16 @@ export type TableVerdict = 'empty' | 'waiting' | 'playing' | 'give-up' | 'finish
 
 /**
  * Advance a table's game by dt given how many players stand at their ends.
- * 'give-up' / 'finished' tell the caller to send the players off (the game is
- * reset); 'playing' means a rally is on.
+ * 'playing' covers rallies and the breathers between points; 'give-up' /
+ * 'finished' tell the caller to send the players off (the game is reset).
  */
 export function advanceTableGame(game: TableGame, arrived: number, dt: number): TableVerdict {
-  if (arrived === 0) {
-    game.waited = 0;
-    game.elapsed = 0;
-    return 'empty';
-  }
-  if (arrived === 1) {
-    game.elapsed = 0;
+  if (arrived < 2) {
+    resetTableGame(game);
+    if (arrived === 0) {
+      game.waited = 0;
+      return 'empty';
+    }
     game.waited += dt;
     if (game.waited >= TABLE_TENNIS_WAIT_MAX_SEC) {
       game.waited = 0;
@@ -123,12 +184,18 @@ export function advanceTableGame(game: TableGame, arrived: number, dt: number): 
     return 'waiting';
   }
   game.waited = 0;
-  game.elapsed += dt;
-  if (game.elapsed >= game.duration) {
-    game.elapsed = 0;
-    game.duration = newTableGame().duration;
-    return 'finished';
+  if (game.pause > 0) {
+    game.pause -= dt;
+    if (game.pause > 0) return 'playing';
+    game.pause = 0;
+    if (game.winner !== null) {
+      resetTableGame(game);
+      return 'finished';
+    }
+    return 'playing';
   }
+  game.elapsed += dt;
+  if (game.elapsed >= game.rallyHits * TABLE_TENNIS_BALL_CROSS_SEC) scorePoint(game);
   return 'playing';
 }
 
@@ -157,12 +224,13 @@ function ballHeight(u: number): number {
   return h * s + 4 * TABLE_TENNIS_BALL_REBOUND_PX * s * (1 - s);
 }
 
-/** The ball at a rally time: hit back and forth, slot 0 serving. */
-export function tableBall(table: TableTennisTable, elapsed: number): TableBall {
+/** The ball at a rally time: hit back and forth, `server` hitting first. */
+export function tableBall(table: TableTennisTable, elapsed: number, server: 0 | 1 = 0): TableBall {
   const phase = elapsed / TABLE_TENNIS_BALL_CROSS_SEC;
   const leg = Math.floor(phase);
   const u = phase - leg;
-  const t = leg % 2 === 0 ? u : 1 - u; // 0 at slot 0's paddle, 1 at slot 1's
+  const fromSlot0 = (leg % 2 === 0) === (server === 0);
+  const t = fromSlot0 ? u : 1 - u; // 0 at slot 0's paddle, 1 at slot 1's
   return {
     x: table.ballLeftX + (table.ballRightX - table.ballLeftX) * t,
     y: table.ballY,
@@ -175,4 +243,17 @@ export function tableBall(table: TableTennisTable, elapsed: number): TableBall {
 /** Swing frame (1) while the ball is at this player's paddle, else ready (0). */
 export function swingFrame(nearness: number): 0 | 1 {
   return nearness >= 1 - TABLE_TENNIS_SWING_NEAR ? 1 : 0;
+}
+
+/** A scoreboard to draw: the two scores, left player first, over the net. */
+export interface TableScore {
+  x: number;
+  y: number;
+  scores: [number, number];
+  winner: 0 | 1 | null;
+}
+
+/** The ball in play, or null between points. */
+export function ballInPlay(table: TableTennisTable, game: TableGame): TableBall | null {
+  return game.pause > 0 ? null : tableBall(table, game.elapsed, game.server);
 }

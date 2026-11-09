@@ -217,6 +217,7 @@ export function OfficeCanvas({
           activeAreaLabel,
           officeState.pets,
           officeState.getTableTennisBalls(),
+          officeState.getTableTennisScores(),
         );
         offsetRef.current = { x: offsetX, y: offsetY };
 

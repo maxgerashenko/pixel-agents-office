@@ -11,7 +11,15 @@ import { beforeAll, test } from 'vitest';
 
 import { TABLE_TENNIS_BALL_BOUNCE_AT, TABLE_TENNIS_BALL_CROSS_SEC } from '../src/constants.js';
 import { OfficeState } from '../src/office/engine/officeState.js';
-import { swingFrame, tableBall } from '../src/office/engine/tableTennis.js';
+import {
+  advanceTableGame,
+  gameWinner,
+  newTableGame,
+  nextServer,
+  scorePoint,
+  swingFrame,
+  tableBall,
+} from '../src/office/engine/tableTennis.js';
 import type { LoadedAssetData } from '../src/office/layout/furnitureCatalog.js';
 import { buildDynamicCatalog } from '../src/office/layout/furnitureCatalog.js';
 import type { OfficeLayout, PlacedFurniture } from '../src/office/types.js';
@@ -100,6 +108,7 @@ test('two idle agents meet at a table, face each other and rally with a ball', (
   let rallied = false;
   let sawBall = false;
   let swung = false;
+  let sawScore = false;
   simulate(os, 3000, () => {
     const players = [...os.characters.values()].filter((c) => c.playing);
     if (players.length === 2) {
@@ -111,6 +120,7 @@ test('two idle agents meet at a table, face each other and rally with a ball', (
       if (a.frame === 1 || b.frame === 1) swung = true;
       assert.notEqual(a.dir, b.dir, 'players face each other');
       if (os.getTableTennisBalls().length === 1) sawBall = true;
+      if (os.getTableTennisScores().length === 1) sawScore = true;
     }
     const claims = [...os.characters.values()]
       .map((c) => (c.playSlot ? `${c.playSlot.tableUid}:${c.playSlot.index}` : null))
@@ -120,6 +130,7 @@ test('two idle agents meet at a table, face each other and rally with a ball', (
   assert.ok(rallied, 'two agents played');
   assert.ok(sawBall, 'a ball was in play');
   assert.ok(swung, 'players swung their paddles');
+  assert.ok(sawScore, 'the score showed over the net');
 });
 
 test('the ball leaves a paddle, bounces on the far half and reaches the other paddle', () => {
@@ -168,4 +179,60 @@ test('a player that becomes active leaves the game and walks to work', () => {
   assert.equal(ch.playing, false);
   const seat = os.seats.get(ch.seatId!)!;
   assert.deepEqual([ch.tileCol, ch.tileRow], [seat.seatCol, seat.seatRow]);
+});
+
+test('a game goes to 11, won by 2', () => {
+  assert.equal(gameWinner([11, 9]), 0);
+  assert.equal(gameWinner([3, 11]), 1);
+  assert.equal(gameWinner([11, 10]), null, 'must win by 2');
+  assert.equal(gameWinner([10, 10]), null);
+  assert.equal(gameWinner([14, 12]), 0, 'deuce runs on past 11');
+  assert.equal(gameWinner([12, 13]), null);
+});
+
+test('serve passes every two points, every point from deuce', () => {
+  assert.deepEqual(
+    [
+      [0, 0],
+      [1, 0],
+      [1, 1],
+      [2, 1],
+      [2, 2],
+    ].map((s) => nextServer(s as [number, number])),
+    [0, 0, 1, 1, 0],
+  );
+  assert.equal(nextServer([10, 10]), 0);
+  assert.equal(nextServer([11, 10]), 1);
+  assert.equal(nextServer([11, 11]), 0);
+});
+
+test('random points play out to a legal final score, then the players leave', () => {
+  for (let run = 0; run < 50; run++) {
+    const game = newTableGame();
+    let verdict = 'playing';
+    let finalScore: [number, number] | null = null;
+    for (let t = 0; t < 3600 && verdict === 'playing'; t += 0.05) {
+      verdict = advanceTableGame(game, 2, 0.05);
+      if (game.winner !== null) finalScore = [game.scores[0], game.scores[1]];
+    }
+    assert.equal(verdict, 'finished');
+    assert.ok(finalScore);
+    const [a, b] = finalScore;
+    assert.ok(Math.max(a, b) >= 11 && Math.abs(a - b) >= 2, `final ${a}-${b}`);
+    assert.ok(
+      Math.max(a, b) === 11 || Math.abs(a - b) === 2,
+      `stopped at the first win, ${a}-${b}`,
+    );
+    assert.deepEqual(game.scores, [0, 0], 'reset for the next game');
+  }
+});
+
+test('a point scored mid-game updates the board and hands the serve on', () => {
+  const game = newTableGame();
+  scorePoint(game, 1);
+  scorePoint(game, 1);
+  assert.deepEqual(game.scores, [0, 2]);
+  assert.equal(game.server, 1);
+  assert.equal(game.winner, null);
+  assert.ok(game.pause > 0, 'breather before the next serve');
 });

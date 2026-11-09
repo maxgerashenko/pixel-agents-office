@@ -42,6 +42,10 @@ import {
   TABLE_TENNIS_BALL_COLOR,
   TABLE_TENNIS_BALL_SHADOW_COLOR,
   TABLE_TENNIS_BALL_SIZE_PX,
+  TABLE_TENNIS_SCORE_BG_COLOR,
+  TABLE_TENNIS_SCORE_COLOR,
+  TABLE_TENNIS_SCORE_FONT_PX,
+  TABLE_TENNIS_SCORE_WIN_COLOR,
   VOID_TILE_DASH_PATTERN,
   VOID_TILE_OUTLINE_COLOR,
 } from '../../constants.js';
@@ -70,7 +74,7 @@ import { getWallInstances, hasWallSprites, wallColorToHex } from '../wallTiles.j
 import { getCharacterSprite, isSeatedPose } from './characters.js';
 import { renderMatrixEffect } from './matrixEffect.js';
 import { getPetSpriteData } from './petEntity.js';
-import type { TableBall } from './tableTennis.js';
+import type { TableBall, TableScore } from './tableTennis.js';
 
 // ── Settings ────────────────────────────────────────────────────
 
@@ -345,6 +349,37 @@ interface ZDrawable {
 }
 
 /** @internal */
+/**
+ * Table-tennis scoreboards over the net: "left - right" on a dark plate,
+ * the final score in gold while the winner celebrates. Drawn above the scene.
+ */
+function renderTableScores(
+  ctx: CanvasRenderingContext2D,
+  scores: TableScore[],
+  offsetX: number,
+  offsetY: number,
+  zoom: number,
+): void {
+  const fontSize = TABLE_TENNIS_SCORE_FONT_PX * zoom;
+  const pad = zoom;
+  ctx.save();
+  ctx.font = `${fontSize}px 'FS Pixel Sans'`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  for (const s of scores) {
+    const text = `${s.scores[0]} - ${s.scores[1]}`;
+    const cx = Math.round(offsetX + s.x * zoom);
+    const cy = Math.round(offsetY + s.y * zoom);
+    const w = Math.ceil(ctx.measureText(text).width) + pad * 4;
+    const h = fontSize + pad * 2;
+    ctx.fillStyle = TABLE_TENNIS_SCORE_BG_COLOR;
+    ctx.fillRect(Math.round(cx - w / 2), Math.round(cy - h / 2), w, h);
+    ctx.fillStyle = s.winner === null ? TABLE_TENNIS_SCORE_COLOR : TABLE_TENNIS_SCORE_WIN_COLOR;
+    ctx.fillText(text, cx, cy + pad / 2);
+  }
+  ctx.restore();
+}
+
 export function renderScene(
   ctx: CanvasRenderingContext2D,
   furniture: FurnitureInstance[],
@@ -892,6 +927,7 @@ export function renderFrame(
   activeAreaLabel?: string | null,
   pets?: Pet[],
   balls?: TableBall[],
+  scores?: TableScore[],
 ): { offsetX: number; offsetY: number } {
   // Clear
   ctx.clearRect(0, 0, canvasWidth, canvasHeight);
@@ -950,6 +986,10 @@ export function renderFrame(
     pets ?? [],
     balls ?? [],
   );
+
+  if (scores && scores.length > 0) {
+    renderTableScores(ctx, scores, offsetX, offsetY, zoom);
+  }
 
   // Character speech bubbles render in ToolOverlay (DOM, above the labels).
   // Pet heart bubbles (canvas overlay pass)

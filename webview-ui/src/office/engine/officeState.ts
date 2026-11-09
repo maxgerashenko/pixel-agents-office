@@ -64,13 +64,13 @@ import {
   workLabelsFor,
   zoneAt,
 } from './seatPlacement.js';
-import type { TableBall, TableGame, TableTennisTable } from './tableTennis.js';
+import type { TableBall, TableGame, TableScore, TableTennisTable } from './tableTennis.js';
 import {
   advanceTableGame,
+  ballInPlay,
   deriveTables,
   newTableGame,
   swingFrame,
-  tableBall,
 } from './tableTennis.js';
 
 /** The four orthogonal neighbours of a tile, as [dCol, dRow]. */
@@ -735,11 +735,11 @@ export class OfficeState {
       const here = players.filter((p) => OfficeState.atSlot(p));
       const verdict = advanceTableGame(game, here.length, dt);
       const playing = verdict === 'playing';
-      const ball = playing ? tableBall(table, game.elapsed) : null;
+      const ball = playing ? ballInPlay(table, game) : null;
       players.forEach((p, i) => {
         if (!p) return;
         p.playing = playing && OfficeState.atSlot(p);
-        if (ball && p.playing) p.frame = swingFrame(ball.near[i]);
+        if (p.playing) p.frame = ball ? swingFrame(ball.near[i]) : 0;
       });
       if (verdict === 'give-up' || verdict === 'finished') {
         for (const p of players) if (p) leaveTable(p);
@@ -754,7 +754,26 @@ export class OfficeState {
       const game = this.tableGames.get(table.uid);
       if (!game) continue;
       const players = this.tablePlayers(table.uid);
-      if (players[0]?.playing && players[1]?.playing) out.push(tableBall(table, game.elapsed));
+      if (!players[0]?.playing || !players[1]?.playing) continue;
+      const ball = ballInPlay(table, game);
+      if (ball) out.push(ball);
+    }
+    return out;
+  }
+
+  /** Scoreboards over the net of every table with a game on. */
+  getTableTennisScores(): TableScore[] {
+    const out: TableScore[] = [];
+    for (const table of this.tennisTables) {
+      const game = this.tableGames.get(table.uid);
+      const players = this.tablePlayers(table.uid);
+      if (!game || !players[0]?.playing || !players[1]?.playing) continue;
+      out.push({
+        x: table.scoreX,
+        y: table.scoreY,
+        scores: [game.scores[0], game.scores[1]],
+        winner: game.winner,
+      });
     }
     return out;
   }
