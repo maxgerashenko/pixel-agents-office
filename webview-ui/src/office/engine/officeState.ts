@@ -18,6 +18,7 @@ import {
   PHONE_SCORE_AWAY_FROM_DESK,
   PHONE_SCORE_PER_NEIGHBOUR,
   PHONE_SPOT_MAX_ATTEMPTS,
+  PLAY_FURNITURE_TYPE_PATTERN,
   REST_SEAT_TYPE_PATTERN,
   WAITING_BUBBLE_DURATION_SEC,
 } from '../../constants.js';
@@ -44,6 +45,7 @@ import type {
   WorkSpot,
 } from '../types.js';
 import { CharacterState, Direction, PetState, TILE_SIZE } from '../types.js';
+import type { PlaySpot } from './characters.js';
 import { createCharacter, isSeatedPose, settleOnWorkSpot, updateCharacter } from './characters.js';
 import { advanceMatrixEffect, startMatrixEffect } from './matrixEffectState.js';
 import { createPet, updatePet } from './petEntity.js';
@@ -94,6 +96,9 @@ export class OfficeState {
   /** Bench/sofa seats away from computers and not within an Area's 1-tile
    *  buffer — where idle agents rest. */
   restSeatIds = new Set<string>();
+  /** Standing spots in front of arcade machines outside every Area and its
+   *  buffer — where idle agents play. Keyed `play:<furniture uid>`. */
+  playSpots = new Map<string, PlaySpot>();
   characters: Map<number, Character> = new Map();
   pets: Pet[] = [];
   /** Accumulated time for furniture animation frame cycling */
@@ -220,6 +225,7 @@ export class OfficeState {
     // a non-work seat the user picked by hand stays theirs.
     for (const ch of this.characters.values()) {
       ch.restSeatId = null; // rest claims don't survive a seat rebuild
+      ch.playSpotId = null;
       ch.workSpot = null; // nor do pairing / phone spots (replanned next frame)
       const lostItsComputer =
         ch.seatId !== null &&
@@ -342,12 +348,16 @@ export class OfficeState {
     const rest = ch.restSeatId ? this.seats.get(ch.restSeatId) : undefined;
     const restKey = rest ? `${rest.seatCol},${rest.seatRow}` : null;
     const restWasBlocked = restKey ? this.blockedTiles.delete(restKey) : false;
+    const play = ch.playSpotId ? this.playSpots.get(ch.playSpotId) : undefined;
+    const playKey = play ? `${play.col},${play.row}` : null;
+    const playWasBlocked = playKey ? this.blockedTiles.delete(playKey) : false;
     const pairKey = ch.workSpot?.seatUid ? `${ch.workSpot.col},${ch.workSpot.row}` : null;
     const pairWasBlocked = pairKey ? this.blockedTiles.delete(pairKey) : false;
     if (key) this.blockedTiles.delete(key);
     const result = fn();
     if (key) this.blockedTiles.add(key);
     if (restKey && restWasBlocked) this.blockedTiles.add(restKey);
+    if (playKey && playWasBlocked) this.blockedTiles.add(playKey);
     if (pairKey && pairWasBlocked) this.blockedTiles.add(pairKey);
     return result;
   }
@@ -600,6 +610,19 @@ export class OfficeState {
       }
     }
     const { areaTiles, cols, rows } = this.layout;
+    this.playSpots = new Map();
+    for (const item of this.layout.furniture) {
+      if (!PLAY_FURNITURE_TYPE_PATTERN.test(item.type)) continue;
+      const entry = getCatalogEntry(item.type);
+      if (!entry) continue;
+      // Stand just below the machine, facing it; it must be a free, walkable
+      // tile outside every Area and its buffer (Areas are for work only)
+      const col = item.col;
+      const row = item.row + entry.footprintH;
+      if (!this.walkableTiles.some((t) => t.col === col && t.row === row)) continue;
+      if (isNearArea(areaTiles, cols, rows, col, row)) continue;
+      this.playSpots.set(`play:${item.uid}`, { col, row, dir: Direction.UP });
+    }
     const clear = this.walkableTiles.filter(
       (t) => !isNearArea(areaTiles, cols, rows, t.col, t.row),
     );
@@ -1006,6 +1029,7 @@ export class OfficeState {
     const ch = this.characters.get(agentId);
     if (!ch) return;
     ch.restSeatId = null;
+    ch.playSpotId = null;
     // Unassign old seat
     if (ch.seatId) {
       const old = this.seats.get(ch.seatId);
@@ -1078,6 +1102,7 @@ export class OfficeState {
     const seat = this.seats.get(ch.seatId);
     if (!seat) return;
     ch.restSeatId = null;
+    ch.playSpotId = null;
     const path = this.withOwnSeatUnblocked(ch, () =>
       findPath(ch.tileCol, ch.tileRow, seat.seatCol, seat.seatRow, this.tileMap, this.blockedTiles),
     );
@@ -1547,8 +1572,10 @@ export class OfficeState {
     for (const uid of this.restSeatIds) {
       if (!this.seats.get(uid)?.assigned) freeRestSeats.add(uid);
     }
+    const freePlaySpots = new Set(this.playSpots.keys());
     for (const ch of this.characters.values()) {
       if (ch.restSeatId) freeRestSeats.delete(ch.restSeatId);
+      if (ch.playSpotId) freePlaySpots.delete(ch.playSpotId);
     }
 
     const toDelete: number[] = [];
@@ -1572,6 +1599,8 @@ export class OfficeState {
           !ch.seatId || !this.seatNearArea(ch.seatId),
           this.noIdleTileKeys,
           ch.isSubagent ? undefined : this.claimWorkSpot,
+          this.playSpots,
+          freePlaySpots,
         ),
       );
 

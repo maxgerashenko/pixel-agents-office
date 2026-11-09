@@ -22,6 +22,11 @@ export const SEAT_REST_MAX_SEC = 240.0;
 /** Furniture whose seats are rest spots for idle agents (matched against the
  *  catalog type, case-insensitive). Cushioned chairs are deliberately absent. */
 export const REST_SEAT_TYPE_PATTERN = /SOFA|BENCH/i;
+/** Furniture an idle agent stands in front of to play (arcade machines). */
+export const PLAY_FURNITURE_TYPE_PATTERN = /ARCADE/i;
+/** How long an idle agent plays at a machine before wandering off. */
+export const PLAY_MIN_SEC = 60.0;
+export const PLAY_MAX_SEC = 150.0;
 
 // ── Matrix Effect ────────────────────────────────────────────
 export const MATRIX_EFFECT_DURATION_SEC = 0.3;

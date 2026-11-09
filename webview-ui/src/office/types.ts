@@ -217,6 +217,9 @@ export interface Character {
   /** Rest seat (bench/sofa) this idle agent has claimed, or null. Transient:
    *  never persisted, released the moment the agent becomes active. */
   restSeatId?: string | null;
+  /** Play spot (in front of an arcade machine) this idle agent has claimed, or
+   *  null. Transient like restSeatId: released the moment the agent works. */
+  playSpotId?: string | null;
   /** Where a working agent with no reachable work seat of its own works: a
    *  pairing seat beside a taken computer, or a standing spot where it vibe
    *  codes on its phone. Claimed when it starts working, released the moment
