@@ -394,7 +394,7 @@ test('a cat beside a free table jumps up, sits, then hops back down', async () =
   const walkable = buildWalkableTiles(20, 20);
   const home = findPetHome([{ uid: 'b', type: 'TABLE_FRONT', col: 10, row: 4 }], tableInfo)!;
   const pet = createPet('p', 0, 9, 5); // floor tile touching the table
-  const person = new Map([[1, makeChar(1, 9, 6)]]);
+  const person = new Map([[1, makeChar(1, 10, 6)]]);
   pet.wanderTimer = 0;
   randomQueue = [0]; // perch roll succeeds
   // Nobody around: the cat stays on the floor.
