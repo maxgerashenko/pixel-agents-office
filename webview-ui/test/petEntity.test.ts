@@ -332,3 +332,43 @@ test('updatePet handles FOLLOW with null followTargetId (defensive: never enter 
   updatePet(pet, 0.01, walkable, new Map(), tileMap, new Set());
   assert.equal(pet.state, PetState.IDLE, 'no target → exit FOLLOW');
 });
+
+// ── Table home ─────────────────────────────────────────────────
+
+test('findPetHome prefers a table tennis table, then any table, else null', async () => {
+  const { findPetHome } = await import('../src/office/engine/petEntity.js');
+  const fp = () => ({ w: 3, h: 2 });
+  const desk = { uid: 'a', type: 'DESK_FRONT', col: 0, row: 0 };
+  const table = { uid: 'b', type: 'TABLE_FRONT', col: 10, row: 4 };
+  const tennis = { uid: 'c', type: 'TABLE_TENNIS', col: 2, row: 6 };
+  assert.equal(findPetHome([desk], fp), null);
+  assert.deepEqual(findPetHome([desk, table], fp), { col: 11, row: 4, radius: 3 });
+  assert.deepEqual(findPetHome([desk, table, tennis], fp), { col: 3, row: 6, radius: 3 });
+});
+
+test('a pet with a table home only wanders to tiles near it', () => {
+  const tileMap = buildOpenTileMap(20, 20);
+  const walkable = buildWalkableTiles(20, 20);
+  const home = { col: 10, row: 10, radius: 3 };
+  for (let i = 0; i < 40; i++) {
+    const pet = createPet('p', 0, 10, 10);
+    pet.wanderTimer = 0;
+    randomQueue = [0.99, Math.random()];
+    Math.random = realRandom;
+    updatePet(pet, 0.01, walkable, new Map(), tileMap, new Set(), home);
+    const dest = pet.path[pet.path.length - 1];
+    if (dest) assert.ok(Math.abs(dest.col - 10) + Math.abs(dest.row - 10) <= 3);
+  }
+});
+
+test('a pet does not follow a character who is away from the table', () => {
+  const tileMap = buildOpenTileMap(20, 20);
+  const walkable = buildWalkableTiles(20, 20);
+  const home = { col: 5, row: 5, radius: 3 };
+  const pet = createPet('p', 0, 5, 5);
+  pet.wanderTimer = 0;
+  randomQueue = [0]; // follow roll succeeds
+  const far = makeChar(1, 8, 7); // within follow radius of the pet but outside the zone
+  updatePet(pet, 0.01, walkable, new Map([[1, far]]), tileMap, new Set(), home);
+  assert.notEqual(pet.state, PetState.FOLLOW);
+});

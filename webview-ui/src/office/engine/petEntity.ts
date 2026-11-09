@@ -4,6 +4,8 @@ import {
   PET_FOLLOW_DURATION_MIN_SEC,
   PET_FOLLOW_RADIUS_TILES,
   PET_FOLLOW_RECALC_INTERVAL_SEC,
+  PET_HOME_RADIUS_TILES,
+  PET_HOME_TABLE_PATTERNS,
   PET_IDLE_FRAME_DURATION_SEC,
   PET_IDLE_SEQUENCE,
   PET_WALK_FRAME_DURATION_SEC,
@@ -14,8 +16,49 @@ import {
 } from '../../constants.js';
 import { findPath, isWalkable } from '../layout/tileMap.js';
 import type { PetSpriteFrames } from '../sprites/petSpriteData.js';
-import type { Character, Pet, SpriteData, TileType as TileTypeVal } from '../types.js';
+import type {
+  Character,
+  PlacedFurniture,
+  Pet,
+  SpriteData,
+  TileType as TileTypeVal,
+} from '../types.js';
 import { Direction, PetState, TILE_SIZE } from '../types.js';
+
+/** The tile the pet stays around, and how far (Manhattan tiles) it may roam from it. */
+export interface PetHome {
+  col: number;
+  row: number;
+  radius: number;
+}
+
+/**
+ * Pick the table the pet hangs out at: the first placed item matching the
+ * highest-priority entry of PET_HOME_TABLE_PATTERNS (table tennis, then any
+ * table). `footprintOf` supplies the item's size; the home is its centre tile.
+ * Returns null when the office has no table, so the pet roams freely.
+ */
+export function findPetHome(
+  furniture: readonly PlacedFurniture[],
+  footprintOf: (type: string) => { w: number; h: number } | undefined,
+): PetHome | null {
+  for (const pattern of PET_HOME_TABLE_PATTERNS) {
+    const item = furniture.find((f) => f.type.toUpperCase().includes(pattern));
+    if (!item) continue;
+    const fp = footprintOf(item.type) ?? { w: 1, h: 1 };
+    return {
+      col: item.col + Math.floor((fp.w - 1) / 2),
+      row: item.row + Math.floor((fp.h - 1) / 2),
+      radius: PET_HOME_RADIUS_TILES,
+    };
+  }
+  return null;
+}
+
+/** Whether a tile lies inside the pet's home zone (always true with no home). */
+export function isNearPetHome(home: PetHome | null, col: number, row: number): boolean {
+  return home === null || manhattanDistance(home.col, home.row, col, row) <= home.radius;
+}
 
 /** Inclusive-min / exclusive-max random float */
 function randomRange(min: number, max: number): number {
@@ -54,11 +97,16 @@ function manhattanDistance(c1: number, r1: number, c2: number, r2: number): numb
  * Pick the closest non-sub-agent character within PET_FOLLOW_RADIUS_TILES
  * by Manhattan distance. Excludes despawning characters (matrixEffect === 'despawn').
  */
-function findNearbyCharacter(pet: Pet, characters: Map<number, Character>): Character | null {
+function findNearbyCharacter(
+  pet: Pet,
+  characters: Map<number, Character>,
+  home: PetHome | null,
+): Character | null {
   let closest: Character | null = null;
   let closestDist = Number.POSITIVE_INFINITY;
   for (const ch of characters.values()) {
     if (ch.matrixEffect === 'despawn') continue;
+    if (!isNearPetHome(home, ch.tileCol, ch.tileRow)) continue;
     const d = manhattanDistance(pet.tileCol, pet.tileRow, ch.tileCol, ch.tileRow);
     if (d > PET_FOLLOW_RADIUS_TILES) continue;
     if (d < closestDist) {
@@ -173,7 +221,12 @@ export function updatePet(
   characters: Map<number, Character>,
   tileMap: TileTypeVal[][],
   blockedTiles: Set<string>,
+  home: PetHome | null = null,
 ): void {
+  // Only wander within reach of the table (a pet elsewhere walks back to it).
+  const roamTiles = home
+    ? walkableTiles.filter((t) => isNearPetHome(home, t.col, t.row))
+    : walkableTiles;
   switch (pet.state) {
     case PetState.IDLE: {
       updateIdleAnimation(pet, dt);
@@ -182,7 +235,7 @@ export function updatePet(
 
       // Roll for follow first
       if (Math.random() < PET_FOLLOW_CHANCE) {
-        const target = findNearbyCharacter(pet, characters);
+        const target = findNearbyCharacter(pet, characters, home);
         if (target) {
           pet.state = PetState.FOLLOW;
           pet.followTargetId = target.id;
@@ -199,11 +252,9 @@ export function updatePet(
       }
 
       // Else pick a random walkable tile (not own) and try to walk there
-      if (walkableTiles.length > 0) {
+      if (roamTiles.length > 0) {
         // Filter out own tile to avoid zero-length paths
-        const candidates = walkableTiles.filter(
-          (t) => t.col !== pet.tileCol || t.row !== pet.tileRow,
-        );
+        const candidates = roamTiles.filter((t) => t.col !== pet.tileCol || t.row !== pet.tileRow);
         if (candidates.length > 0) {
           const target = candidates[Math.floor(Math.random() * candidates.length)];
           const path = findPath(
@@ -247,6 +298,18 @@ export function updatePet(
 
       // Exit: target gone
       if (!target) {
+        pet.state = PetState.IDLE;
+        pet.followTargetId = null;
+        pet.path = [];
+        pet.moveProgress = 0;
+        pet.frame = 0;
+        pet.frameTimer = 0;
+        pet.wanderTimer = randomRange(PET_WANDER_PAUSE_MIN_SEC, PET_WANDER_PAUSE_MAX_SEC);
+        break;
+      }
+
+      // Exit: target walked away from the table
+      if (!isNearPetHome(home, target.tileCol, target.tileRow)) {
         pet.state = PetState.IDLE;
         pet.followTargetId = null;
         pet.path = [];

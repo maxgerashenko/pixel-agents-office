@@ -322,6 +322,10 @@ export const PET_FOLLOW_DURATION_MIN_SEC = 5.0;
 /** Maximum seconds a FOLLOW episode lasts before timing out. */
 export const PET_FOLLOW_DURATION_MAX_SEC = 15.0;
 /** Hit-box half-width (world px) for pet click detection. */
+/** How far (Manhattan tiles) the pet roams from its table. */
+export const PET_HOME_RADIUS_TILES = 3;
+/** Furniture-type substrings the pet picks as its table, best first. */
+export const PET_HOME_TABLE_PATTERNS = ['TABLE_TENNIS', 'PING_PONG', 'TABLE'] as const;
 export const PET_HIT_HALF_WIDTH = 8;
 /** Hit-box height (world px) measured upward from the bottom-center anchor. */
 export const PET_HIT_HEIGHT = 16;
