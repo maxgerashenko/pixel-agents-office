@@ -27,6 +27,22 @@ export const DISCORD_INVITE_URL = 'https://discord.gg/Yk7jXebv9H';
 
 export const changelogEntries: ChangelogEntry[] = [
   {
+    version: '1.6',
+    sections: [
+      {
+        title: 'Features',
+        items: [
+          'Usage strip shows time left in the 5-hour window as a ring, plus the last hour inside the token bar',
+          'Usage ring turns green, yellow, then red as the first four hours pass, and dark purple once done',
+          'Usage strip refreshes every minute while the office is open, so usage spent elsewhere shows up',
+          'Fit-to-width zoom button centres the office and never lets a panel cover it',
+          'Working agents claim a free computer in their Area first, then a pairing seat, then code on their phone',
+        ],
+      },
+    ],
+    contributors: [],
+  },
+  {
     version: '1.5',
     sections: [
       {
