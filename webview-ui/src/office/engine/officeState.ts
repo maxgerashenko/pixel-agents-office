@@ -18,10 +18,12 @@ import {
   PHONE_SCORE_AWAY_FROM_DESK,
   PHONE_SCORE_PER_NEIGHBOUR,
   PHONE_SPOT_MAX_ATTEMPTS,
+  PLAY_FURNITURE_TYPE_PATTERN,
   REST_SEAT_TYPE_PATTERN,
   TABLE_TENNIS_START_CHANCE,
   WAITING_BUBBLE_DURATION_SEC,
 } from '../../constants.js';
+import { arcadePlaySpot } from '../layout/arcadePlacement.js';
 import { getAnimationFrames, getCatalogEntry, getOnStateType } from '../layout/furnitureCatalog.js';
 import {
   createDefaultLayout,
@@ -45,6 +47,7 @@ import type {
   WorkSpot,
 } from '../types.js';
 import { CharacterState, Direction, PetState, TILE_SIZE } from '../types.js';
+import type { PlaySpot } from './characters.js';
 import {
   createCharacter,
   isSeatedPose,
@@ -54,7 +57,8 @@ import {
   updateCharacter,
 } from './characters.js';
 import { advanceMatrixEffect, startMatrixEffect } from './matrixEffectState.js';
-import { createPet, updatePet } from './petEntity.js';
+import type { PetHome } from './petEntity.js';
+import { createPet, findPetHome, isNearPetHome, updatePet } from './petEntity.js';
 import {
   anchorTile,
   closestFreeSeat,
@@ -114,6 +118,9 @@ export class OfficeState {
   tennisTables: TableTennisTable[] = [];
   /** Per-table game clocks (wait for an opponent, rally length). */
   private tableGames = new Map<string, TableGame>();
+  /** Standing spots in front of arcade machines outside every Area and its
+   *  buffer — where idle agents play. Keyed `play:<furniture uid>`. */
+  playSpots = new Map<string, PlaySpot>();
   characters: Map<number, Character> = new Map();
   pets: Pet[] = [];
   /** Accumulated time for furniture animation frame cycling */
@@ -241,6 +248,7 @@ export class OfficeState {
     for (const ch of this.characters.values()) {
       ch.restSeatId = null; // rest claims don't survive a seat rebuild
       if (ch.playSlot) leaveTable(ch); // nor do table claims
+      ch.playSpotId = null;
       ch.workSpot = null; // nor do pairing / phone spots (replanned next frame)
       const lostItsComputer =
         ch.seatId !== null &&
@@ -324,6 +332,8 @@ export class OfficeState {
           pet.frame = 0;
           pet.frameTimer = 0;
           pet.followTargetId = null;
+          pet.perchZY = null;
+          pet.goPerch = false;
         }
       }
     }
@@ -363,12 +373,16 @@ export class OfficeState {
     const rest = ch.restSeatId ? this.seats.get(ch.restSeatId) : undefined;
     const restKey = rest ? `${rest.seatCol},${rest.seatRow}` : null;
     const restWasBlocked = restKey ? this.blockedTiles.delete(restKey) : false;
+    const play = ch.playSpotId ? this.playSpots.get(ch.playSpotId) : undefined;
+    const playKey = play ? `${play.col},${play.row}` : null;
+    const playWasBlocked = playKey ? this.blockedTiles.delete(playKey) : false;
     const pairKey = ch.workSpot?.seatUid ? `${ch.workSpot.col},${ch.workSpot.row}` : null;
     const pairWasBlocked = pairKey ? this.blockedTiles.delete(pairKey) : false;
     if (key) this.blockedTiles.delete(key);
     const result = fn();
     if (key) this.blockedTiles.add(key);
     if (restKey && restWasBlocked) this.blockedTiles.add(restKey);
+    if (playKey && playWasBlocked) this.blockedTiles.add(playKey);
     if (pairKey && pairWasBlocked) this.blockedTiles.add(pairKey);
     return result;
   }
@@ -420,6 +434,26 @@ export class OfficeState {
     return out;
   }
 
+  /**
+   * Allowed work seats whose owner is idle and has left them (resting or
+   * wandering): a working agent without a computer may take these over, so a
+   * computer nobody is using never sits empty while someone stands.
+   */
+  private idleHeldWorkSeats(ch: Character): string[] {
+    const free = new Set(this.allowedFreeSeats(ch.directoryName));
+    const out: string[] = [];
+    for (const other of this.characters.values()) {
+      const uid = other.seatId;
+      if (other === ch || !uid || other.isActive || other.isSubagent) continue;
+      if (other.matrixEffect === 'despawn' || free.has(uid) || !this.workSeatIds.has(uid)) continue;
+      const seat = this.seats.get(uid);
+      if (!seat || (other.tileCol === seat.seatCol && other.tileRow === seat.seatRow)) continue;
+      if (!seatSatisfiesRule(this.seatZone(uid), this.workLabels(ch.directoryName))) continue;
+      out.push(uid);
+    }
+    return out;
+  }
+
   /** Is the tile allowed for this agent's work by the Area rule? */
   private tileAllowedForWork(ch: Character, col: number, row: number): boolean {
     const zone = zoneAt(this.layout.areaTiles, this.layout.cols, col, row);
@@ -446,7 +480,7 @@ export class OfficeState {
     const limit = betterThan ? OfficeState.SPOT_RANK[betterThan] : Infinity;
 
     // 1. A free computer allowed by the Area rule, nearest first
-    const free = this.allowedFreeSeats(ch.directoryName)
+    const free = [...this.allowedFreeSeats(ch.directoryName), ...this.idleHeldWorkSeats(ch)]
       .map((uid) => ({ uid, seat: this.seats.get(uid)! }))
       .sort(
         (a, b) =>
@@ -461,6 +495,10 @@ export class OfficeState {
       if (ch.seatId) {
         const old = this.seats.get(ch.seatId);
         if (old) old.assigned = false;
+      }
+      // Taking a computer its idle owner left: the owner plans afresh when it works again
+      for (const other of this.characters.values()) {
+        if (other !== ch && other.seatId === uid) other.seatId = null;
       }
       seat.assigned = true;
       ch.seatId = uid;
@@ -621,6 +659,18 @@ export class OfficeState {
       }
     }
     const { areaTiles, cols, rows } = this.layout;
+    this.playSpots = new Map();
+    for (const item of this.layout.furniture) {
+      if (!PLAY_FURNITURE_TYPE_PATTERN.test(item.type)) continue;
+      const entry = getCatalogEntry(item.type);
+      if (!entry) continue;
+      // Stand in front of the machine, facing it; it must be a free, walkable
+      // tile outside every Area and its buffer (Areas are for work only)
+      const { col, row, dir } = arcadePlaySpot(entry, item.col, item.row);
+      if (!this.walkableTiles.some((t) => t.col === col && t.row === row)) continue;
+      if (isNearArea(areaTiles, cols, rows, col, row)) continue;
+      this.playSpots.set(`play:${item.uid}`, { col, row, dir });
+    }
     const clear = this.walkableTiles.filter(
       (t) => !isNearArea(areaTiles, cols, rows, t.col, t.row),
     );
@@ -1164,6 +1214,7 @@ export class OfficeState {
     const ch = this.characters.get(agentId);
     if (!ch) return;
     ch.restSeatId = null;
+    ch.playSpotId = null;
     // Unassign old seat
     if (ch.seatId) {
       const old = this.seats.get(ch.seatId);
@@ -1236,6 +1287,7 @@ export class OfficeState {
     const seat = this.seats.get(ch.seatId);
     if (!seat) return;
     ch.restSeatId = null;
+    ch.playSpotId = null;
     const path = this.withOwnSeatUnblocked(ch, () =>
       findPath(ch.tileCol, ch.tileRow, seat.seatCol, seat.seatRow, this.tileMap, this.blockedTiles),
     );
@@ -1401,6 +1453,19 @@ export class OfficeState {
     }
   }
 
+  /** The animated on-state of a furniture type for this frame. The mirrored
+   *  `:left` variant of a side-facing item has no state pair of its own, so it
+   *  is lit through its base type and re-suffixed. */
+  private lightUp(type: string, animFrame: number): string {
+    const mirrored = type.endsWith(':left');
+    const base = mirrored ? type.slice(0, -':left'.length) : type;
+    let onType = getOnStateType(base);
+    const frames = getAnimationFrames(onType);
+    if (frames && frames.length > 1) onType = frames[animFrame % frames.length];
+    const lit = mirrored ? `${onType}:left` : onType;
+    return getCatalogEntry(lit) ? lit : type;
+  }
+
   /** Rebuild furniture instances with auto-state applied (active agents turn electronics ON) */
   private rebuildFurnitureInstances(): void {
     // Collect tiles where active agents face desks
@@ -1435,7 +1500,15 @@ export class OfficeState {
       }
     }
 
-    if (autoOnTiles.size === 0) {
+    // An arcade machine lights up while an agent plays at it
+    const playedUids = new Set<string>();
+    for (const ch of this.characters.values()) {
+      if (ch.playSpotId && ch.state === CharacterState.TYPE) {
+        playedUids.add(ch.playSpotId.replace(/^play:/, ''));
+      }
+    }
+
+    if (autoOnTiles.size === 0 && playedUids.size === 0) {
       this.furniture = layoutToFurnitureInstances(this.layout.furniture);
       return;
     }
@@ -1445,6 +1518,7 @@ export class OfficeState {
     const modifiedFurniture: PlacedFurniture[] = this.layout.furniture.map((item) => {
       const entry = getCatalogEntry(item.type);
       if (!entry) return item;
+      if (playedUids.has(item.uid)) return { ...item, type: this.lightUp(item.type, animFrame) };
       // Check if any tile of this furniture overlaps an auto-on tile
       for (let dr = 0; dr < entry.footprintH; dr++) {
         for (let dc = 0; dc < entry.footprintW; dc++) {
@@ -1540,11 +1614,24 @@ export class OfficeState {
     if (this.pets.some((p) => p.id === placedPet.id)) return; // de-dupe
     if (this.walkableTiles.length === 0) return; // no spawn space — silently drop
 
-    const spawn = this.walkableTiles[Math.floor(Math.random() * this.walkableTiles.length)];
+    const home = this.getPetHome();
+    const nearHome = this.walkableTiles.filter((t) => isNearPetHome(home, t.col, t.row));
+    const spawnPool = nearHome.length > 0 ? nearHome : this.walkableTiles;
+    const spawn = spawnPool[Math.floor(Math.random() * spawnPool.length)];
     const pet = createPet(placedPet.id, placedPet.petType, spawn.col, spawn.row);
     pet.name = getPetName(placedPet.petType);
     this.pets.push(pet);
     this.syncLayoutPets();
+  }
+
+  /** The table the pets stay around, or null when the layout has none. */
+  getPetHome(): PetHome | null {
+    return findPetHome(this.layout.furniture, (type) => {
+      const entry = getCatalogEntry(type);
+      return entry
+        ? { w: entry.footprintW, h: entry.footprintH, onSurface: entry.canPlaceOnSurfaces }
+        : undefined;
+    });
   }
 
   /** Remove a pet by id. Idempotent. */
@@ -1705,8 +1792,10 @@ export class OfficeState {
     for (const uid of this.restSeatIds) {
       if (!this.seats.get(uid)?.assigned) freeRestSeats.add(uid);
     }
+    const freePlaySpots = new Set(this.playSpots.keys());
     for (const ch of this.characters.values()) {
       if (ch.restSeatId) freeRestSeats.delete(ch.restSeatId);
+      if (ch.playSpotId) freePlaySpots.delete(ch.playSpotId);
     }
 
     this.updateTableGames(dt);
@@ -1733,6 +1822,8 @@ export class OfficeState {
           this.noIdleTileKeys,
           ch.isSubagent ? undefined : this.claimWorkSpot,
           ch.isSubagent ? undefined : this.claimTable,
+          this.playSpots,
+          freePlaySpots,
         ),
       );
 
@@ -1751,8 +1842,17 @@ export class OfficeState {
     }
 
     // ── Pet FSM ────────────────────────────────────────────────
+    const petHome = this.pets.length > 0 ? this.getPetHome() : null;
     for (const pet of this.pets) {
-      updatePet(pet, dt, this.walkableTiles, this.characters, this.tileMap, this.blockedTiles);
+      updatePet(
+        pet,
+        dt,
+        this.walkableTiles,
+        this.characters,
+        this.tileMap,
+        this.blockedTiles,
+        petHome,
+      );
 
       // Tick heart bubble timer (mirrors character waiting-bubble pattern)
       if (pet.bubbleType) {

@@ -3,6 +3,7 @@ import {
   PALETTE_COUNT,
   PHONE_CASE_COLOR,
   PHONE_HAND_FALLBACK_COLOR,
+  PHONE_OUTLINE_COLOR,
   PHONE_SCREEN_ALT_COLOR,
   PHONE_SCREEN_COLOR,
   TABLE_TENNIS_PADDLE_COLOR,
@@ -128,13 +129,21 @@ function withPhone(
   const put = (row: number, col: number, color: string) => {
     if (out[row] && col >= 0 && col < out[row].length) out[row][col] = color;
   };
+  // A light rim round the dark case keeps it readable against dark clothes.
+  const ring = (r0: number, r1: number, c0: number, c1: number) => {
+    for (let r = r0; r <= r1; r++)
+      for (let c = c0; c <= c1; c++)
+        if (r === r0 || r === r1 || c === c0 || c === c1) put(r, c, PHONE_OUTLINE_COLOR);
+  };
   if (dir === 'down') {
+    ring(19, 24, 8, 12);
     for (let r = 20; r <= 23; r++) for (let c = 9; c <= 11; c++) put(r, c, PHONE_CASE_COLOR);
     put(21, 10, screen);
     put(22, 10, screen);
     put(24, 9, skin);
     put(24, 10, skin);
   } else {
+    ring(18, 23, 11, 13);
     for (let r = 19; r <= 22; r++) put(r, 12, PHONE_CASE_COLOR);
     put(19, 11, PHONE_CASE_COLOR);
     put(20, 11, screen);

@@ -395,22 +395,51 @@ function App() {
     editor.handleFitWidth({ width: canvas.width, height: canvas.height }, { top, obstacles });
   }, [editor]);
 
-  // On load, frame the office the way the fit button does — once, when the
-  // layout first arrives. Deferred a frame so the canvas has its backing-store
-  // size and the toolbars are laid out (they are the fit's obstacles). Skipped
+  // Frame the office the way the fit button does: once when the layout first
+  // arrives, then again whenever the cards/agents change or the window resizes
+  // (they move the toolbars, which are the fit's obstacles) — until the user
+  // takes the camera by zooming or panning. "Untouched" means zoom and pan
+  // still equal what the last automatic fit left. Deferred a frame so the
+  // canvas has its backing-store size and the toolbars are laid out. Skipped
   // if the intro greeter already holds the camera, which fitting would cancel.
   // The latest callback rides in a ref so re-renders (a new `editor` object
   // each time) don't cancel the pending frame.
   const handleFitWidthRef = useRef(handleFitWidth);
   handleFitWidthRef.current = handleFitWidth;
+  const zoomRef = useRef(editor.zoom);
+  zoomRef.current = editor.zoom;
+  const autoFitRef = useRef<{ zoom: number; x: number; y: number } | null>(null);
+  const autoFit = useCallback(() => {
+    if (getOfficeState().greeterCameraTarget) return;
+    const last = autoFitRef.current;
+    const pan = editor.panRef.current;
+    if (last && (zoomRef.current !== last.zoom || pan.x !== last.x || pan.y !== last.y)) return;
+    handleFitWidthRef.current();
+    // zoom lands on the next render; record the fit once it has.
+    requestAnimationFrame(() => {
+      const p = editor.panRef.current;
+      autoFitRef.current = { zoom: zoomRef.current, x: p.x, y: p.y };
+    });
+  }, [editor.panRef]);
+  const autoFitDeps = layoutReady ? agents.length : -1;
+  useEffect(() => {
+    if (autoFitDeps < 0) return;
+    const frame = requestAnimationFrame(autoFit);
+    return () => cancelAnimationFrame(frame);
+  }, [autoFitDeps, autoFit]);
   useEffect(() => {
     if (!layoutReady) return;
-    const frame = requestAnimationFrame(() => {
-      if (getOfficeState().greeterCameraTarget) return;
-      handleFitWidthRef.current();
-    });
-    return () => cancelAnimationFrame(frame);
-  }, [layoutReady]);
+    let frame = 0;
+    const onResize = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(autoFit);
+    };
+    window.addEventListener('resize', onResize);
+    return () => {
+      window.removeEventListener('resize', onResize);
+      cancelAnimationFrame(frame);
+    };
+  }, [layoutReady, autoFit]);
 
   const handleClick = useCallback(
     (agentId: number) => {

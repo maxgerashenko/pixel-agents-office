@@ -332,3 +332,118 @@ test('updatePet handles FOLLOW with null followTargetId (defensive: never enter 
   updatePet(pet, 0.01, walkable, new Map(), tileMap, new Set());
   assert.equal(pet.state, PetState.IDLE, 'no target → exit FOLLOW');
 });
+
+// ── Table home ─────────────────────────────────────────────────
+
+test('findPetHome prefers a table tennis table, then any table, else null', async () => {
+  const { findPetHome } = await import('../src/office/engine/petEntity.js');
+  const fp = () => ({ w: 3, h: 2 });
+  const desk = { uid: 'a', type: 'DESK_FRONT', col: 0, row: 0 };
+  const table = { uid: 'b', type: 'TABLE_FRONT', col: 10, row: 4 };
+  const tennis = { uid: 'c', type: 'TABLE_TENNIS', col: 2, row: 6 };
+  assert.equal(findPetHome([desk], fp), null);
+  assert.deepEqual(findPetHome([desk, table], fp)?.row, 4);
+  assert.deepEqual(findPetHome([desk, table], fp)?.col, 11);
+  assert.equal(findPetHome([desk, table, tennis], fp)?.col, 3);
+  assert.equal(findPetHome([desk, table, tennis], fp)?.row, 6);
+});
+
+test('a pet with a table home only wanders to tiles near it', () => {
+  const tileMap = buildOpenTileMap(20, 20);
+  const walkable = buildWalkableTiles(20, 20);
+  const home = { col: 10, row: 10, radius: 3, footprint: { col: 9, row: 9, w: 3, h: 3 } };
+  for (let i = 0; i < 40; i++) {
+    const pet = createPet('p', 0, 10, 10);
+    pet.wanderTimer = 0;
+    randomQueue = [0.99, Math.random()];
+    Math.random = realRandom;
+    updatePet(pet, 0.01, walkable, new Map(), tileMap, new Set(), home);
+    const dest = pet.path[pet.path.length - 1];
+    if (dest) assert.ok(Math.abs(dest.col - 10) + Math.abs(dest.row - 10) <= 3);
+  }
+});
+
+test('a pet does not follow a character who is away from the table', () => {
+  const tileMap = buildOpenTileMap(20, 20);
+  const walkable = buildWalkableTiles(20, 20);
+  const home = { col: 5, row: 5, radius: 3, footprint: { col: 4, row: 4, w: 3, h: 3 } };
+  const pet = createPet('p', 0, 5, 5);
+  pet.wanderTimer = 0;
+  randomQueue = [0]; // follow roll succeeds
+  const far = makeChar(1, 8, 7); // within follow radius of the pet but outside the zone
+  updatePet(pet, 0.01, walkable, new Map([[1, far]]), tileMap, new Set(), home);
+  assert.notEqual(pet.state, PetState.FOLLOW);
+});
+
+// ── Sitting on the table ───────────────────────────────────────
+
+const tableInfo = (type: string) =>
+  type === 'PC_FRONT' ? { w: 1, h: 2, onSurface: true } : { w: 3, h: 4 };
+
+test('the table has a perch only when no PC stands on it', async () => {
+  const { findPetHome } = await import('../src/office/engine/petEntity.js');
+  const table = { uid: 'b', type: 'TABLE_FRONT', col: 10, row: 4 };
+  const pc = { uid: 'p', type: 'PC_FRONT', col: 11, row: 5 };
+  assert.ok(findPetHome([table], tableInfo)?.perch);
+  assert.equal(findPetHome([table, pc], tableInfo)?.perch, undefined);
+});
+
+test('a cat beside a free table jumps up, sits, then hops back down', async () => {
+  const { findPetHome } = await import('../src/office/engine/petEntity.js');
+  const tileMap = buildOpenTileMap(20, 20);
+  const walkable = buildWalkableTiles(20, 20);
+  const home = findPetHome([{ uid: 'b', type: 'TABLE_FRONT', col: 10, row: 4 }], tableInfo)!;
+  const pet = createPet('p', 0, 9, 5); // floor tile touching the table
+  const person = new Map([[1, makeChar(1, 10, 6)]]);
+  pet.wanderTimer = 0;
+  randomQueue = [0]; // perch roll succeeds
+  // Nobody around: the cat stays on the floor.
+  updatePet(pet, 0.01, walkable, new Map(), tileMap, new Set(), home);
+  assert.notEqual(pet.state, PetState.HOP);
+  pet.state = PetState.IDLE;
+  pet.path = [];
+  pet.wanderTimer = 0;
+  randomQueue = [0];
+  updatePet(pet, 0.01, walkable, person, tileMap, new Set(), home);
+  assert.equal(pet.state, PetState.HOP);
+  for (let i = 0; i < 100 && pet.state === PetState.HOP; i++) {
+    updatePet(pet, 0.05, walkable, person, tileMap, new Set(), home);
+  }
+  assert.equal(pet.state, PetState.SIT);
+  assert.equal(pet.x, home.perch!.x);
+  assert.equal(pet.y, home.perch!.y);
+  assert.equal(pet.perchZY, home.perch!.zY);
+  // The person leaves: the cat hops down.
+  const busy = home;
+  updatePet(pet, 0.01, walkable, new Map(), tileMap, new Set(), busy);
+  assert.equal(pet.state, PetState.HOP);
+  for (let i = 0; i < 100 && pet.state === PetState.HOP; i++) {
+    updatePet(pet, 0.05, walkable, new Map(), tileMap, new Set(), busy);
+  }
+  assert.equal(pet.state, PetState.IDLE);
+  assert.equal(pet.perchZY, null);
+});
+
+test('the cat sits up for a seated person 3 tiles away but not a standing one', () => {
+  const tileMap = buildOpenTileMap(20, 20);
+  const walkable = buildWalkableTiles(20, 20);
+  const home = {
+    col: 10,
+    row: 10,
+    radius: 3,
+    footprint: { col: 9, row: 9, w: 3, h: 3 },
+    perch: { x: 168, y: 168, zY: 176 },
+  };
+  const tryPerch = (ch: Character) => {
+    const pet = createPet('p', 0, 8, 10);
+    pet.wanderTimer = 0;
+    randomQueue = [0];
+    updatePet(pet, 0.01, walkable, new Map([[1, ch]]), tileMap, new Set(), home);
+    return pet.state === PetState.HOP || pet.goPerch;
+  };
+  const seated = makeChar(1, 13, 10);
+  seated.state = CharacterState.TYPE;
+  assert.equal(tryPerch(seated), true);
+  assert.equal(tryPerch(makeChar(1, 13, 10)), false); // standing 3 away
+  assert.equal(tryPerch(makeChar(1, 12, 10)), true); // standing 2 away
+});

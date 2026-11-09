@@ -22,6 +22,11 @@ export const SEAT_REST_MAX_SEC = 240.0;
 /** Furniture whose seats are rest spots for idle agents (matched against the
  *  catalog type, case-insensitive). Cushioned chairs are deliberately absent. */
 export const REST_SEAT_TYPE_PATTERN = /SOFA|BENCH/i;
+/** Furniture an idle agent stands in front of to play (arcade machines). */
+export const PLAY_FURNITURE_TYPE_PATTERN = /ARCADE/i;
+/** How long an idle agent plays at a machine before wandering off. */
+export const PLAY_MIN_SEC = 60.0;
+export const PLAY_MAX_SEC = 150.0;
 
 // ── Matrix Effect ────────────────────────────────────────────
 export const MATRIX_EFFECT_DURATION_SEC = 0.3;
@@ -322,6 +327,23 @@ export const PET_FOLLOW_DURATION_MIN_SEC = 5.0;
 /** Maximum seconds a FOLLOW episode lasts before timing out. */
 export const PET_FOLLOW_DURATION_MAX_SEC = 15.0;
 /** Hit-box half-width (world px) for pet click detection. */
+/** How far (Manhattan tiles) the pet roams from its table. */
+export const PET_HOME_RADIUS_TILES = 3;
+/** Chance, at each idle decision, that a cat near a free table goes to sit on it. */
+export const PET_PERCH_CHANCE = 0.35;
+/** How close (Manhattan tiles from the table) a seated person must be for the cat to sit on it. */
+export const PET_PERCH_SEATED_RADIUS_TILES = 3;
+/** Same, for a person standing or walking. */
+export const PET_PERCH_STANDING_RADIUS_TILES = 2;
+/** Seconds a cat sits on the table before hopping down. */
+export const PET_PERCH_DURATION_MIN_SEC = 8.0;
+export const PET_PERCH_DURATION_MAX_SEC = 25.0;
+/** Seconds a jump onto / off the table takes. */
+export const PET_HOP_DURATION_SEC = 0.35;
+/** Peak height (px) of the jump arc. */
+export const PET_HOP_ARC_PX = 10;
+/** Furniture-type substrings the pet picks as its table, best first. */
+export const PET_HOME_TABLE_PATTERNS = ['TABLE_TENNIS', 'PING_PONG', 'TABLE'] as const;
 export const PET_HIT_HALF_WIDTH = 8;
 /** Hit-box height (world px) measured upward from the bottom-center anchor. */
 export const PET_HIT_HEIGHT = 16;
@@ -602,6 +624,8 @@ export const WORK_SPOT_RECHECK_SEC = 3.0;
 export const PAIR_SEAT_MAX_DIST = 2;
 /** Phone ("vibe coding") overlay drawn on a working agent's walk/stand sprite. */
 export const PHONE_CASE_COLOR = '#1b1b24';
+/** Light rim drawn around the phone so it stands out on dark clothes. */
+export const PHONE_OUTLINE_COLOR = '#f2f2ff';
 export const PHONE_SCREEN_COLOR = '#7fe0ff';
 export const PHONE_SCREEN_ALT_COLOR = '#d4f8ff';
 /** Hand colour under the phone when the sprite has no skin pixel to sample. */
