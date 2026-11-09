@@ -86,12 +86,12 @@ export function layoutToFurnitureInstances(furniture: PlacedFurniture[]): Furnit
     }
 
     // Determine if this instance should be mirrored (side asset used in "left" orientation)
+    // The virtual ":left" entries carry orientation 'left' themselves; the
+    // rotation group only knows the off-state ids, so a lit or animated
+    // ":left" frame would otherwise draw unmirrored (facing the wrong way)
     let mirrored = false;
     if (entry.mirrorSide) {
-      const orientInGroup = getOrientationInGroup(item.type);
-      if (orientInGroup === 'left') {
-        mirrored = true;
-      }
+      mirrored = entry.orientation === 'left' || getOrientationInGroup(item.type) === 'left';
     }
 
     instances.push({ sprite, x, y, zY, ...(mirrored ? { mirrored: true } : {}) });

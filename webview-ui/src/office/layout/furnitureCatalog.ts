@@ -279,9 +279,11 @@ export function buildDynamicCatalog(assets: LoadedAssetData): boolean {
   // Store full internal catalog (all variants — for getCatalogEntry lookups)
   internalCatalog = allEntries;
 
-  // Visible catalog: exclude non-front variants and "on" state variants
+  // Visible catalog: exclude non-front variants and "on" state variants — the
+  // virtual ":left" mirrors of on-state frames too, or a mirrored animated item
+  // shows up in the palette once per lit frame
   const visibleEntries = allEntries.filter(
-    (e) => !nonFrontIds.has(e.type) && !onStateIds.has(e.type),
+    (e) => !nonFrontIds.has(e.type) && !onStateIds.has(e.type.replace(/:left$/, '')),
   );
 
   // Strip orientation/state suffix from labels for grouped variants

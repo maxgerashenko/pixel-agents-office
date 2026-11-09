@@ -1,4 +1,3 @@
-import { PLAY_FURNITURE_TYPE_PATTERN } from '../../constants.js';
 import { Direction } from '../types.js';
 
 /** The part of a catalog entry arcade placement needs. */
@@ -7,39 +6,31 @@ interface ArcadeEntry {
   footprintH: number;
 }
 
-export function isArcadeType(type: string): boolean {
-  return PLAY_FURNITURE_TYPE_PATTERN.test(type);
-}
-
 /**
- * Tiles that must be wall for an arcade machine to stand here: it only goes
- * against a wall, never free-standing. A front machine stands under the top
- * wall; a side machine faces away from the wall it leans on (`side` faces right,
- * so its back is to the left wall; the mirrored `left` is the reverse). There
- * is no back orientation, so nothing ever leans on the bottom wall.
+ * Where a player stands and which way it faces, so it always looks at the
+ * screen. A machine stands like a plant: its body is the bottom footprint tile
+ * and the rows above are background (the cabinet top may overlap a wall).
+ *
+ * - front (screen down): below the body, facing up
+ * - side / right (screen right): right of the body, facing left
+ * - left (mirrored side, screen left): left of the body, facing right
+ * - back (screen up): on the background tile above the body, facing down
  */
-export function arcadeWallTiles(
-  entry: ArcadeEntry,
-  col: number,
-  row: number,
-): Array<{ col: number; row: number }> {
-  const rows = Array.from({ length: entry.footprintH }, (_, i) => row + i);
-  if (entry.orientation === 'side') return rows.map((r) => ({ col: col - 1, row: r }));
-  if (entry.orientation === 'left') return rows.map((r) => ({ col: col + 1, row: r }));
-  return [{ col, row: row - 1 }];
-}
-
-/** Where a player stands (in front of the machine) and which way it faces. */
 export function arcadePlaySpot(
   entry: ArcadeEntry,
   col: number,
   row: number,
 ): { col: number; row: number; dir: Direction } {
-  if (entry.orientation === 'side') {
-    return { col: col + 1, row: row + entry.footprintH - 1, dir: Direction.LEFT };
+  const bodyRow = row + entry.footprintH - 1;
+  switch (entry.orientation) {
+    case 'side':
+    case 'right':
+      return { col: col + 1, row: bodyRow, dir: Direction.LEFT };
+    case 'left':
+      return { col: col - 1, row: bodyRow, dir: Direction.RIGHT };
+    case 'back':
+      return { col, row: bodyRow - 1, dir: Direction.DOWN };
+    default:
+      return { col, row: bodyRow + 1, dir: Direction.UP };
   }
-  if (entry.orientation === 'left') {
-    return { col: col - 1, row: row + entry.footprintH - 1, dir: Direction.RIGHT };
-  }
-  return { col, row: row + entry.footprintH, dir: Direction.UP };
 }

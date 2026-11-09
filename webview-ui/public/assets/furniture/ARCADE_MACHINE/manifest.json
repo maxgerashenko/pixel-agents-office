@@ -1,13 +1,13 @@
 {
   "id": "ARCADE_MACHINE",
   "name": "Starlight Arcade",
-  "category": "misc",
+  "category": "electronics",
   "type": "group",
   "groupType": "rotation",
-  "rotationScheme": "3-way-mirror",
+  "rotationScheme": "4-way",
   "canPlaceOnWalls": false,
   "canPlaceOnSurfaces": false,
-  "backgroundTiles": 0,
+  "backgroundTiles": 1,
   "members": [
     {
       "type": "group",
@@ -55,6 +55,60 @@
           "type": "asset",
           "id": "ARCADE_MACHINE_FRONT_OFF",
           "file": "ARCADE_MACHINE_FRONT_OFF.png",
+          "width": 16,
+          "height": 32,
+          "footprintW": 1,
+          "footprintH": 2,
+          "state": "off"
+        }
+      ]
+    },
+    {
+      "type": "group",
+      "groupType": "state",
+      "orientation": "back",
+      "members": [
+        {
+          "type": "group",
+          "groupType": "animation",
+          "state": "on",
+          "members": [
+            {
+              "type": "asset",
+              "id": "ARCADE_MACHINE_BACK_ON_1",
+              "file": "ARCADE_MACHINE_BACK_ON_1.png",
+              "width": 16,
+              "height": 32,
+              "footprintW": 1,
+              "footprintH": 2,
+              "frame": 0
+            },
+            {
+              "type": "asset",
+              "id": "ARCADE_MACHINE_BACK_ON_2",
+              "file": "ARCADE_MACHINE_BACK_ON_2.png",
+              "width": 16,
+              "height": 32,
+              "footprintW": 1,
+              "footprintH": 2,
+              "frame": 1
+            },
+            {
+              "type": "asset",
+              "id": "ARCADE_MACHINE_BACK_ON_3",
+              "file": "ARCADE_MACHINE_BACK_ON_3.png",
+              "width": 16,
+              "height": 32,
+              "footprintW": 1,
+              "footprintH": 2,
+              "frame": 2
+            }
+          ]
+        },
+        {
+          "type": "asset",
+          "id": "ARCADE_MACHINE_BACK_OFF",
+          "file": "ARCADE_MACHINE_BACK_OFF.png",
           "width": 16,
           "height": 32,
           "footprintW": 1,
