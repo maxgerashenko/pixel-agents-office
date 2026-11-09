@@ -366,13 +366,18 @@ function renderTableScores(
   ctx.save();
   ctx.font = `${fontSize}px 'FS Pixel Sans'`;
   ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
+  ctx.textBaseline = 'alphabetic';
   for (const s of scores) {
     const text = `${s.scores[0]} - ${s.scores[1]}`;
     const cx = Math.round(offsetX + s.x * zoom);
     const cy = Math.round(offsetY + s.y * zoom);
-    const w = Math.ceil(ctx.measureText(text).width) + pad * 4;
-    const h = fontSize + pad * 2;
+    // Fit the plate to the digits' ink, not the font box: equal margin above
+    // and below the numbers
+    const m = ctx.measureText(text);
+    const ascent = Math.ceil(m.actualBoundingBoxAscent);
+    const inkH = ascent + Math.ceil(m.actualBoundingBoxDescent);
+    const w = Math.ceil(m.width) + pad * 4;
+    const h = inkH + pad * 4;
     const left = Math.round(cx - w / 2);
     const top = Math.round(cy - h / 2);
     // Table-green plate with the table's white line as a 1px border
@@ -381,7 +386,7 @@ function renderTableScores(
     ctx.fillStyle = TABLE_TENNIS_SCORE_BG_COLOR;
     ctx.fillRect(left, top, w, h);
     ctx.fillStyle = s.winner === null ? TABLE_TENNIS_SCORE_COLOR : TABLE_TENNIS_SCORE_WIN_COLOR;
-    ctx.fillText(text, cx, cy + pad / 2);
+    ctx.fillText(text, cx, top + pad * 2 + ascent);
   }
   ctx.restore();
 }
