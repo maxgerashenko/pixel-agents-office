@@ -91,7 +91,7 @@ declare global {
         id: string;
         name: string;
         petType: number;
-        state: 'idle' | 'walk' | 'follow' | 'hop' | 'sit' | 'hug';
+        state: 'idle' | 'walk' | 'follow' | 'hop' | 'sit' | 'bite';
         x: number;
         y: number;
         bubbleType: 'heart' | null;

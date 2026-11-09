@@ -235,9 +235,9 @@ export interface Character {
   /** Play spot (in front of an arcade machine) this idle agent has claimed, or
    *  null. Transient like restSeatId: released the moment the agent works. */
   playSpotId?: string | null;
-  /** Seconds left held in place by a dog hugging this agent's leg (walk
-   *  paused). Transient, owned by the pet FSM; absent or 0 when free. */
-  petHoldTimer?: number;
+  /** Seconds left dragging a dog that bites this agent's leg (walk slowed to
+   *  PET_DRAG_SPEED_FACTOR). Transient, owned by the pet FSM; absent or 0 when free. */
+  petDragTimer?: number;
   /** Where a working agent with no reachable work seat of its own works: a
    *  pairing seat beside a taken computer, or a standing spot where it vibe
    *  codes on its phone. Claimed when it starts working, released the moment
@@ -307,14 +307,14 @@ export const PetState = {
   HOP: 'hop',
   /** Sitting on a perch (table top, sofa, lap). */
   SIT: 'sit',
-  /** A dog clinging to a walking agent's leg, holding it in place. */
-  HUG: 'hug',
+  /** A dog lying low biting a walking agent's leg, dragged along. */
+  BITE: 'bite',
 } as const;
 export type PetState = (typeof PetState)[keyof typeof PetState];
 
 /** Species from the pet's manifest `kind`; it picks the pet's furniture habits. */
 export const PetKind = {
-  /** Jumps only onto free sofas, and hugs walking agents' legs. */
+  /** Jumps only onto free sofas, and bites walking agents' legs. */
   DOG: 'dog',
   /** Sits on a free table and on seated agents' laps. */
   CAT: 'cat',
@@ -364,10 +364,10 @@ export interface Pet {
   followDurationLimit: number;
   /** The perch the pet is heading to, jumping onto or sitting on, else null. */
   perchTarget: PetPerchTarget | null;
-  /** True while the current FOLLOW is a dog chasing a walking agent to hug its leg. */
-  chaseToHug: boolean;
-  /** Seconds before this dog may hug a leg again. */
-  hugCooldown: number;
+  /** True while the current FOLLOW is a dog chasing a walking agent to bite its leg. */
+  chaseToBite: boolean;
+  /** Seconds before this dog may bite a leg again. */
+  biteCooldown: number;
   /** Direction of the current HOP: true = up onto the perch, false = back down. */
   hopUp: boolean;
   /** 0..1 progress of the current HOP. */
@@ -376,9 +376,9 @@ export interface Pet {
   hopTo: { x: number; y: number };
   /** Floor tile the pet jumped from, and lands on when it hops down. */
   groundTile: { col: number; row: number } | null;
-  /** Seconds left sitting on the perch, or hugging a leg. */
+  /** Seconds left sitting on the perch, or biting a leg. */
   perchTimer: number;
-  /** Depth-sort override while up on a perch or hugging a leg, else null. */
+  /** Depth-sort override while up on a perch or biting a leg, else null. */
   perchZY: number | null;
   /** Pet's heart-bubble overlay (set on click), or null. */
   bubbleType: 'heart' | null;

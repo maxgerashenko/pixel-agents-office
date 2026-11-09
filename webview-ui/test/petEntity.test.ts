@@ -20,6 +20,7 @@ import assert from 'node:assert/strict';
 import { afterEach, beforeEach, test } from 'vitest';
 
 import {
+  PET_DRAG_SPEED_FACTOR,
   PET_FOLLOW_DURATION_MAX_SEC,
   PET_WALK_FRAME_DURATION_SEC,
   PET_WANDER_PAUSE_MAX_SEC,
@@ -448,7 +449,7 @@ test('the cat sits up for a seated person 3 tiles away but not a standing one', 
   assert.equal(tryPerch(makeChar(1, 12, 10)), true); // standing 2 away
 });
 
-// ── Species habits: dog on free sofas, cat on laps, dog hugs a leg ──
+// ── Species habits: dog on free sofas, cat on laps, dog bites a leg ──
 
 const sofaAt = (col: number, row: number) => ({
   seatId: 'sofa1',
@@ -563,7 +564,7 @@ test('a cat ignores the lap of an agent sitting with its back to us', () => {
   assert.equal(pet.perchTarget, null);
 });
 
-test('a dog grabs a walking agent’s leg, holds it 2–3 s, then lets go', () => {
+test('a dog bites a walking agent’s leg, hangs on 2–3 s, then lets go', () => {
   const tileMap = buildOpenTileMap(10, 10);
   const walkable = buildWalkableTiles(10, 10);
   const walker = makeChar(1, 5, 5);
@@ -572,42 +573,69 @@ test('a dog grabs a walking agent’s leg, holds it 2–3 s, then lets go', () =
   const people = new Map([[1, walker]]);
   const pet = createPet('d', 0, 4, 5, PetKind.DOG);
   pet.wanderTimer = 0;
-  randomQueue = [0]; // hug roll succeeds
+  randomQueue = [0]; // bite roll succeeds
   updatePet(pet, 0.01, walkable, people, tileMap, new Set());
   assert.equal(pet.state, PetState.FOLLOW);
-  assert.equal(pet.chaseToHug, true);
+  assert.equal(pet.chaseToBite, true);
   tickWhile(pet, PetState.FOLLOW, [walkable, people, tileMap, new Set()]);
-  assert.equal(pet.state, PetState.HUG);
-  assert.ok(walker.petHoldTimer! >= 2 && walker.petHoldTimer! <= 3);
+  assert.equal(pet.state, PetState.BITE);
+  assert.ok(walker.petDragTimer! >= 2 && walker.petDragTimer! <= 3);
   assert.equal(pet.dir, Direction.RIGHT, 'the dog came from the left');
   assert.ok(pet.x < walker.x);
   let held = 0;
-  while (pet.state === PetState.HUG && held < 10) {
+  while (pet.state === PetState.BITE && held < 10) {
     updatePet(pet, 0.1, walkable, people, tileMap, new Set());
     held += 0.1;
   }
   assert.ok(held >= 1.9 && held <= 3.1, `held for ${held}s`);
   assert.equal(pet.state, PetState.IDLE);
-  assert.equal(walker.petHoldTimer, 0);
-  assert.ok(pet.hugCooldown > 0);
+  assert.equal(walker.petDragTimer, 0);
+  assert.ok(pet.biteCooldown > 0);
 });
 
-test('an agent held by a dog stands still on its walk until released', async () => {
+test('an agent dragging a dog walks on at a slower pace until it lets go', async () => {
   const { updateCharacter } = await import('../src/office/engine/characters.js');
   const tileMap = buildOpenTileMap(10, 10);
-  const walker = makeChar(1, 5, 5);
-  walker.state = CharacterState.WALK;
-  walker.path = [{ col: 6, row: 5 }];
-  walker.petHoldTimer = 0.5;
-  const x0 = walker.x;
-  updateCharacter(walker, 0.2, [], new Map(), tileMap, new Set());
-  assert.equal(walker.x, x0);
-  updateCharacter(walker, 0.4, [], new Map(), tileMap, new Set());
-  updateCharacter(walker, 0.1, [], new Map(), tileMap, new Set());
-  assert.ok(walker.x > x0, 'walks on once released');
+  const step = (dragSec: number) => {
+    const walker = makeChar(1, 5, 5);
+    walker.state = CharacterState.WALK;
+    walker.path = [{ col: 6, row: 5 }];
+    walker.petDragTimer = dragSec;
+    const x0 = walker.x;
+    updateCharacter(walker, 0.1, [], new Map(), tileMap, new Set());
+    return { moved: walker.x - x0, left: walker.petDragTimer };
+  };
+  const free = step(0);
+  const dragged = step(1);
+  assert.ok(dragged.moved > 0, 'still walking');
+  assert.ok(Math.abs(dragged.moved - free.moved * PET_DRAG_SPEED_FACTOR) < 1e-9);
+  assert.ok(Math.abs(dragged.left! - 0.9) < 1e-9);
 });
 
-test('hug frames tip the side sprite onto the frame’s bottom and leg edges', async () => {
+test('the dog trails the leg it bites as the agent drags it sideways', () => {
+  const tileMap = buildOpenTileMap(10, 10);
+  const walkable = buildWalkableTiles(10, 10);
+  const walker = makeChar(1, 5, 5);
+  walker.state = CharacterState.WALK;
+  walker.dir = Direction.LEFT;
+  const pet = createPet('d', 0, 4, 5, PetKind.DOG);
+  pet.state = PetState.BITE;
+  pet.followTargetId = 1;
+  pet.perchTimer = 2;
+  pet.dir = Direction.RIGHT;
+  updatePet(pet, 0.1, walkable, new Map([[1, walker]]), tileMap, new Set());
+  assert.equal(pet.dir, Direction.LEFT, 'turned to follow the leg');
+  assert.ok(pet.x > walker.x, 'behind the agent walking left');
+  assert.equal(pet.y, walker.y);
+  assert.ok(walker.petDragTimer! > 0);
+  // The agent sits down: the dog lets go
+  walker.state = CharacterState.TYPE;
+  updatePet(pet, 0.1, walkable, new Map([[1, walker]]), tileMap, new Set());
+  assert.equal(pet.state, PetState.IDLE);
+  assert.equal(walker.petDragTimer, 0);
+});
+
+test('bite frames lay the side sprite on the frame’s bottom and leg edges', async () => {
   const { setPetTemplates, getPetSprites, getPetKind } =
     await import('../src/office/sprites/petSpriteData.js');
   const frame = (fill: (r: number, c: number) => boolean) =>
@@ -624,18 +652,18 @@ test('hug frames tip the side sprite onto the frame’s bottom and leg edges', a
     walkRight: [side, side, side],
   };
   setPetTemplates([raw], ['Rex'], ['Dog']);
-  const hug = getPetSprites(0)!.hugRight[0];
-  assert.equal(hug.length, 32);
-  assert.equal(hug[0].length, 32);
+  const bite = getPetSprites(0)!.biteRight[0];
+  assert.equal(bite.length, 32);
+  assert.equal(bite[0].length, 32);
   assert.ok(
-    hug[31].some((px) => px !== ''),
-    'feet on the bottom edge',
+    bite[31].some((px) => px !== ''),
+    'belly on the bottom edge',
   );
   assert.ok(
-    hug.some((row) => row[31] !== ''),
-    'paws against the right edge',
+    bite.some((row) => row[31] !== ''),
+    'nose against the right edge',
   );
-  const left = getPetSprites(0)!.hugLeft[0];
+  const left = getPetSprites(0)!.biteLeft[0];
   assert.ok(
     left.some((row) => row[0] !== ''),
     'mirrored for the other side',

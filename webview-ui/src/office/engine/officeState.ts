@@ -336,7 +336,7 @@ export class OfficeState {
           pet.followTargetId = null;
           pet.perchZY = null;
           pet.perchTarget = null;
-          pet.chaseToHug = false;
+          pet.chaseToBite = false;
         }
       }
     }
@@ -1677,11 +1677,11 @@ export class OfficeState {
 
   /** Remove a pet by id. Idempotent. */
   removePet(id: string): void {
-    // A dog let go of mid-hug must not leave the agent frozen
+    // A dog removed mid-bite must not leave the agent walking slowly
     const leaving = this.pets.find((p) => p.id === id);
-    if (leaving?.state === PetState.HUG && leaving.followTargetId !== null) {
+    if (leaving?.state === PetState.BITE && leaving.followTargetId !== null) {
       const held = this.characters.get(leaving.followTargetId);
-      if (held) held.petHoldTimer = 0;
+      if (held) held.petDragTimer = 0;
     }
     const before = this.pets.length;
     this.pets = this.pets.filter((p) => p.id !== id);

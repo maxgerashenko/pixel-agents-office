@@ -1,4 +1,9 @@
-import { PET_HUG_FRAME_PX, PET_HUG_REAR_DEG } from '../../constants.js';
+import {
+  PET_BITE_BODY_SHARE,
+  PET_BITE_FEET_ROWS,
+  PET_BITE_FRAME_PX,
+  PET_BITE_TILT_DEG,
+} from '../../constants.js';
 import type { PetKind, SpriteData } from '../types.js';
 import { PetKind as PetKinds } from '../types.js';
 
@@ -16,11 +21,11 @@ export interface PetSpriteFrames {
   walkLeft: [SpriteData, SpriteData, SpriteData];
   idleRight: [SpriteData, SpriteData, SpriteData];
   idleLeft: [SpriteData, SpriteData, SpriteData];
-  /** Dog reared up on its hind legs clinging to a leg on its right (derived
-   *  from walkRight tipped back onto its hind legs). */
-  hugRight: [SpriteData, SpriteData, SpriteData];
-  /** Same, clinging to a leg on its left. */
-  hugLeft: [SpriteData, SpriteData, SpriteData];
+  /** Dog lying low, biting a leg on its right and being dragged (derived from
+   *  walkRight: legs folded, head dipped). */
+  biteRight: [SpriteData, SpriteData, SpriteData];
+  /** Same, biting a leg on its left. */
+  biteLeft: [SpriteData, SpriteData, SpriteData];
 }
 
 /** Flip a sprite horizontally (used for walkRight → walkLeft). */
@@ -29,7 +34,7 @@ function flipHorizontal(s: SpriteData): SpriteData {
 }
 
 /**
- * Rotate a sprite counter-clockwise by `deg` (nearest-neighbour, so no new
+ * Rotate a sprite counter-clockwise by `deg` (negative: clockwise) (nearest-neighbour, so no new
  * colours), into a canvas big enough to hold the result.
  */
 function rotateCcw(s: SpriteData, deg: number): SpriteData {
@@ -70,19 +75,38 @@ function opaqueBounds(s: SpriteData): [number, number, number, number] | null {
 }
 
 /**
- * Hug frames, clinging to a leg on the dog's right: the side walk frames tipped
- * back onto the hind legs (PET_HUG_REAR_DEG), then laid into a
- * PET_HUG_FRAME_PX square with the paws and nose against its right edge and the
- * feet on its bottom edge — one shared offset, so the frames don't jitter.
+ * Lying low: keep the top PET_BITE_BODY_SHARE of the opaque body and the
+ * bottom PET_BITE_FEET_ROWS (paws), dropping the leg rows between, so the dog
+ * sinks onto its belly with its paws dug in.
  */
-function hugFrames(
+function lieDown(s: SpriteData): SpriteData {
+  const b = opaqueBounds(s);
+  if (!b) return s;
+  const [, top, , bottom] = b;
+  const bodyEnd = top + Math.round((bottom - top + 1) * PET_BITE_BODY_SHARE); // exclusive
+  const feetStart = bottom + 1 - PET_BITE_FEET_ROWS;
+  if (feetStart <= bodyEnd) return s;
+  const kept = [...s.slice(top, bodyEnd), ...s.slice(feetStart, bottom + 1)];
+  const w = s[0].length;
+  const blank = (): string[] => Array.from({ length: w }, () => '');
+  return [...Array.from({ length: s.length - kept.length }, blank), ...kept];
+}
+
+/**
+ * Bite frames, dragged along by a leg on the dog's right: the side walk frames
+ * lowered onto the belly (lieDown), head dipped to the ankle (tipped
+ * PET_BITE_TILT_DEG clockwise), then laid into a PET_BITE_FRAME_PX square with
+ * the nose against its right edge and the belly on its bottom edge — one shared
+ * offset, so the frames (scrabbling paws) don't jitter.
+ */
+function biteFrames(
   walkRight: [SpriteData, SpriteData, SpriteData],
 ): [SpriteData, SpriteData, SpriteData] {
-  const turned = walkRight.map((f) => rotateCcw(f, PET_HUG_REAR_DEG));
+  const turned = walkRight.map((f) => rotateCcw(lieDown(f), -PET_BITE_TILT_DEG));
   const bounds = turned.map(opaqueBounds);
   const right = Math.max(...bounds.map((b) => (b ? b[2] : 0)));
   const bottom = Math.max(...bounds.map((b) => (b ? b[3] : 0)));
-  const size = PET_HUG_FRAME_PX;
+  const size = PET_BITE_FRAME_PX;
   const place = (f: SpriteData): SpriteData =>
     Array.from({ length: size }, (_, y) =>
       Array.from({ length: size }, (_, x) => {
@@ -150,15 +174,15 @@ export function setPetTemplates(
     ];
     // The pet's front-facing idle stands in for "idle right"; the back-facing
     // idle stands in for "idle left". No flip — the side-on pose isn't authored.
-    const hugRight = hugFrames(walkRight);
-    const hugLeft: [SpriteData, SpriteData, SpriteData] = [
-      flipHorizontal(hugRight[0]),
-      flipHorizontal(hugRight[1]),
-      flipHorizontal(hugRight[2]),
+    const biteRight = biteFrames(walkRight);
+    const biteLeft: [SpriteData, SpriteData, SpriteData] = [
+      flipHorizontal(biteRight[0]),
+      flipHorizontal(biteRight[1]),
+      flipHorizontal(biteRight[2]),
     ];
     resolved.push({
-      hugRight,
-      hugLeft,
+      biteRight,
+      biteLeft,
       walkDown,
       idleDown,
       walkUp,

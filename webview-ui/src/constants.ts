@@ -358,10 +358,10 @@ export const PET_SOFA_SEAT_Y_OFFSET_PX = 3;
 export const PET_LAP_Y_OFFSET_PX = 9;
 /** Cat on a sideways-facing lap: shift (px) toward the way the agent faces. */
 export const PET_LAP_SIDE_SHIFT_PX = 3;
-/** Chance, at each idle decision, that a dog chases a walking agent to hug its leg. */
-export const PET_HUG_CHANCE = 0.3;
+/** Chance, at each idle decision, that a dog chases a walking agent to bite its leg. */
+export const PET_BITE_CHANCE = 0.3;
 /** How close (Manhattan tiles) a walking agent must be for the dog to chase it. */
-export const PET_HUG_RADIUS_TILES = 5;
+export const PET_BITE_RADIUS_TILES = 5;
 /** Dog's running speed while chasing a leg (agents walk at 48 px/s). */
 export const PET_CHASE_SPEED_PX_PER_SEC = 64;
 /** Seconds between path re-computations while chasing (the target keeps moving). */
@@ -369,19 +369,27 @@ export const PET_CHASE_RECALC_INTERVAL_SEC = 0.3;
 /** Give up a chase after this many seconds. */
 export const PET_CHASE_MAX_SEC = 8.0;
 /** The dog grabs the leg once this close (world px between feet). */
-export const PET_HUG_REACH_PX = 12;
-/** How long the dog hugs the leg (and the agent stands still). */
-export const PET_HUG_DURATION_MIN_SEC = 2.0;
-export const PET_HUG_DURATION_MAX_SEC = 3.0;
-/** Seconds before a dog may hug again. */
-export const PET_HUG_COOLDOWN_SEC = 20.0;
-/** How far the hug pose tips the side sprite back onto its hind legs (degrees). */
-export const PET_HUG_REAR_DEG = 30;
-/** Hug frames are this square size (px); paws/nose at the right edge, feet at the bottom. */
-export const PET_HUG_FRAME_PX = 32;
-/** Hugging dog's sprite centre: this far (px) to the side of the agent's centre,
- *  which puts its paws and nose against the leg (frame half-width minus 4). */
-export const PET_HUG_SIDE_OFFSET_PX = 12;
+export const PET_BITE_REACH_PX = 12;
+/** How long the dog hangs on to the leg, being dragged along. */
+export const PET_BITE_DURATION_MIN_SEC = 2.0;
+export const PET_BITE_DURATION_MAX_SEC = 3.0;
+/** Seconds before a dog may bite a leg again. */
+export const PET_BITE_COOLDOWN_SEC = 20.0;
+/** An agent dragging a dog walks at this fraction of its normal speed. */
+export const PET_DRAG_SPEED_FACTOR = 0.4;
+/** The lying pose keeps this share of the side sprite's height as body; the
+ *  legs below it fold away, leaving only the bottom PET_BITE_FEET_ROWS. */
+export const PET_BITE_BODY_SHARE = 0.7;
+export const PET_BITE_FEET_ROWS = 3;
+/** The lying pose dips its head to the ankle by tipping forward (degrees, clockwise). */
+export const PET_BITE_TILT_DEG = 10;
+/** Bite frames are this square size (px); nose at the right edge, belly at the bottom. */
+export const PET_BITE_FRAME_PX = 32;
+/** Biting dog's sprite centre: this far (px) to the side of the agent's centre,
+ *  which puts its nose on the leg (frame half-width minus 4). */
+export const PET_BITE_SIDE_OFFSET_PX = 12;
+/** When the agent walks up or down, the dog trails this far (px) behind it. */
+export const PET_BITE_TRAIL_PX = 3;
 export const PET_HIT_HALF_WIDTH = 8;
 /** Hit-box height (world px) measured upward from the bottom-center anchor. */
 export const PET_HIT_HEIGHT = 16;

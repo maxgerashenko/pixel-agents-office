@@ -1,5 +1,6 @@
 import {
   DEFAULT_MAX_CONTEXT_TOKENS,
+  PET_DRAG_SPEED_FACTOR,
   PLAY_MAX_SEC,
   PLAY_MIN_SEC,
   SEAT_REST_MAX_SEC,
@@ -547,13 +548,6 @@ export function updateCharacter(
     }
 
     case CharacterState.WALK: {
-      // A dog has hold of a leg: stand still (feet together) until it lets go
-      if (ch.petHoldTimer && ch.petHoldTimer > 0) {
-        ch.petHoldTimer = Math.max(0, ch.petHoldTimer - dt);
-        ch.frame = 1;
-        ch.frameTimer = 0;
-        break;
-      }
       // Walk animation
       if (ch.frameTimer >= WALK_FRAME_DURATION_SEC) {
         ch.frameTimer -= WALK_FRAME_DURATION_SEC;
@@ -647,7 +641,11 @@ export function updateCharacter(
       const nextTile = ch.path[0];
       ch.dir = directionBetween(ch.tileCol, ch.tileRow, nextTile.col, nextTile.row);
 
-      ch.moveProgress += (WALK_SPEED_PX_PER_SEC / TILE_SIZE) * dt;
+      // A dog hanging on to a leg slows the walk to a drag
+      const dragged = (ch.petDragTimer ?? 0) > 0;
+      if (dragged) ch.petDragTimer = Math.max(0, (ch.petDragTimer ?? 0) - dt);
+      const speed = WALK_SPEED_PX_PER_SEC * (dragged ? PET_DRAG_SPEED_FACTOR : 1);
+      ch.moveProgress += (speed / TILE_SIZE) * dt;
 
       const fromCenter = tileCenter(ch.tileCol, ch.tileRow);
       const toCenter = tileCenter(nextTile.col, nextTile.row);
