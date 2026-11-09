@@ -52,7 +52,7 @@ describe('reorderByPointer', () => {
 
 describe('cardShortName', () => {
   it('keeps the part after the last underscore', () => {
-    expect(cardShortName('Agent_sonnet5.5_CODE')).toBe('CODE');
+    expect(cardShortName('Agent_sonnet_CODE')).toBe('CODE');
     expect(cardShortName('Local_QWEN')).toBe('QWEN');
   });
   it('shows names without a usable tail whole', () => {
