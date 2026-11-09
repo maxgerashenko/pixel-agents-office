@@ -13,6 +13,8 @@ import {
   PET_PERCH_CHANCE,
   PET_PERCH_DURATION_MAX_SEC,
   PET_PERCH_DURATION_MIN_SEC,
+  PET_PERCH_SEATED_RADIUS_TILES,
+  PET_PERCH_STANDING_RADIUS_TILES,
   PET_WALK_FRAME_DURATION_SEC,
   PET_WALK_SEQUENCE,
   PET_WALK_SPEED_PX_PER_SEC,
@@ -28,7 +30,7 @@ import type {
   SpriteData,
   TileType as TileTypeVal,
 } from '../types.js';
-import { Direction, PetState, TILE_SIZE } from '../types.js';
+import { CharacterState, Direction, PetState, TILE_SIZE } from '../types.js';
 
 /** The tile the pet stays around, and how far (Manhattan tiles) it may roam from it. */
 export interface PetHome {
@@ -91,12 +93,16 @@ export function findPetHome(
   return null;
 }
 
-/** Whether anyone (not despawning) is at or near the table, sitting or standing. */
+/** Whether someone is near the table: within 3 tiles if seated, within 2 if standing. */
 function personNearTable(home: PetHome | null, characters: Map<number, Character>): boolean {
   if (!home) return false;
   for (const ch of characters.values()) {
     if (ch.matrixEffect === 'despawn') continue;
-    if (isNearPetHome(home, ch.tileCol, ch.tileRow)) return true;
+    const radius =
+      ch.state === CharacterState.TYPE
+        ? PET_PERCH_SEATED_RADIUS_TILES
+        : PET_PERCH_STANDING_RADIUS_TILES;
+    if (manhattanDistance(home.col, home.row, ch.tileCol, ch.tileRow) <= radius) return true;
   }
   return false;
 }

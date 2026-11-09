@@ -326,6 +326,10 @@ export const PET_FOLLOW_DURATION_MAX_SEC = 15.0;
 export const PET_HOME_RADIUS_TILES = 3;
 /** Chance, at each idle decision, that a cat near a free table goes to sit on it. */
 export const PET_PERCH_CHANCE = 0.35;
+/** How close (Manhattan tiles from the table) a seated person must be for the cat to sit on it. */
+export const PET_PERCH_SEATED_RADIUS_TILES = 3;
+/** Same, for a person standing or walking. */
+export const PET_PERCH_STANDING_RADIUS_TILES = 2;
 /** Seconds a cat sits on the table before hopping down. */
 export const PET_PERCH_DURATION_MIN_SEC = 8.0;
 export const PET_PERCH_DURATION_MAX_SEC = 25.0;

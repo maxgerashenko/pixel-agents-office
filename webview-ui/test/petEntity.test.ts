@@ -394,7 +394,7 @@ test('a cat beside a free table jumps up, sits, then hops back down', async () =
   const walkable = buildWalkableTiles(20, 20);
   const home = findPetHome([{ uid: 'b', type: 'TABLE_FRONT', col: 10, row: 4 }], tableInfo)!;
   const pet = createPet('p', 0, 9, 5); // floor tile touching the table
-  const person = new Map([[1, makeChar(1, 8, 5)]]);
+  const person = new Map([[1, makeChar(1, 9, 6)]]);
   pet.wanderTimer = 0;
   randomQueue = [0]; // perch roll succeeds
   // Nobody around: the cat stays on the floor.
@@ -422,4 +422,28 @@ test('a cat beside a free table jumps up, sits, then hops back down', async () =
   }
   assert.equal(pet.state, PetState.IDLE);
   assert.equal(pet.perchZY, null);
+});
+
+test('the cat sits up for a seated person 3 tiles away but not a standing one', () => {
+  const tileMap = buildOpenTileMap(20, 20);
+  const walkable = buildWalkableTiles(20, 20);
+  const home = {
+    col: 10,
+    row: 10,
+    radius: 3,
+    footprint: { col: 9, row: 9, w: 3, h: 3 },
+    perch: { x: 168, y: 168, zY: 176 },
+  };
+  const tryPerch = (ch: Character) => {
+    const pet = createPet('p', 0, 8, 10);
+    pet.wanderTimer = 0;
+    randomQueue = [0];
+    updatePet(pet, 0.01, walkable, new Map([[1, ch]]), tileMap, new Set(), home);
+    return pet.state === PetState.HOP || pet.goPerch;
+  };
+  const seated = makeChar(1, 13, 10);
+  seated.state = CharacterState.TYPE;
+  assert.equal(tryPerch(seated), true);
+  assert.equal(tryPerch(makeChar(1, 13, 10)), false); // standing 3 away
+  assert.equal(tryPerch(makeChar(1, 12, 10)), true); // standing 2 away
 });
