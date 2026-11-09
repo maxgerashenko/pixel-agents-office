@@ -342,14 +342,16 @@ test('findPetHome prefers a table tennis table, then any table, else null', asyn
   const table = { uid: 'b', type: 'TABLE_FRONT', col: 10, row: 4 };
   const tennis = { uid: 'c', type: 'TABLE_TENNIS', col: 2, row: 6 };
   assert.equal(findPetHome([desk], fp), null);
-  assert.deepEqual(findPetHome([desk, table], fp), { col: 11, row: 4, radius: 3 });
-  assert.deepEqual(findPetHome([desk, table, tennis], fp), { col: 3, row: 6, radius: 3 });
+  assert.deepEqual(findPetHome([desk, table], fp)?.row, 4);
+  assert.deepEqual(findPetHome([desk, table], fp)?.col, 11);
+  assert.equal(findPetHome([desk, table, tennis], fp)?.col, 3);
+  assert.equal(findPetHome([desk, table, tennis], fp)?.row, 6);
 });
 
 test('a pet with a table home only wanders to tiles near it', () => {
   const tileMap = buildOpenTileMap(20, 20);
   const walkable = buildWalkableTiles(20, 20);
-  const home = { col: 10, row: 10, radius: 3 };
+  const home = { col: 10, row: 10, radius: 3, footprint: { col: 9, row: 9, w: 3, h: 3 } };
   for (let i = 0; i < 40; i++) {
     const pet = createPet('p', 0, 10, 10);
     pet.wanderTimer = 0;
@@ -364,11 +366,52 @@ test('a pet with a table home only wanders to tiles near it', () => {
 test('a pet does not follow a character who is away from the table', () => {
   const tileMap = buildOpenTileMap(20, 20);
   const walkable = buildWalkableTiles(20, 20);
-  const home = { col: 5, row: 5, radius: 3 };
+  const home = { col: 5, row: 5, radius: 3, footprint: { col: 4, row: 4, w: 3, h: 3 } };
   const pet = createPet('p', 0, 5, 5);
   pet.wanderTimer = 0;
   randomQueue = [0]; // follow roll succeeds
   const far = makeChar(1, 8, 7); // within follow radius of the pet but outside the zone
   updatePet(pet, 0.01, walkable, new Map([[1, far]]), tileMap, new Set(), home);
   assert.notEqual(pet.state, PetState.FOLLOW);
+});
+
+// ── Sitting on the table ───────────────────────────────────────
+
+const tableInfo = (type: string) =>
+  type === 'PC_FRONT' ? { w: 1, h: 2, onSurface: true } : { w: 3, h: 4 };
+
+test('the table has a perch only when no PC stands on it', async () => {
+  const { findPetHome } = await import('../src/office/engine/petEntity.js');
+  const table = { uid: 'b', type: 'TABLE_FRONT', col: 10, row: 4 };
+  const pc = { uid: 'p', type: 'PC_FRONT', col: 11, row: 5 };
+  assert.ok(findPetHome([table], tableInfo)?.perch);
+  assert.equal(findPetHome([table, pc], tableInfo)?.perch, undefined);
+});
+
+test('a cat beside a free table jumps up, sits, then hops back down', async () => {
+  const { findPetHome } = await import('../src/office/engine/petEntity.js');
+  const tileMap = buildOpenTileMap(20, 20);
+  const walkable = buildWalkableTiles(20, 20);
+  const home = findPetHome([{ uid: 'b', type: 'TABLE_FRONT', col: 10, row: 4 }], tableInfo)!;
+  const pet = createPet('p', 0, 9, 5); // floor tile touching the table
+  pet.wanderTimer = 0;
+  randomQueue = [0]; // perch roll succeeds
+  updatePet(pet, 0.01, walkable, new Map(), tileMap, new Set(), home);
+  assert.equal(pet.state, PetState.HOP);
+  for (let i = 0; i < 100 && pet.state === PetState.HOP; i++) {
+    updatePet(pet, 0.05, walkable, new Map(), tileMap, new Set(), home);
+  }
+  assert.equal(pet.state, PetState.SIT);
+  assert.equal(pet.x, home.perch!.x);
+  assert.equal(pet.y, home.perch!.y);
+  assert.equal(pet.perchZY, home.perch!.zY);
+  // A PC appears on the table: the cat hops down.
+  const busy = { ...home, perch: undefined };
+  updatePet(pet, 0.01, walkable, new Map(), tileMap, new Set(), busy);
+  assert.equal(pet.state, PetState.HOP);
+  for (let i = 0; i < 100 && pet.state === PetState.HOP; i++) {
+    updatePet(pet, 0.05, walkable, new Map(), tileMap, new Set(), busy);
+  }
+  assert.equal(pet.state, PetState.IDLE);
+  assert.equal(pet.perchZY, null);
 });

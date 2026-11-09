@@ -466,7 +466,7 @@ export function renderScene(
 
     // Z-sort key: matches the chair/character "row boundary" formula.
     // pet.y is the pixel center, so + TILE_SIZE/2 lifts us to the row's bottom edge.
-    const petZY = pet.y + TILE_SIZE / 2;
+    const petZY = pet.perchZY !== null ? pet.perchZY : pet.y + TILE_SIZE / 2;
 
     drawables.push({
       zY: petZY,

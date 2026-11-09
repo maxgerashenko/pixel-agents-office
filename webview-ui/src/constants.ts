@@ -324,6 +324,15 @@ export const PET_FOLLOW_DURATION_MAX_SEC = 15.0;
 /** Hit-box half-width (world px) for pet click detection. */
 /** How far (Manhattan tiles) the pet roams from its table. */
 export const PET_HOME_RADIUS_TILES = 3;
+/** Chance, at each idle decision, that a cat near a free table goes to sit on it. */
+export const PET_PERCH_CHANCE = 0.35;
+/** Seconds a cat sits on the table before hopping down. */
+export const PET_PERCH_DURATION_MIN_SEC = 8.0;
+export const PET_PERCH_DURATION_MAX_SEC = 25.0;
+/** Seconds a jump onto / off the table takes. */
+export const PET_HOP_DURATION_SEC = 0.35;
+/** Peak height (px) of the jump arc. */
+export const PET_HOP_ARC_PX = 10;
 /** Furniture-type substrings the pet picks as its table, best first. */
 export const PET_HOME_TABLE_PATTERNS = ['TABLE_TENNIS', 'PING_PONG', 'TABLE'] as const;
 export const PET_HIT_HALF_WIDTH = 8;

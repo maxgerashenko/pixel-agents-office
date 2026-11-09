@@ -46,8 +46,8 @@ import type {
 import { CharacterState, Direction, PetState, TILE_SIZE } from '../types.js';
 import { createCharacter, isSeatedPose, settleOnWorkSpot, updateCharacter } from './characters.js';
 import { advanceMatrixEffect, startMatrixEffect } from './matrixEffectState.js';
-import { createPet, findPetHome, isNearPetHome, updatePet } from './petEntity.js';
 import type { PetHome } from './petEntity.js';
+import { createPet, findPetHome, isNearPetHome, updatePet } from './petEntity.js';
 import {
   anchorTile,
   closestFreeSeat,
@@ -304,6 +304,8 @@ export class OfficeState {
           pet.frame = 0;
           pet.frameTimer = 0;
           pet.followTargetId = null;
+          pet.perchZY = null;
+          pet.goPerch = false;
         }
       }
     }
@@ -1397,7 +1399,9 @@ export class OfficeState {
   getPetHome(): PetHome | null {
     return findPetHome(this.layout.furniture, (type) => {
       const entry = getCatalogEntry(type);
-      return entry ? { w: entry.footprintW, h: entry.footprintH } : undefined;
+      return entry
+        ? { w: entry.footprintW, h: entry.footprintH, onSurface: entry.canPlaceOnSurfaces }
+        : undefined;
     });
   }
 
