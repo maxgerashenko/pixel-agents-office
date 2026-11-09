@@ -637,7 +637,8 @@ export const TABLE_TENNIS_SCORE_FONT_PX = 6;
 export const TABLE_TENNIS_SCORE_LIFT_PX = 5;
 export const TABLE_TENNIS_SCORE_COLOR = '#ffffff';
 export const TABLE_TENNIS_SCORE_WIN_COLOR = '#ffd84a';
-export const TABLE_TENNIS_SCORE_BG_COLOR = 'rgba(20, 20, 32, 0.8)';
+export const TABLE_TENNIS_SCORE_BG_COLOR = '#267a54';
+export const TABLE_TENNIS_SCORE_BORDER_COLOR = '#ecf0ec';
 /** A player swings while the ball is within this fraction of the table of it. */
 export const TABLE_TENNIS_SWING_NEAR = 0.18;
 /** Seconds for the ball to cross the table once. */

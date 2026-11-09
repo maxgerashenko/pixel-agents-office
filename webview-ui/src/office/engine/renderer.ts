@@ -43,6 +43,7 @@ import {
   TABLE_TENNIS_BALL_SHADOW_COLOR,
   TABLE_TENNIS_BALL_SIZE_PX,
   TABLE_TENNIS_SCORE_BG_COLOR,
+  TABLE_TENNIS_SCORE_BORDER_COLOR,
   TABLE_TENNIS_SCORE_COLOR,
   TABLE_TENNIS_SCORE_FONT_PX,
   TABLE_TENNIS_SCORE_WIN_COLOR,
@@ -350,7 +351,7 @@ interface ZDrawable {
 
 /** @internal */
 /**
- * Table-tennis scoreboards over the net: "left - right" on a dark plate,
+ * Table-tennis scoreboards over the net: white "left - right" on a table-green plate,
  * the final score in gold while the winner celebrates. Drawn above the scene.
  */
 function renderTableScores(
@@ -372,8 +373,13 @@ function renderTableScores(
     const cy = Math.round(offsetY + s.y * zoom);
     const w = Math.ceil(ctx.measureText(text).width) + pad * 4;
     const h = fontSize + pad * 2;
+    const left = Math.round(cx - w / 2);
+    const top = Math.round(cy - h / 2);
+    // Table-green plate with the table's white line as a 1px border
+    ctx.fillStyle = TABLE_TENNIS_SCORE_BORDER_COLOR;
+    ctx.fillRect(left - pad, top - pad, w + pad * 2, h + pad * 2);
     ctx.fillStyle = TABLE_TENNIS_SCORE_BG_COLOR;
-    ctx.fillRect(Math.round(cx - w / 2), Math.round(cy - h / 2), w, h);
+    ctx.fillRect(left, top, w, h);
     ctx.fillStyle = s.winner === null ? TABLE_TENNIS_SCORE_COLOR : TABLE_TENNIS_SCORE_WIN_COLOR;
     ctx.fillText(text, cx, cy + pad / 2);
   }
