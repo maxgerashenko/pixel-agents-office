@@ -1268,6 +1268,19 @@ export class OfficeState {
     }
   }
 
+  /** The animated on-state of a furniture type for this frame. The mirrored
+   *  `:left` variant of a side-facing item has no state pair of its own, so it
+   *  is lit through its base type and re-suffixed. */
+  private lightUp(type: string, animFrame: number): string {
+    const mirrored = type.endsWith(':left');
+    const base = mirrored ? type.slice(0, -':left'.length) : type;
+    let onType = getOnStateType(base);
+    const frames = getAnimationFrames(onType);
+    if (frames && frames.length > 1) onType = frames[animFrame % frames.length];
+    const lit = mirrored ? `${onType}:left` : onType;
+    return getCatalogEntry(lit) ? lit : type;
+  }
+
   /** Rebuild furniture instances with auto-state applied (active agents turn electronics ON) */
   private rebuildFurnitureInstances(): void {
     // Collect tiles where active agents face desks
@@ -1302,7 +1315,15 @@ export class OfficeState {
       }
     }
 
-    if (autoOnTiles.size === 0) {
+    // An arcade machine lights up while an agent plays at it
+    const playedUids = new Set<string>();
+    for (const ch of this.characters.values()) {
+      if (ch.playSpotId && ch.state === CharacterState.TYPE) {
+        playedUids.add(ch.playSpotId.replace(/^play:/, ''));
+      }
+    }
+
+    if (autoOnTiles.size === 0 && playedUids.size === 0) {
       this.furniture = layoutToFurnitureInstances(this.layout.furniture);
       return;
     }
@@ -1312,6 +1333,7 @@ export class OfficeState {
     const modifiedFurniture: PlacedFurniture[] = this.layout.furniture.map((item) => {
       const entry = getCatalogEntry(item.type);
       if (!entry) return item;
+      if (playedUids.has(item.uid)) return { ...item, type: this.lightUp(item.type, animFrame) };
       // Check if any tile of this furniture overlaps an auto-on tile
       for (let dr = 0; dr < entry.footprintH; dr++) {
         for (let dc = 0; dc < entry.footprintW; dc++) {

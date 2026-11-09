@@ -32,20 +32,41 @@ function asset(id: string, category: string, extra: Partial<CatalogAsset> = {}):
   };
 }
 
+/** Front and side machines, each with an off state and a two-frame on animation. */
+function arcadeAssets(): CatalogAsset[] {
+  const out: CatalogAsset[] = [];
+  for (const o of ['front', 'side']) {
+    const O = o.toUpperCase();
+    const base = {
+      height: 32,
+      footprintH: 2,
+      groupId: 'ARCADE_MACHINE',
+      orientation: o,
+      ...(o === 'side' ? { mirrorSide: true } : {}),
+    };
+    out.push(asset(`ARCADE_MACHINE_${O}_OFF`, 'misc', { ...base, state: 'off' }));
+    for (const frame of [0, 1]) {
+      out.push(
+        asset(`ARCADE_MACHINE_${O}_ON_${frame + 1}`, 'misc', {
+          ...base,
+          state: 'on',
+          animationGroup: `arcade-${o}`,
+          frame,
+        }),
+      );
+    }
+  }
+  return out;
+}
+
 beforeAll(() => {
   const catalog = [
     asset('DESK', 'desks', { isDesk: true }),
     asset('PC', 'electronics', { canPlaceOnSurfaces: true }),
     asset('WOODEN_CHAIR', 'chairs'),
-    asset('ARCADE_MACHINE_FRONT', 'misc', { height: 32, footprintH: 2, orientation: 'front' }),
-    asset('ARCADE_MACHINE_SIDE', 'misc', {
-      height: 32,
-      footprintH: 2,
-      orientation: 'side',
-      mirrorSide: true,
-    }),
+    ...arcadeAssets(),
   ];
-  const sprites = Object.fromEntries(catalog.map((a) => [a.id, [[]]]));
+  const sprites = Object.fromEntries(catalog.map((a) => [a.id, [[a.id]]]));
   assert.ok(buildDynamicCatalog({ catalog, sprites }));
 });
 
@@ -98,7 +119,7 @@ function idleAgent(os: OfficeState, id: number): void {
 }
 
 test('a play spot sits just below the machine', () => {
-  const os = new OfficeState(layout([f('arc', 'ARCADE_MACHINE_FRONT', 6, 1)]));
+  const os = new OfficeState(layout([f('arc', 'ARCADE_MACHINE_FRONT_OFF', 6, 1)]));
   assert.deepEqual(
     [...os.playSpots.entries()].map(([k, v]) => [k, v.col, v.row]),
     [['play:arc', 6, 3]],
@@ -106,12 +127,12 @@ test('a play spot sits just below the machine', () => {
 });
 
 test('no play spot for a machine whose front is in an Area buffer', () => {
-  const os = new OfficeState(layout([f('arc', 'ARCADE_MACHINE_FRONT', 6, 1)], [5, 7]));
+  const os = new OfficeState(layout([f('arc', 'ARCADE_MACHINE_FRONT_OFF', 6, 1)], [5, 7]));
   assert.equal(os.playSpots.size, 0);
 });
 
 test('idle agents play at the machine, one per machine, facing it', () => {
-  const os = new OfficeState(layout([f('arc', 'ARCADE_MACHINE_FRONT', 6, 1)]));
+  const os = new OfficeState(layout([f('arc', 'ARCADE_MACHINE_FRONT_OFF', 6, 1)]));
   idleAgent(os, 1);
   idleAgent(os, 2);
   let played = false;
@@ -129,7 +150,7 @@ test('idle agents play at the machine, one per machine, facing it', () => {
 });
 
 test('a playing agent that becomes active leaves the machine for its computer', () => {
-  const os = new OfficeState(layout([f('arc', 'ARCADE_MACHINE_FRONT', 6, 1)]));
+  const os = new OfficeState(layout([f('arc', 'ARCADE_MACHINE_FRONT_OFF', 6, 1)]));
   idleAgent(os, 1);
   const ch = os.characters.get(1)!;
   for (let t = 0; t < 1500 && !(ch.playSpotId && ch.state === CharacterState.TYPE); t += 0.05) {
@@ -145,21 +166,44 @@ test('a playing agent that becomes active leaves the machine for its computer', 
 
 test('arcade machines only go against a wall: top (front) or a side wall, never the bottom', () => {
   const l = layout([]);
-  assert.ok(canPlaceFurniture(l, 'ARCADE_MACHINE_FRONT', 6, 1), 'under the top wall');
-  assert.ok(!canPlaceFurniture(l, 'ARCADE_MACHINE_FRONT', 6, 3), 'free-standing in the room');
-  assert.ok(!canPlaceFurniture(l, 'ARCADE_MACHINE_FRONT', 6, ROWS - 2), 'bottom wall side');
+  assert.ok(canPlaceFurniture(l, 'ARCADE_MACHINE_FRONT_OFF', 6, 1), 'under the top wall');
+  assert.ok(!canPlaceFurniture(l, 'ARCADE_MACHINE_FRONT_OFF', 6, 3), 'free-standing in the room');
+  assert.ok(!canPlaceFurniture(l, 'ARCADE_MACHINE_FRONT_OFF', 6, ROWS - 2), 'bottom wall side');
   assert.ok(
-    canPlaceFurniture(l, 'ARCADE_MACHINE_SIDE:left', COLS - 2, 3),
+    canPlaceFurniture(l, 'ARCADE_MACHINE_SIDE_OFF:left', COLS - 2, 3),
     'leaning on the right wall',
   );
-  assert.ok(!canPlaceFurniture(l, 'ARCADE_MACHINE_SIDE', COLS - 2, 3), 'facing the wrong way');
-  assert.ok(!canPlaceFurniture(l, 'ARCADE_MACHINE_SIDE:left', 4, 3), 'side machine off any wall');
+  assert.ok(!canPlaceFurniture(l, 'ARCADE_MACHINE_SIDE_OFF', COLS - 2, 3), 'facing the wrong way');
+  assert.ok(
+    !canPlaceFurniture(l, 'ARCADE_MACHINE_SIDE_OFF:left', 4, 3),
+    'side machine off any wall',
+  );
 });
 
 test('a side machine is played from the side it faces', () => {
-  const os = new OfficeState(layout([f('arc', 'ARCADE_MACHINE_SIDE:left', COLS - 2, 3)]));
+  const os = new OfficeState(layout([f('arc', 'ARCADE_MACHINE_SIDE_OFF:left', COLS - 2, 3)]));
   assert.deepEqual(
     [...os.playSpots.values()].map((v) => [v.col, v.row]),
     [[COLS - 3, 4]],
   );
+});
+
+test('the machine lights up and animates while an agent plays, and goes dark after', () => {
+  const os = new OfficeState(layout([f('arc', 'ARCADE_MACHINE_FRONT_OFF', 6, 1)]));
+  const screen = () => os.furniture.find((i) => i.x === 6 * 16 && i.y === 16)?.sprite[0][0];
+  assert.equal(screen(), 'ARCADE_MACHINE_FRONT_OFF');
+  idleAgent(os, 1);
+  const ch = os.characters.get(1)!;
+  for (let t = 0; t < 1500 && !(ch.playSpotId && ch.state === CharacterState.TYPE); t += 0.05) {
+    os.update(0.05);
+  }
+  assert.ok(ch.playSpotId, 'agent started playing');
+  const frames = new Set<string | undefined>();
+  simulate(os, 0.5); // the screen refreshes on the next animation tick
+  simulate(os, 2, () => frames.add(screen()));
+  assert.ok(!frames.has('ARCADE_MACHINE_FRONT_OFF'), 'lit while playing');
+  assert.ok(frames.size > 1, 'screen animates');
+  os.setAgentActive(1, true);
+  simulate(os, 30);
+  assert.equal(screen(), 'ARCADE_MACHINE_FRONT_OFF');
 });
