@@ -2,6 +2,7 @@ import {
   DEFAULT_MAX_CONTEXT_TOKENS,
   SEAT_REST_MAX_SEC,
   SEAT_REST_MIN_SEC,
+  TABLE_TENNIS_SWING_SEC,
   TYPE_FRAME_DURATION_SEC,
   WALK_FRAME_DURATION_SEC,
   WALK_SPEED_PX_PER_SEC,
@@ -14,7 +15,14 @@ import {
 import { findPath } from '../layout/tileMap.js';
 import type { CharacterSprites } from '../sprites/spriteData.js';
 import { isReadingToolName } from '../toolUtils.js';
-import type { Character, Seat, SpriteData, TileType as TileTypeVal, WorkSpot } from '../types.js';
+import type {
+  Character,
+  PlaySlot,
+  Seat,
+  SpriteData,
+  TileType as TileTypeVal,
+  WorkSpot,
+} from '../types.js';
 import { CharacterState, Direction, TILE_SIZE } from '../types.js';
 
 /** Whether a tool should show the reading animation (vs typing). Taxonomy comes
@@ -33,9 +41,17 @@ export function isReadingTool(tool: string | null): boolean {
  */
 export type ClaimWorkSpot = (ch: Character, betterThan?: WorkSpot['kind']) => boolean;
 
+/**
+ * Plans a bored idle agent's way to a table-tennis table: claims a free end,
+ * sets `playSlot` and starts the walk (or settles in place). Returns false
+ * when no table is worth going to, so the agent rests or wanders instead.
+ */
+export type ClaimTable = (ch: Character) => boolean;
+
 /** Drawn sitting: on a chair (work seat, pairing seat, rest seat), not standing. */
 export function isSeatedPose(ch: Character): boolean {
   if (ch.state !== CharacterState.TYPE) return false;
+  if (ch.playSlot) return false;
   if (ch.restSeatId) return true;
   if (ch.workSpot) return ch.workSpot.kind === 'pair';
   return ch.seatId !== null;
@@ -65,6 +81,32 @@ export function settleOnWorkSpot(ch: Character, spot: WorkSpot): void {
   ch.frame = 0;
   ch.frameTimer = 0;
   ch.workSpotRecheck = WORK_SPOT_RECHECK_SEC;
+}
+
+/** Arrive at a table end: stand facing the opponent's end, waiting for a rally. */
+export function settleAtPlaySlot(ch: Character, slot: PlaySlot): void {
+  ch.state = CharacterState.TYPE;
+  ch.dir = slot.dir;
+  ch.playing = false;
+  ch.frame = 0;
+  ch.frameTimer = 0;
+  ch.wanderCount = 0;
+  ch.wanderLimit = randomInt(WANDER_MOVES_BEFORE_REST_MIN, WANDER_MOVES_BEFORE_REST_MAX);
+}
+
+/** Leave the table: back to idling (and wandering) with the claim released. */
+export function leaveTable(ch: Character): void {
+  ch.playSlot = null;
+  ch.playing = false;
+  if (ch.state === CharacterState.TYPE) {
+    ch.state = CharacterState.IDLE;
+    ch.seatTimer = 0;
+    ch.frame = 0;
+    ch.frameTimer = 0;
+    ch.wanderTimer = randomRange(WANDER_PAUSE_MIN_SEC, WANDER_PAUSE_MAX_SEC);
+    ch.wanderCount = 0;
+    ch.wanderLimit = randomInt(WANDER_MOVES_BEFORE_REST_MIN, WANDER_MOVES_BEFORE_REST_MAX);
+  }
 }
 
 /** Pixel center of a tile */
@@ -254,8 +296,14 @@ export function updateCharacter(
   canRestAtWorkSeat = true,
   noIdleTileKeys: ReadonlySet<string> = new Set(),
   claimWorkSpot?: ClaimWorkSpot,
+  claimTable?: ClaimTable,
 ): void {
   ch.frameTimer += dt;
+
+  // Work beats play too: drop the table claim the moment the agent is active
+  if (ch.isActive && ch.playSlot) {
+    leaveTable(ch);
+  }
 
   // Work is over: give the pairing seat / phone spot up. A phone agent was
   // standing, so it goes straight back to idling (and out of the Area).
@@ -282,6 +330,19 @@ export function updateCharacter(
 
   switch (ch.state) {
     case CharacterState.TYPE: {
+      if (ch.playSlot) {
+        // At a table end: sway while a rally is on (officeState sets `playing`),
+        // otherwise stand and wait for an opponent
+        if (ch.playing) {
+          if (ch.frameTimer >= TABLE_TENNIS_SWING_SEC) {
+            ch.frameTimer -= TABLE_TENNIS_SWING_SEC;
+            ch.frame = (ch.frame + 1) % 2;
+          }
+        } else {
+          ch.frame = 0;
+        }
+        break;
+      }
       if (ch.restSeatId) {
         // Resting on a bench/sofa: sit still until the rest timer runs out
         ch.frame = 0;
@@ -356,6 +417,9 @@ export function updateCharacter(
       ch.wanderTimer -= dt;
       if (ch.wanderTimer <= 0) {
         // Wandered enough — rest on a bench/sofa, else back at the work seat
+        if (ch.wanderCount >= ch.wanderLimit && claimTable?.(ch)) {
+          break;
+        }
         if (
           ch.wanderCount >= ch.wanderLimit &&
           goRest(ch, seats, freeRestSeats, tileMap, blockedTiles)
@@ -437,6 +501,15 @@ export function updateCharacter(
             ch.state = CharacterState.IDLE;
           }
         } else {
+          // Arrived at a claimed table end — stand and wait for the game
+          if (ch.playSlot) {
+            const slot = ch.playSlot;
+            if (ch.tileCol === slot.col && ch.tileRow === slot.row) {
+              settleAtPlaySlot(ch, slot);
+              break;
+            }
+            ch.playSlot = null; // path ended elsewhere — give the claim up
+          }
           // Arrived at a claimed rest seat — sit down and rest
           if (ch.restSeatId) {
             const restSeat = seats.get(ch.restSeatId);
@@ -601,6 +674,8 @@ function startWork(
 export function getCharacterSprite(ch: Character, sprites: CharacterSprites): SpriteData {
   switch (ch.state) {
     case CharacterState.TYPE:
+      // Table tennis: standing, swaying between the two outer walk frames
+      if (ch.playSlot) return sprites.walk[ch.dir][ch.playing && ch.frame % 2 === 1 ? 2 : 1];
       if (isOnPhone(ch)) return sprites.phone[ch.dir][ch.frame % 2];
       if (isReadingTool(ch.currentTool)) {
         return sprites.reading[ch.dir][ch.frame % 2];

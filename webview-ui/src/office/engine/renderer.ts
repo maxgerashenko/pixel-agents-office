@@ -39,6 +39,8 @@ import {
   SELECTED_OUTLINE_ALPHA,
   SELECTION_DASH_PATTERN,
   SELECTION_HIGHLIGHT_COLOR,
+  TABLE_TENNIS_BALL_COLOR,
+  TABLE_TENNIS_BALL_SIZE_PX,
   VOID_TILE_DASH_PATTERN,
   VOID_TILE_OUTLINE_COLOR,
 } from '../../constants.js';
@@ -351,8 +353,27 @@ export function renderScene(
   selectedAgentId: number | null,
   hoveredAgentId: number | null,
   pets: Pet[] = [],
+  balls: Array<{ x: number; y: number; z: number }> = [],
 ): void {
   const drawables: ZDrawable[] = [];
+
+  // Table-tennis balls: sorted just above the table's far edge so a player at
+  // the near end never hides them
+  for (const b of balls) {
+    drawables.push({
+      zY: b.y + TILE_SIZE,
+      draw: (c) => {
+        const size = TABLE_TENNIS_BALL_SIZE_PX * zoom;
+        c.fillStyle = TABLE_TENNIS_BALL_COLOR;
+        c.fillRect(
+          Math.round(offsetX + b.x * zoom - size / 2),
+          Math.round(offsetY + (b.y - b.z) * zoom - size / 2),
+          size,
+          size,
+        );
+      },
+    });
+  }
 
   // Furniture
   for (const f of furniture) {
@@ -870,6 +891,7 @@ export function renderFrame(
   showAreas?: boolean,
   activeAreaLabel?: string | null,
   pets?: Pet[],
+  balls?: Array<{ x: number; y: number; z: number }>,
 ): { offsetX: number; offsetY: number } {
   // Clear
   ctx.clearRect(0, 0, canvasWidth, canvasHeight);
@@ -926,6 +948,7 @@ export function renderFrame(
     selectedId,
     hoveredId,
     pets ?? [],
+    balls ?? [],
   );
 
   // Character speech bubbles render in ToolOverlay (DOM, above the labels).

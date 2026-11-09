@@ -1,0 +1,150 @@
+/**
+ * Table tennis: bored idle agents walk to a table and play 1v1, never at a
+ * table whose ends are in a marked Area, and work always ends the game.
+ *
+ * Run with: npm test
+ */
+
+import assert from 'node:assert/strict';
+
+import { beforeAll, test } from 'vitest';
+
+import { OfficeState } from '../src/office/engine/officeState.js';
+import type { LoadedAssetData } from '../src/office/layout/furnitureCatalog.js';
+import { buildDynamicCatalog } from '../src/office/layout/furnitureCatalog.js';
+import type { OfficeLayout, PlacedFurniture } from '../src/office/types.js';
+import { CharacterState, TileType } from '../src/office/types.js';
+
+type CatalogAsset = LoadedAssetData['catalog'][number];
+
+function asset(id: string, category: string, extra: Partial<CatalogAsset> = {}): CatalogAsset {
+  return {
+    id,
+    label: id,
+    category,
+    width: 16,
+    height: 16,
+    footprintW: 1,
+    footprintH: 1,
+    isDesk: false,
+    ...extra,
+  };
+}
+
+beforeAll(() => {
+  const catalog = [
+    asset('DESK', 'desks', { isDesk: true }),
+    asset('PC', 'electronics', { canPlaceOnSurfaces: true }),
+    asset('WOODEN_CHAIR', 'chairs'),
+    asset('TABLE_TENNIS', 'misc', { width: 48, height: 32, footprintW: 3, footprintH: 2 }),
+  ];
+  const sprites = Object.fromEntries(catalog.map((a) => [a.id, [[]]]));
+  assert.ok(buildDynamicCatalog({ catalog, sprites }));
+});
+
+const COLS = 12;
+const ROWS = 8;
+
+function f(uid: string, type: string, col: number, row: number): PlacedFurniture {
+  return { uid, type, col, row };
+}
+
+/** Table at cols 4–6 (ends at 3 and 7), rows 4–5; one workstation for seats. */
+function layout(areaOverTable = false): OfficeLayout {
+  return {
+    version: 1,
+    cols: COLS,
+    rows: ROWS,
+    tiles: new Array<TileType>(COLS * ROWS).fill(TileType.FLOOR_1),
+    furniture: [
+      f('desk', 'DESK', 1, 1),
+      f('pc', 'PC', 1, 1),
+      f('chair', 'WOODEN_CHAIR', 1, 2),
+      f('tt', 'TABLE_TENNIS', 4, 4),
+    ],
+    ...(areaOverTable
+      ? {
+          areas: [{ label: 'Engineering' }],
+          areaTiles: Array.from({ length: COLS * ROWS }, (_, i) =>
+            i % COLS >= 2 && i % COLS <= 8 && Math.floor(i / COLS) >= 3 ? 'Engineering' : null,
+          ),
+        }
+      : {}),
+  } as OfficeLayout;
+}
+
+function addIdleAgent(os: OfficeState, id: number): void {
+  os.addAgent(id, undefined, undefined, undefined, true);
+  os.setAgentActive(id, false);
+}
+
+function simulate(os: OfficeState, seconds: number, onTick?: () => void): void {
+  const dt = 0.05;
+  for (let t = 0; t < seconds; t += dt) {
+    os.update(dt);
+    onTick?.();
+  }
+}
+
+test('a table with both ends outside every Area is a tennis table; one in an Area is not', () => {
+  assert.equal(new OfficeState(layout()).tennisTables.length, 1);
+  assert.equal(new OfficeState(layout(true)).tennisTables.length, 0);
+});
+
+test('two idle agents meet at a table, face each other and rally with a ball', () => {
+  const os = new OfficeState(layout());
+  addIdleAgent(os, 1);
+  addIdleAgent(os, 2);
+  let rallied = false;
+  let sawBall = false;
+  simulate(os, 3000, () => {
+    const players = [...os.characters.values()].filter((c) => c.playing);
+    if (players.length === 2) {
+      rallied = true;
+      const [a, b] = players.sort((x, y) => x.tileCol - y.tileCol);
+      assert.equal(a.state, CharacterState.TYPE);
+      assert.equal(a.tileCol, 3);
+      assert.equal(b.tileCol, 7);
+      assert.notEqual(a.dir, b.dir, 'players face each other');
+      if (os.getTableTennisBalls().length === 1) sawBall = true;
+    }
+    const claims = [...os.characters.values()]
+      .map((c) => (c.playSlot ? `${c.playSlot.tableUid}:${c.playSlot.index}` : null))
+      .filter(Boolean);
+    assert.equal(new Set(claims).size, claims.length, 'one agent per table end');
+  });
+  assert.ok(rallied, 'two agents played');
+  assert.ok(sawBall, 'a ball was in play');
+});
+
+test('a lone agent gives up waiting for an opponent and carries on', () => {
+  const os = new OfficeState(layout());
+  addIdleAgent(os, 1);
+  const ch = os.characters.get(1)!;
+  let waited = false;
+  let left = false;
+  simulate(os, 3000, () => {
+    if (ch.playSlot && ch.state === CharacterState.TYPE && !ch.playing) waited = true;
+    if (waited && !ch.playSlot) left = true;
+    assert.equal(os.getTableTennisBalls().length, 0, 'no ball without an opponent');
+  });
+  assert.ok(waited, 'agent went to the table');
+  assert.ok(left, 'agent gave up the table');
+});
+
+test('a player that becomes active leaves the game and walks to work', () => {
+  const os = new OfficeState(layout());
+  addIdleAgent(os, 1);
+  addIdleAgent(os, 2);
+  for (let t = 0; t < 3000 && ![...os.characters.values()].every((c) => c.playing); t += 0.05) {
+    os.update(0.05);
+  }
+  const ch = os.characters.get(1)!;
+  assert.ok(ch.playing, 'game on');
+  os.setAgentActive(1, true);
+  simulate(os, 30);
+  assert.equal(ch.playSlot ?? null, null);
+  assert.equal(ch.playing, false);
+  const seat = os.seats.get(ch.seatId!)!;
+  assert.deepEqual([ch.tileCol, ch.tileRow], [seat.seatCol, seat.seatRow]);
+});

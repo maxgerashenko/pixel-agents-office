@@ -612,3 +612,24 @@ export const PHONE_SPOT_MAX_ATTEMPTS = 8;
  *  away from any desk, and each occupied neighbouring tile, cost this much. */
 export const PHONE_SCORE_AWAY_FROM_DESK = 200;
 export const PHONE_SCORE_PER_NEIGHBOUR = 300;
+
+// ── Table tennis ────────────────────────────────────────────
+/** Furniture type that hosts a 1v1 game (matched against the catalog type). */
+export const TABLE_TENNIS_TYPE_PATTERN = /TABLE_TENNIS/i;
+/** A resting agent that finds an empty table waits this long for an opponent. */
+export const TABLE_TENNIS_WAIT_MAX_SEC = 30;
+/** Chance a bored agent walks to a table with nobody waiting (it then waits). */
+export const TABLE_TENNIS_START_CHANCE = 0.7;
+/** How long a game runs once both players are at the table. */
+export const TABLE_TENNIS_GAME_MIN_SEC = 20;
+export const TABLE_TENNIS_GAME_MAX_SEC = 40;
+/** Players' sway animation rate while a rally is on. */
+export const TABLE_TENNIS_SWING_SEC = 0.45;
+/** Seconds for the ball to cross the table once. */
+export const TABLE_TENNIS_BALL_CROSS_SEC = 0.9;
+/** Peak height of the ball's arc, in sprite pixels. */
+export const TABLE_TENNIS_BALL_ARC_PX = 7;
+/** Ball size in sprite pixels. */
+export const TABLE_TENNIS_BALL_SIZE_PX = 2;
+/** Ball colour (canvas draw). */
+export const TABLE_TENNIS_BALL_COLOR = '#f4f4f4';
