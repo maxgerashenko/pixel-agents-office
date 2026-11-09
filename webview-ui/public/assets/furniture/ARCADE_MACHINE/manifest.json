@@ -1,0 +1,125 @@
+{
+  "id": "ARCADE_MACHINE",
+  "name": "Starlight Arcade",
+  "category": "misc",
+  "type": "group",
+  "groupType": "rotation",
+  "rotationScheme": "3-way-mirror",
+  "canPlaceOnWalls": false,
+  "canPlaceOnSurfaces": false,
+  "backgroundTiles": 0,
+  "members": [
+    {
+      "type": "group",
+      "groupType": "state",
+      "orientation": "front",
+      "members": [
+        {
+          "type": "group",
+          "groupType": "animation",
+          "state": "on",
+          "members": [
+            {
+              "type": "asset",
+              "id": "ARCADE_MACHINE_FRONT_ON_1",
+              "file": "ARCADE_MACHINE_FRONT_ON_1.png",
+              "width": 16,
+              "height": 32,
+              "footprintW": 1,
+              "footprintH": 2,
+              "frame": 0
+            },
+            {
+              "type": "asset",
+              "id": "ARCADE_MACHINE_FRONT_ON_2",
+              "file": "ARCADE_MACHINE_FRONT_ON_2.png",
+              "width": 16,
+              "height": 32,
+              "footprintW": 1,
+              "footprintH": 2,
+              "frame": 1
+            },
+            {
+              "type": "asset",
+              "id": "ARCADE_MACHINE_FRONT_ON_3",
+              "file": "ARCADE_MACHINE_FRONT_ON_3.png",
+              "width": 16,
+              "height": 32,
+              "footprintW": 1,
+              "footprintH": 2,
+              "frame": 2
+            }
+          ]
+        },
+        {
+          "type": "asset",
+          "id": "ARCADE_MACHINE_FRONT_OFF",
+          "file": "ARCADE_MACHINE_FRONT_OFF.png",
+          "width": 16,
+          "height": 32,
+          "footprintW": 1,
+          "footprintH": 2,
+          "state": "off"
+        }
+      ]
+    },
+    {
+      "type": "group",
+      "groupType": "state",
+      "orientation": "side",
+      "members": [
+        {
+          "type": "group",
+          "groupType": "animation",
+          "state": "on",
+          "members": [
+            {
+              "type": "asset",
+              "id": "ARCADE_MACHINE_SIDE_ON_1",
+              "file": "ARCADE_MACHINE_SIDE_ON_1.png",
+              "width": 16,
+              "height": 32,
+              "footprintW": 1,
+              "footprintH": 2,
+              "frame": 0,
+              "mirrorSide": true
+            },
+            {
+              "type": "asset",
+              "id": "ARCADE_MACHINE_SIDE_ON_2",
+              "file": "ARCADE_MACHINE_SIDE_ON_2.png",
+              "width": 16,
+              "height": 32,
+              "footprintW": 1,
+              "footprintH": 2,
+              "frame": 1,
+              "mirrorSide": true
+            },
+            {
+              "type": "asset",
+              "id": "ARCADE_MACHINE_SIDE_ON_3",
+              "file": "ARCADE_MACHINE_SIDE_ON_3.png",
+              "width": 16,
+              "height": 32,
+              "footprintW": 1,
+              "footprintH": 2,
+              "frame": 2,
+              "mirrorSide": true
+            }
+          ]
+        },
+        {
+          "type": "asset",
+          "id": "ARCADE_MACHINE_SIDE_OFF",
+          "file": "ARCADE_MACHINE_SIDE_OFF.png",
+          "width": 16,
+          "height": 32,
+          "footprintW": 1,
+          "footprintH": 2,
+          "state": "off",
+          "mirrorSide": true
+        }
+      ]
+    }
+  ]
+}

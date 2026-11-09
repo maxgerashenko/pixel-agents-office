@@ -1,5 +1,7 @@
 import {
   DEFAULT_MAX_CONTEXT_TOKENS,
+  PLAY_MAX_SEC,
+  PLAY_MIN_SEC,
   SEAT_REST_MAX_SEC,
   SEAT_REST_MIN_SEC,
   TYPE_FRAME_DURATION_SEC,
@@ -33,9 +35,18 @@ export function isReadingTool(tool: string | null): boolean {
  */
 export type ClaimWorkSpot = (ch: Character, betterThan?: WorkSpot['kind']) => boolean;
 
+/** A standing spot in front of an arcade machine, where an idle agent plays. */
+export interface PlaySpot {
+  col: number;
+  row: number;
+  /** Direction to face (towards the machine). */
+  dir: Direction;
+}
+
 /** Drawn sitting: on a chair (work seat, pairing seat, rest seat), not standing. */
 export function isSeatedPose(ch: Character): boolean {
   if (ch.state !== CharacterState.TYPE) return false;
+  if (ch.playSpotId) return false; // playing stands at the machine
   if (ch.restSeatId) return true;
   if (ch.workSpot) return ch.workSpot.kind === 'pair';
   return ch.seatId !== null;
@@ -193,6 +204,53 @@ function sitToRest(ch: Character, seat: Seat): void {
   ch.frameTimer = 0;
 }
 
+/**
+ * Claim a free play spot at an arcade machine and walk there. Same contract as
+ * goRest: claims leave `freePlaySpots` so two agents can't pick one machine.
+ */
+function goPlay(
+  ch: Character,
+  playSpots: Map<string, PlaySpot>,
+  freePlaySpots: Set<string>,
+  tileMap: TileTypeVal[][],
+  blockedTiles: Set<string>,
+): boolean {
+  const candidates = [...freePlaySpots];
+  while (candidates.length > 0) {
+    const [id] = candidates.splice(Math.floor(Math.random() * candidates.length), 1);
+    const spot = playSpots.get(id);
+    if (!spot) continue;
+    if (ch.tileCol === spot.col && ch.tileRow === spot.row) {
+      freePlaySpots.delete(id);
+      ch.playSpotId = id;
+      startPlaying(ch, spot);
+      return true;
+    }
+    const path = findPath(ch.tileCol, ch.tileRow, spot.col, spot.row, tileMap, blockedTiles);
+    if (path.length === 0) continue;
+    freePlaySpots.delete(id);
+    ch.playSpotId = id;
+    ch.path = path;
+    ch.moveProgress = 0;
+    ch.state = CharacterState.WALK;
+    ch.frame = 0;
+    ch.frameTimer = 0;
+    return true;
+  }
+  return false;
+}
+
+/** Face the machine and work its buttons (the typing frames, standing). */
+function startPlaying(ch: Character, spot: PlaySpot): void {
+  ch.state = CharacterState.TYPE;
+  ch.dir = spot.dir;
+  ch.seatTimer = randomRange(PLAY_MIN_SEC, PLAY_MAX_SEC);
+  ch.wanderCount = 0;
+  ch.wanderLimit = randomInt(WANDER_MOVES_BEFORE_REST_MIN, WANDER_MOVES_BEFORE_REST_MAX);
+  ch.frame = 0;
+  ch.frameTimer = 0;
+}
+
 /** Max candidate tiles tried when leaving the Area buffer (nearest first). */
 const LEAVE_BUFFER_MAX_ATTEMPTS = 5;
 
@@ -254,6 +312,8 @@ export function updateCharacter(
   canRestAtWorkSeat = true,
   noIdleTileKeys: ReadonlySet<string> = new Set(),
   claimWorkSpot?: ClaimWorkSpot,
+  playSpots: Map<string, PlaySpot> = new Map(),
+  freePlaySpots: Set<string> = new Set(),
 ): void {
   ch.frameTimer += dt;
 
@@ -270,8 +330,15 @@ export function updateCharacter(
     }
   }
 
-  // Work always beats rest: an agent that became active gives up its rest seat
-  // and the normal active path (IDLE -> walk to work seat) takes over.
+  // Work always beats rest and play: an agent that became active gives up its
+  // rest seat / play spot and the normal active path takes over.
+  if (ch.isActive && ch.playSpotId) {
+    ch.playSpotId = null;
+    if (ch.state === CharacterState.TYPE) {
+      ch.state = CharacterState.IDLE;
+      ch.seatTimer = 0;
+    }
+  }
   if (ch.isActive && ch.restSeatId) {
     ch.restSeatId = null;
     if (ch.state === CharacterState.TYPE) {
@@ -282,6 +349,23 @@ export function updateCharacter(
 
   switch (ch.state) {
     case CharacterState.TYPE: {
+      if (ch.playSpotId) {
+        // Playing at an arcade machine: button-mash until the timer runs out
+        if (ch.frameTimer >= TYPE_FRAME_DURATION_SEC) {
+          ch.frameTimer -= TYPE_FRAME_DURATION_SEC;
+          ch.frame = (ch.frame + 1) % 2;
+        }
+        ch.seatTimer -= dt;
+        if (ch.seatTimer <= 0) {
+          ch.playSpotId = null;
+          ch.seatTimer = 0;
+          ch.state = CharacterState.IDLE;
+          ch.frame = 0;
+          ch.frameTimer = 0;
+          ch.wanderTimer = randomRange(WANDER_PAUSE_MIN_SEC, WANDER_PAUSE_MAX_SEC);
+        }
+        break;
+      }
       if (ch.restSeatId) {
         // Resting on a bench/sofa: sit still until the rest timer runs out
         ch.frame = 0;
@@ -355,12 +439,12 @@ export function updateCharacter(
       // Countdown wander timer
       ch.wanderTimer -= dt;
       if (ch.wanderTimer <= 0) {
-        // Wandered enough — rest on a bench/sofa, else back at the work seat
-        if (
-          ch.wanderCount >= ch.wanderLimit &&
-          goRest(ch, seats, freeRestSeats, tileMap, blockedTiles)
-        ) {
-          break;
+        // Wandered enough — play at an arcade machine or rest on a bench/sofa
+        // (coin flip, the other as fallback), else back at the work seat
+        if (ch.wanderCount >= ch.wanderLimit) {
+          const play = () => goPlay(ch, playSpots, freePlaySpots, tileMap, blockedTiles);
+          const rest = () => goRest(ch, seats, freeRestSeats, tileMap, blockedTiles);
+          if (Math.random() < 0.5 ? play() || rest() : rest() || play()) break;
         }
         if (ch.wanderCount >= ch.wanderLimit && ch.seatId && canRestAtWorkSeat) {
           const seat = seats.get(ch.seatId);
@@ -437,6 +521,15 @@ export function updateCharacter(
             ch.state = CharacterState.IDLE;
           }
         } else {
+          // Arrived at a claimed arcade machine — start playing
+          if (ch.playSpotId) {
+            const spot = playSpots.get(ch.playSpotId);
+            if (spot && ch.tileCol === spot.col && ch.tileRow === spot.row) {
+              startPlaying(ch, spot);
+              break;
+            }
+            ch.playSpotId = null; // path ended elsewhere — give the claim up
+          }
           // Arrived at a claimed rest seat — sit down and rest
           if (ch.restSeatId) {
             const restSeat = seats.get(ch.restSeatId);
