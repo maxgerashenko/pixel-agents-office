@@ -91,6 +91,16 @@ export function findPetHome(
   return null;
 }
 
+/** Whether anyone (not despawning) is at or near the table, sitting or standing. */
+function personNearTable(home: PetHome | null, characters: Map<number, Character>): boolean {
+  if (!home) return false;
+  for (const ch of characters.values()) {
+    if (ch.matrixEffect === 'despawn') continue;
+    if (isNearPetHome(home, ch.tileCol, ch.tileRow)) return true;
+  }
+  return false;
+}
+
 /** Whether a tile lies inside the pet's home zone (always true with no home). */
 export function isNearPetHome(home: PetHome | null, col: number, row: number): boolean {
   return home === null || manhattanDistance(home.col, home.row, col, row) <= home.radius;
@@ -309,6 +319,8 @@ export function updatePet(
   const roamTiles = home
     ? walkableTiles.filter((t) => isNearPetHome(home, t.col, t.row))
     : walkableTiles;
+  // The cat only sits on the table while someone is around it.
+  const perch = home?.perch && personNearTable(home, characters) ? home.perch : undefined;
   switch (pet.state) {
     case PetState.HOP: {
       pet.hopProgress = Math.min(1, pet.hopProgress + dt / PET_HOP_DURATION_SEC);
@@ -343,7 +355,7 @@ export function updatePet(
       updateIdleAnimation(pet, dt);
       pet.perchTimer -= dt;
       // Hop down when rested, or when the table stopped being free (a PC went on it).
-      if (pet.perchTimer > 0 && home?.perch) break;
+      if (pet.perchTimer > 0 && perch) break;
       const ground = pet.groundTile ?? { col: pet.tileCol, row: pet.tileRow };
       const c = tileCenter(ground.col, ground.row);
       startHop(pet, { x: c.x, y: c.y }, false);
@@ -356,12 +368,12 @@ export function updatePet(
       if (pet.wanderTimer > 0) break;
 
       // Free table nearby? Sometimes go sit on it.
-      if (home?.perch && Math.random() < PET_PERCH_CHANCE) {
+      if (home && perch && Math.random() < PET_PERCH_CHANCE) {
         const ground = findGroundTile(pet, home, tileMap, blockedTiles);
         if (ground) {
           pet.groundTile = ground;
           if (ground.col === pet.tileCol && ground.row === pet.tileRow) {
-            startHop(pet, { x: home.perch.x, y: home.perch.y }, true);
+            startHop(pet, { x: perch.x, y: perch.y }, true);
             break;
           }
           const path = findPath(
@@ -435,8 +447,8 @@ export function updatePet(
 
       if (pet.path.length === 0 && pet.moveProgress === 0) {
         // Arrived at the table: jump up if it is still free.
-        if (pet.goPerch && home?.perch) {
-          startHop(pet, { x: home.perch.x, y: home.perch.y }, true);
+        if (pet.goPerch && perch) {
+          startHop(pet, { x: perch.x, y: perch.y }, true);
           break;
         }
         pet.goPerch = false;

@@ -394,19 +394,27 @@ test('a cat beside a free table jumps up, sits, then hops back down', async () =
   const walkable = buildWalkableTiles(20, 20);
   const home = findPetHome([{ uid: 'b', type: 'TABLE_FRONT', col: 10, row: 4 }], tableInfo)!;
   const pet = createPet('p', 0, 9, 5); // floor tile touching the table
+  const person = new Map([[1, makeChar(1, 8, 5)]]);
   pet.wanderTimer = 0;
   randomQueue = [0]; // perch roll succeeds
+  // Nobody around: the cat stays on the floor.
   updatePet(pet, 0.01, walkable, new Map(), tileMap, new Set(), home);
+  assert.notEqual(pet.state, PetState.HOP);
+  pet.state = PetState.IDLE;
+  pet.path = [];
+  pet.wanderTimer = 0;
+  randomQueue = [0];
+  updatePet(pet, 0.01, walkable, person, tileMap, new Set(), home);
   assert.equal(pet.state, PetState.HOP);
   for (let i = 0; i < 100 && pet.state === PetState.HOP; i++) {
-    updatePet(pet, 0.05, walkable, new Map(), tileMap, new Set(), home);
+    updatePet(pet, 0.05, walkable, person, tileMap, new Set(), home);
   }
   assert.equal(pet.state, PetState.SIT);
   assert.equal(pet.x, home.perch!.x);
   assert.equal(pet.y, home.perch!.y);
   assert.equal(pet.perchZY, home.perch!.zY);
-  // A PC appears on the table: the cat hops down.
-  const busy = { ...home, perch: undefined };
+  // The person leaves: the cat hops down.
+  const busy = home;
   updatePet(pet, 0.01, walkable, new Map(), tileMap, new Set(), busy);
   assert.equal(pet.state, PetState.HOP);
   for (let i = 0; i < 100 && pet.state === PetState.HOP; i++) {
