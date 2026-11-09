@@ -399,6 +399,26 @@ export class OfficeState {
     return out;
   }
 
+  /**
+   * Allowed work seats whose owner is idle and has left them (resting or
+   * wandering): a working agent without a computer may take these over, so a
+   * computer nobody is using never sits empty while someone stands.
+   */
+  private idleHeldWorkSeats(ch: Character): string[] {
+    const free = new Set(this.allowedFreeSeats(ch.directoryName));
+    const out: string[] = [];
+    for (const other of this.characters.values()) {
+      const uid = other.seatId;
+      if (other === ch || !uid || other.isActive || other.isSubagent) continue;
+      if (other.matrixEffect === 'despawn' || free.has(uid) || !this.workSeatIds.has(uid)) continue;
+      const seat = this.seats.get(uid);
+      if (!seat || (other.tileCol === seat.seatCol && other.tileRow === seat.seatRow)) continue;
+      if (!seatSatisfiesRule(this.seatZone(uid), this.workLabels(ch.directoryName))) continue;
+      out.push(uid);
+    }
+    return out;
+  }
+
   /** Is the tile allowed for this agent's work by the Area rule? */
   private tileAllowedForWork(ch: Character, col: number, row: number): boolean {
     const zone = zoneAt(this.layout.areaTiles, this.layout.cols, col, row);
@@ -425,7 +445,7 @@ export class OfficeState {
     const limit = betterThan ? OfficeState.SPOT_RANK[betterThan] : Infinity;
 
     // 1. A free computer allowed by the Area rule, nearest first
-    const free = this.allowedFreeSeats(ch.directoryName)
+    const free = [...this.allowedFreeSeats(ch.directoryName), ...this.idleHeldWorkSeats(ch)]
       .map((uid) => ({ uid, seat: this.seats.get(uid)! }))
       .sort(
         (a, b) =>
@@ -440,6 +460,10 @@ export class OfficeState {
       if (ch.seatId) {
         const old = this.seats.get(ch.seatId);
         if (old) old.assigned = false;
+      }
+      // Taking a computer its idle owner left: the owner plans afresh when it works again
+      for (const other of this.characters.values()) {
+        if (other !== ch && other.seatId === uid) other.seatId = null;
       }
       seat.assigned = true;
       ch.seatId = uid;

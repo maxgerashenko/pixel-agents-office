@@ -189,6 +189,46 @@ test('a computer coming free is taken over the pairing seat', () => {
   assert.ok(isSeatedPose(ch));
 });
 
+test('a seat coming free is taken by an agent already standing on its phone', () => {
+  const os = withPcTaken();
+  os.addAgent(2, undefined, undefined, undefined, true, DIR);
+  os.setAgentActive(2, true);
+  run(os, 10);
+  os.addAgent(3, undefined, undefined, undefined, true, DIR);
+  const ch = os.characters.get(3)!;
+  os.setAgentActive(3, true);
+  run(os, 10);
+  assert.equal(ch.workSpot?.kind, 'phone');
+  const pairing = os.characters.get(2)!;
+  os.removeAgent(1);
+  run(os, 15);
+  // One of the two takes the freed computer, the other moves up to the pairing seat
+  const seated = [pairing, ch].filter((c) => c.seatId === 'pc-seat');
+  assert.equal(seated.length, 1);
+  assert.ok(!isOnPhone(ch) && isSeatedPose(ch));
+  assert.ok(!isOnPhone(pairing) && isSeatedPose(pairing));
+});
+
+test('a computer its idle owner left is taken by a standing worker', () => {
+  const os = withPcTaken();
+  os.addAgent(2, undefined, undefined, undefined, true, DIR);
+  os.setAgentActive(2, true);
+  run(os, 10);
+  const ch = os.characters.get(2)!;
+  assert.equal(ch.workSpot?.kind, 'pair');
+  os.setAgentActive(1, false);
+  run(os, 30);
+  assert.equal(ch.seatId, 'pc-seat');
+  assert.equal(ch.workSpot ?? null, null);
+  assert.deepEqual([ch.tileCol, ch.tileRow], [7, 2]);
+  assert.equal(os.characters.get(1)!.seatId, null, 'the idle owner gave the computer up');
+  // The owner works again: no computer left, so it pairs instead of sitting on top of ch
+  os.setAgentActive(1, true);
+  run(os, 15);
+  assert.equal(os.characters.get(1)!.workSpot?.kind, 'pair');
+  assert.equal(ch.seatId, 'pc-seat');
+});
+
 test('work done: the agent gives its spot up and leaves the Area', () => {
   const os = withPcTaken();
   os.addAgent(2, undefined, undefined, undefined, true, DIR);
