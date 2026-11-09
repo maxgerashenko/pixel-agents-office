@@ -15,6 +15,8 @@ import {
   PAIR_SEAT_MAX_DIST,
   PET_HIT_HALF_WIDTH,
   PET_HIT_HEIGHT,
+  PET_SOFA_SEAT_Y_OFFSET_PX,
+  PET_SOFA_TYPE_PATTERN,
   PHONE_SCORE_AWAY_FROM_DESK,
   PHONE_SCORE_PER_NEIGHBOUR,
   PHONE_SPOT_MAX_ATTEMPTS,
@@ -33,7 +35,7 @@ import {
   layoutToTileMap,
 } from '../layout/layoutSerializer.js';
 import { findPath, getWalkableTiles, isWalkable } from '../layout/tileMap.js';
-import { getPetCount, getPetName } from '../sprites/petSpriteData.js';
+import { getPetCount, getPetKind, getPetName } from '../sprites/petSpriteData.js';
 import { getLoadedCharacterCount } from '../sprites/spriteData.js';
 import type {
   Character,
@@ -46,7 +48,7 @@ import type {
   TileType as TileTypeVal,
   WorkSpot,
 } from '../types.js';
-import { CharacterState, Direction, PetState, TILE_SIZE } from '../types.js';
+import { CharacterState, Direction, PetKind, PetState, TILE_SIZE } from '../types.js';
 import type { PlaySpot } from './characters.js';
 import {
   createCharacter,
@@ -57,8 +59,8 @@ import {
   updateCharacter,
 } from './characters.js';
 import { advanceMatrixEffect, startMatrixEffect } from './matrixEffectState.js';
-import type { PetHome } from './petEntity.js';
-import { createPet, findPetHome, isNearPetHome, updatePet } from './petEntity.js';
+import type { PetHome, PetSofaSpot } from './petEntity.js';
+import { createPet, findPetHome, isNearPetHome, petClaims, updatePet } from './petEntity.js';
 import {
   anchorTile,
   closestFreeSeat,
@@ -333,7 +335,8 @@ export class OfficeState {
           pet.frameTimer = 0;
           pet.followTargetId = null;
           pet.perchZY = null;
-          pet.goPerch = false;
+          pet.perchTarget = null;
+          pet.chaseToHug = false;
         }
       }
     }
@@ -1618,7 +1621,13 @@ export class OfficeState {
     const nearHome = this.walkableTiles.filter((t) => isNearPetHome(home, t.col, t.row));
     const spawnPool = nearHome.length > 0 ? nearHome : this.walkableTiles;
     const spawn = spawnPool[Math.floor(Math.random() * spawnPool.length)];
-    const pet = createPet(placedPet.id, placedPet.petType, spawn.col, spawn.row);
+    const pet = createPet(
+      placedPet.id,
+      placedPet.petType,
+      spawn.col,
+      spawn.row,
+      getPetKind(placedPet.petType),
+    );
     pet.name = getPetName(placedPet.petType);
     this.pets.push(pet);
     this.syncLayoutPets();
@@ -1634,8 +1643,46 @@ export class OfficeState {
     });
   }
 
+  /**
+   * Sofa seats a dog may jump onto: nobody sits there or is heading there
+   * (assigned work seat, rest claim, pairing seat), and the seat does not face
+   * away from us (the sofa back would hide the dog).
+   */
+  getFreeSofaSpots(): PetSofaSpot[] {
+    const typeByUid = new Map(this.layout.furniture.map((f) => [f.uid, f.type]));
+    const taken = new Set<string>();
+    for (const ch of this.characters.values()) {
+      if (ch.seatId) taken.add(ch.seatId);
+      if (ch.restSeatId) taken.add(ch.restSeatId);
+      if (ch.workSpot?.seatUid) taken.add(ch.workSpot.seatUid);
+    }
+    const spots: PetSofaSpot[] = [];
+    for (const [uid, seat] of this.seats) {
+      // Multi-tile chairs key extra seats `uid:N` (layoutToSeats)
+      const type = typeByUid.get(uid) ?? typeByUid.get(uid.replace(/:\d+$/, ''));
+      if (!type || !PET_SOFA_TYPE_PATTERN.test(type)) continue;
+      if (seat.assigned || taken.has(uid) || seat.facingDir === Direction.UP) continue;
+      spots.push({
+        seatId: uid,
+        col: seat.seatCol,
+        row: seat.seatRow,
+        x: seat.seatCol * TILE_SIZE + TILE_SIZE / 2,
+        y: seat.seatRow * TILE_SIZE + TILE_SIZE / 2 + PET_SOFA_SEAT_Y_OFFSET_PX,
+        // In front of the sofa, back-facing variants included (their zY is +1)
+        zY: (seat.seatRow + 1) * TILE_SIZE + 1.5,
+      });
+    }
+    return spots;
+  }
+
   /** Remove a pet by id. Idempotent. */
   removePet(id: string): void {
+    // A dog let go of mid-hug must not leave the agent frozen
+    const leaving = this.pets.find((p) => p.id === id);
+    if (leaving?.state === PetState.HUG && leaving.followTargetId !== null) {
+      const held = this.characters.get(leaving.followTargetId);
+      if (held) held.petHoldTimer = 0;
+    }
     const before = this.pets.length;
     this.pets = this.pets.filter((p) => p.id !== id);
     if (this.pets.length !== before) {
@@ -1843,7 +1890,13 @@ export class OfficeState {
 
     // ── Pet FSM ────────────────────────────────────────────────
     const petHome = this.pets.length > 0 ? this.getPetHome() : null;
+    const sofas = this.pets.some((p) => p.kind === PetKind.DOG) ? this.getFreeSofaSpots() : [];
     for (const pet of this.pets) {
+      // What the other pets already took: a pet never shares a sofa, lap or leg
+      const claimed = new Set<string>();
+      for (const other of this.pets) {
+        if (other !== pet) for (const key of petClaims(other)) claimed.add(key);
+      }
       updatePet(
         pet,
         dt,
@@ -1852,6 +1905,7 @@ export class OfficeState {
         this.tileMap,
         this.blockedTiles,
         petHome,
+        { sofas, claimed },
       );
 
       // Tick heart bubble timer (mirrors character waiting-bubble pattern)

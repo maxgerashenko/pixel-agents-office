@@ -56,4 +56,6 @@ export interface PetSpriteFrames {
 export interface PetManifest {
   id: string;
   name: string;
+  /** Species, which picks the pet's furniture habits ("dog" or "cat"). Optional. */
+  kind?: string;
 }

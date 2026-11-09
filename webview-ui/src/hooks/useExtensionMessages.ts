@@ -720,6 +720,7 @@ export function useExtensionMessages(
           return;
         }
         const petNames = Array.isArray(msg.petNames) ? (msg.petNames as string[]) : undefined;
+        const petKinds = Array.isArray(msg.petKinds) ? (msg.petKinds as string[]) : undefined;
         console.log(`[Webview] Received ${pets.length} pet sprites`);
         setPetTemplates(
           pets as Array<{
@@ -730,6 +731,7 @@ export function useExtensionMessages(
             walkRight: string[][][];
           }>,
           petNames,
+          petKinds,
         );
       } else if (msg.type === 'floorTilesLoaded') {
         const sprites = msg.sprites as string[][][];

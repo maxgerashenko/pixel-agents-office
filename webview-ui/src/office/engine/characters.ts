@@ -547,6 +547,13 @@ export function updateCharacter(
     }
 
     case CharacterState.WALK: {
+      // A dog has hold of a leg: stand still (feet together) until it lets go
+      if (ch.petHoldTimer && ch.petHoldTimer > 0) {
+        ch.petHoldTimer = Math.max(0, ch.petHoldTimer - dt);
+        ch.frame = 1;
+        ch.frameTimer = 0;
+        break;
+      }
       // Walk animation
       if (ch.frameTimer >= WALK_FRAME_DURATION_SEC) {
         ch.frameTimer -= WALK_FRAME_DURATION_SEC;

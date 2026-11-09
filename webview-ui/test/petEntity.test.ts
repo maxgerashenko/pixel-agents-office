@@ -26,7 +26,7 @@ import {
 } from '../src/constants.js';
 import { createPet, updatePet } from '../src/office/engine/petEntity.js';
 import type { Character, TileType as TileTypeVal } from '../src/office/types.js';
-import { CharacterState, Direction, PetState, TileType } from '../src/office/types.js';
+import { CharacterState, Direction, PetKind, PetState, TileType } from '../src/office/types.js';
 
 // ── Helpers ────────────────────────────────────────────────────
 
@@ -439,11 +439,206 @@ test('the cat sits up for a seated person 3 tiles away but not a standing one', 
     pet.wanderTimer = 0;
     randomQueue = [0];
     updatePet(pet, 0.01, walkable, new Map([[1, ch]]), tileMap, new Set(), home);
-    return pet.state === PetState.HOP || pet.goPerch;
+    return pet.state === PetState.HOP || pet.perchTarget !== null;
   };
   const seated = makeChar(1, 13, 10);
   seated.state = CharacterState.TYPE;
   assert.equal(tryPerch(seated), true);
   assert.equal(tryPerch(makeChar(1, 13, 10)), false); // standing 3 away
   assert.equal(tryPerch(makeChar(1, 12, 10)), true); // standing 2 away
+});
+
+// ── Species habits: dog on free sofas, cat on laps, dog hugs a leg ──
+
+const sofaAt = (col: number, row: number) => ({
+  seatId: 'sofa1',
+  col,
+  row,
+  x: col * 16 + 8,
+  y: row * 16 + 11,
+  zY: (row + 1) * 16 + 1.5,
+});
+
+/** Tick until the pet leaves `state` (or the budget runs out). */
+function tickWhile(
+  pet: ReturnType<typeof createPet>,
+  state: string,
+  args: Parameters<typeof updatePet> extends [unknown, unknown, ...infer R] ? R : never,
+): void {
+  for (let i = 0; i < 400 && pet.state === state; i++) updatePet(pet, 0.05, ...args);
+}
+
+test('a dog never jumps on the table, even when it is free and someone is near', () => {
+  const tileMap = buildOpenTileMap(20, 20);
+  const walkable = buildWalkableTiles(20, 20);
+  const home = {
+    col: 10,
+    row: 10,
+    radius: 3,
+    footprint: { col: 9, row: 9, w: 3, h: 3 },
+    perch: { x: 168, y: 168, zY: 176 },
+  };
+  const pet = createPet('d', 0, 8, 10, PetKind.DOG);
+  pet.wanderTimer = 0;
+  randomQueue = [0, 0, 0, 0];
+  updatePet(pet, 0.01, walkable, new Map([[1, makeChar(1, 12, 10)]]), tileMap, new Set(), home);
+  assert.equal(pet.perchTarget, null);
+  assert.notEqual(pet.state, PetState.HOP);
+});
+
+test('a dog jumps onto a free sofa, and hops off when someone claims it', () => {
+  const tileMap = buildOpenTileMap(10, 10);
+  const walkable = buildWalkableTiles(10, 10);
+  const sofa = sofaAt(5, 5);
+  const blocked = new Set(['5,5']); // seats are not walkable
+  const pet = createPet('d', 0, 2, 5, PetKind.DOG);
+  pet.wanderTimer = 0;
+  randomQueue = [0];
+  const free = { sofas: [sofa], claimed: new Set<string>() };
+  updatePet(pet, 0.01, walkable, new Map(), tileMap, blocked, null, free);
+  assert.deepEqual(pet.perchTarget, { kind: 'sofa', seatId: 'sofa1' });
+  tickWhile(pet, PetState.WALK, [walkable, new Map(), tileMap, blocked, null, free]);
+  tickWhile(pet, PetState.HOP, [walkable, new Map(), tileMap, blocked, null, free]);
+  assert.equal(pet.state, PetState.SIT);
+  assert.equal(pet.x, sofa.x);
+  assert.equal(pet.y, sofa.y);
+  assert.equal(pet.perchZY, sofa.zY);
+  // An agent claims the seat: it drops out of the free list and the dog hops off
+  const taken = { sofas: [], claimed: new Set<string>() };
+  updatePet(pet, 0.01, walkable, new Map(), tileMap, blocked, null, taken);
+  assert.equal(pet.state, PetState.HOP);
+  tickWhile(pet, PetState.HOP, [walkable, new Map(), tileMap, blocked, null, taken]);
+  assert.equal(pet.state, PetState.IDLE);
+  assert.equal(pet.perchZY, null);
+});
+
+test('a dog skips a sofa another pet already took', () => {
+  const tileMap = buildOpenTileMap(10, 10);
+  const walkable = buildWalkableTiles(10, 10);
+  const pet = createPet('d', 0, 4, 5, PetKind.DOG);
+  pet.wanderTimer = 0;
+  randomQueue = [0, 0.99, 0.99, 0];
+  const claimed = { sofas: [sofaAt(5, 5)], claimed: new Set(['sofa:sofa1']) };
+  updatePet(pet, 0.01, walkable, new Map(), tileMap, new Set(['5,5']), null, claimed);
+  assert.equal(pet.perchTarget, null);
+});
+
+test('a cat climbs onto a seated agent’s lap and hops down when they stand up', () => {
+  const tileMap = buildOpenTileMap(10, 10);
+  const walkable = buildWalkableTiles(10, 10);
+  const blocked = new Set(['5,5']);
+  const sitter = makeChar(1, 5, 5);
+  sitter.state = CharacterState.TYPE;
+  sitter.seatId = 'chair1';
+  const people = new Map([[1, sitter]]);
+  const pet = createPet('c', 0, 3, 5, PetKind.CAT);
+  pet.wanderTimer = 0;
+  randomQueue = [0];
+  updatePet(pet, 0.01, walkable, people, tileMap, blocked);
+  assert.deepEqual(pet.perchTarget, { kind: 'lap', charId: 1 });
+  tickWhile(pet, PetState.WALK, [walkable, people, tileMap, blocked]);
+  tickWhile(pet, PetState.HOP, [walkable, people, tileMap, blocked]);
+  assert.equal(pet.state, PetState.SIT);
+  assert.equal(pet.x, sitter.x);
+  assert.ok(pet.perchZY! > sitter.y + 8, 'drawn in front of the agent');
+  // The agent gets up: no lap any more
+  sitter.state = CharacterState.IDLE;
+  sitter.seatId = null;
+  updatePet(pet, 0.01, walkable, people, tileMap, blocked);
+  assert.equal(pet.state, PetState.HOP);
+  assert.equal(pet.perchTarget, null);
+});
+
+test('a cat ignores the lap of an agent sitting with its back to us', () => {
+  const tileMap = buildOpenTileMap(10, 10);
+  const walkable = buildWalkableTiles(10, 10);
+  const sitter = makeChar(1, 5, 5);
+  sitter.state = CharacterState.TYPE;
+  sitter.seatId = 'chair1';
+  sitter.dir = Direction.UP;
+  const pet = createPet('c', 0, 3, 5, PetKind.CAT);
+  pet.wanderTimer = 0;
+  randomQueue = [0, 0.99, 0];
+  updatePet(pet, 0.01, walkable, new Map([[1, sitter]]), tileMap, new Set(['5,5']));
+  assert.equal(pet.perchTarget, null);
+});
+
+test('a dog grabs a walking agent’s leg, holds it 2–3 s, then lets go', () => {
+  const tileMap = buildOpenTileMap(10, 10);
+  const walkable = buildWalkableTiles(10, 10);
+  const walker = makeChar(1, 5, 5);
+  walker.state = CharacterState.WALK;
+  walker.path = [{ col: 6, row: 5 }];
+  const people = new Map([[1, walker]]);
+  const pet = createPet('d', 0, 4, 5, PetKind.DOG);
+  pet.wanderTimer = 0;
+  randomQueue = [0]; // hug roll succeeds
+  updatePet(pet, 0.01, walkable, people, tileMap, new Set());
+  assert.equal(pet.state, PetState.FOLLOW);
+  assert.equal(pet.chaseToHug, true);
+  tickWhile(pet, PetState.FOLLOW, [walkable, people, tileMap, new Set()]);
+  assert.equal(pet.state, PetState.HUG);
+  assert.ok(walker.petHoldTimer! >= 2 && walker.petHoldTimer! <= 3);
+  assert.equal(pet.dir, Direction.RIGHT, 'the dog came from the left');
+  assert.ok(pet.x < walker.x);
+  let held = 0;
+  while (pet.state === PetState.HUG && held < 10) {
+    updatePet(pet, 0.1, walkable, people, tileMap, new Set());
+    held += 0.1;
+  }
+  assert.ok(held >= 1.9 && held <= 3.1, `held for ${held}s`);
+  assert.equal(pet.state, PetState.IDLE);
+  assert.equal(walker.petHoldTimer, 0);
+  assert.ok(pet.hugCooldown > 0);
+});
+
+test('an agent held by a dog stands still on its walk until released', async () => {
+  const { updateCharacter } = await import('../src/office/engine/characters.js');
+  const tileMap = buildOpenTileMap(10, 10);
+  const walker = makeChar(1, 5, 5);
+  walker.state = CharacterState.WALK;
+  walker.path = [{ col: 6, row: 5 }];
+  walker.petHoldTimer = 0.5;
+  const x0 = walker.x;
+  updateCharacter(walker, 0.2, [], new Map(), tileMap, new Set());
+  assert.equal(walker.x, x0);
+  updateCharacter(walker, 0.4, [], new Map(), tileMap, new Set());
+  updateCharacter(walker, 0.1, [], new Map(), tileMap, new Set());
+  assert.ok(walker.x > x0, 'walks on once released');
+});
+
+test('hug frames tip the side sprite onto the frame’s bottom and leg edges', async () => {
+  const { setPetTemplates, getPetSprites, getPetKind } =
+    await import('../src/office/sprites/petSpriteData.js');
+  const frame = (fill: (r: number, c: number) => boolean) =>
+    Array.from({ length: 32 }, (_, r) =>
+      Array.from({ length: 32 }, (_, c) => (fill(r, c) ? 'x' : '')),
+    );
+  const small = Array.from({ length: 32 }, () => Array.from({ length: 16 }, () => ''));
+  const side = frame((r, c) => r >= 28 && c >= 10 && c < 20);
+  const raw = {
+    walkDown: [small, small, small],
+    idleDown: [small, small, small],
+    walkUp: [small, small, small],
+    idleUp: [small, small, small],
+    walkRight: [side, side, side],
+  };
+  setPetTemplates([raw], ['Rex'], ['Dog']);
+  const hug = getPetSprites(0)!.hugRight[0];
+  assert.equal(hug.length, 32);
+  assert.equal(hug[0].length, 32);
+  assert.ok(
+    hug[31].some((px) => px !== ''),
+    'feet on the bottom edge',
+  );
+  assert.ok(
+    hug.some((row) => row[31] !== ''),
+    'paws against the right edge',
+  );
+  const left = getPetSprites(0)!.hugLeft[0];
+  assert.ok(
+    left.some((row) => row[0] !== ''),
+    'mirrored for the other side',
+  );
+  assert.equal(getPetKind(0), PetKind.DOG);
 });

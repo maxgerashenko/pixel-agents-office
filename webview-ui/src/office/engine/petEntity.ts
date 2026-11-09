@@ -1,4 +1,8 @@
 import {
+  CHARACTER_Z_SORT_OFFSET,
+  PET_CHASE_MAX_SEC,
+  PET_CHASE_RECALC_INTERVAL_SEC,
+  PET_CHASE_SPEED_PX_PER_SEC,
   PET_FOLLOW_CHANCE,
   PET_FOLLOW_DURATION_MAX_SEC,
   PET_FOLLOW_DURATION_MIN_SEC,
@@ -8,13 +12,25 @@ import {
   PET_HOME_TABLE_PATTERNS,
   PET_HOP_ARC_PX,
   PET_HOP_DURATION_SEC,
+  PET_HUG_CHANCE,
+  PET_HUG_COOLDOWN_SEC,
+  PET_HUG_DURATION_MAX_SEC,
+  PET_HUG_DURATION_MIN_SEC,
+  PET_HUG_RADIUS_TILES,
+  PET_HUG_REACH_PX,
+  PET_HUG_SIDE_OFFSET_PX,
   PET_IDLE_FRAME_DURATION_SEC,
   PET_IDLE_SEQUENCE,
+  PET_LAP_CHANCE,
+  PET_LAP_SIDE_SHIFT_PX,
+  PET_LAP_Y_OFFSET_PX,
   PET_PERCH_CHANCE,
   PET_PERCH_DURATION_MAX_SEC,
   PET_PERCH_DURATION_MIN_SEC,
   PET_PERCH_SEATED_RADIUS_TILES,
   PET_PERCH_STANDING_RADIUS_TILES,
+  PET_SEAT_SEARCH_RADIUS_TILES,
+  PET_SOFA_CHANCE,
   PET_WALK_FRAME_DURATION_SEC,
   PET_WALK_SEQUENCE,
   PET_WALK_SPEED_PX_PER_SEC,
@@ -26,11 +42,13 @@ import type { PetSpriteFrames } from '../sprites/petSpriteData.js';
 import type {
   Character,
   Pet,
+  PetPerchTarget,
   PlacedFurniture,
   SpriteData,
   TileType as TileTypeVal,
 } from '../types.js';
-import { CharacterState, Direction, PetState, TILE_SIZE } from '../types.js';
+import { CharacterState, Direction, PetKind, PetState, TILE_SIZE } from '../types.js';
+import { isSeatedPose } from './characters.js';
 
 /** The tile the pet stays around, and how far (Manhattan tiles) it may roam from it. */
 export interface PetHome {
@@ -52,6 +70,80 @@ export interface PetFurnitureInfo {
   h: number;
   /** Item stands on desks (PC, monitor, mug…), so it occupies the table top. */
   onSurface?: boolean;
+}
+
+/** A free sofa seat a dog may jump onto (derived by OfficeState each tick). */
+export interface PetSofaSpot {
+  /** The seat's key in OfficeState.seats. */
+  seatId: string;
+  col: number;
+  row: number;
+  /** Where the dog stands on the cushion (pixel feet position) and its depth key. */
+  x: number;
+  y: number;
+  zY: number;
+}
+
+/** What the pet can see beyond the characters: free sofas, and what other pets took. */
+export interface PetSurroundings {
+  sofas: readonly PetSofaSpot[];
+  /** `perchKey`s / `hug:<id>` already taken by OTHER pets. */
+  claimed: ReadonlySet<string>;
+}
+
+const NO_SURROUNDINGS: PetSurroundings = { sofas: [], claimed: new Set() };
+
+/** A resolved perch: where to sit, its depth key, and the tiles to jump up from. */
+interface PerchSpot {
+  x: number;
+  y: number;
+  zY: number;
+  footprint: { col: number; row: number; w: number; h: number };
+}
+
+/** Unique key of a perch, so two pets never pick the same sofa seat or lap. */
+export function perchKey(target: PetPerchTarget): string {
+  if (target.kind === 'sofa') return `sofa:${target.seatId}`;
+  if (target.kind === 'lap') return `lap:${target.charId}`;
+  return 'table';
+}
+
+/** The keys this pet holds (its perch, or the agent it chases / hugs). */
+export function petClaims(pet: Pet): string[] {
+  const keys: string[] = [];
+  if (pet.perchTarget && pet.perchTarget.kind !== 'table') keys.push(perchKey(pet.perchTarget));
+  if ((pet.chaseToHug || pet.state === PetState.HUG) && pet.followTargetId !== null) {
+    keys.push(`hug:${pet.followTargetId}`);
+  }
+  return keys;
+}
+
+/**
+ * Where a cat sits on a seated agent's lap, or null when the agent is not
+ * sitting (or sits with its back to us, which would hide the cat).
+ */
+export function lapSpot(ch: Character | undefined): PerchSpot | null {
+  if (!ch || ch.matrixEffect === 'despawn' || ch.isSubagent) return null;
+  if (!isSeatedPose(ch) || ch.dir === Direction.UP) return null;
+  const shift =
+    ch.dir === Direction.LEFT
+      ? -PET_LAP_SIDE_SHIFT_PX
+      : ch.dir === Direction.RIGHT
+        ? PET_LAP_SIDE_SHIFT_PX
+        : 0;
+  return {
+    x: ch.x + shift,
+    y: ch.y + PET_LAP_Y_OFFSET_PX,
+    // Just in front of the agent, so the cat covers the lap
+    zY: ch.y + TILE_SIZE / 2 + CHARACTER_Z_SORT_OFFSET + 0.1,
+    footprint: { col: ch.tileCol, row: ch.tileRow, w: 1, h: 1 },
+  };
+}
+
+/** Whether a tile is within the pet's seat-search range (from its table, else from the pet). */
+function withinSeatSearch(pet: Pet, home: PetHome | null, col: number, row: number): boolean {
+  const from = home ?? { col: pet.tileCol, row: pet.tileRow };
+  return manhattanDistance(from.col, from.row, col, row) <= PET_SEAT_SEARCH_RADIUS_TILES;
 }
 
 /**
@@ -212,12 +304,12 @@ function updateIdleAnimation(pet: Pet, dt: number): void {
  * Lerp the pet along its current `path`. When it reaches the next tile,
  * shift the tile off the path and update `tileCol`/`tileRow`. Sets `dir`.
  */
-function movePetAlongPath(pet: Pet, dt: number): void {
+function movePetAlongPath(pet: Pet, dt: number, speed = PET_WALK_SPEED_PX_PER_SEC): void {
   if (pet.path.length === 0) return;
   const nextTile = pet.path[0];
   pet.dir = directionBetween(pet.tileCol, pet.tileRow, nextTile.col, nextTile.row);
 
-  pet.moveProgress += (PET_WALK_SPEED_PX_PER_SEC / TILE_SIZE) * dt;
+  pet.moveProgress += (speed / TILE_SIZE) * dt;
 
   const fromCenter = tileCenter(pet.tileCol, pet.tileRow);
   const toCenter = tileCenter(nextTile.col, nextTile.row);
@@ -235,14 +327,14 @@ function movePetAlongPath(pet: Pet, dt: number): void {
   }
 }
 
-/** Nearest walkable floor tile just outside the table, to jump from / land on. */
+/** Nearest walkable floor tile just outside a perch's tiles, to jump from / land on. */
 function findGroundTile(
   pet: Pet,
-  home: PetHome,
+  footprint: PerchSpot['footprint'],
   tileMap: TileTypeVal[][],
   blockedTiles: Set<string>,
 ): { col: number; row: number } | null {
-  const { col, row, w, h } = home.footprint;
+  const { col, row, w, h } = footprint;
   let best: { col: number; row: number } | null = null;
   let bestDist = Number.POSITIVE_INFINITY;
   for (let r = row - 1; r <= row + h; r++) {
@@ -267,19 +359,137 @@ function startHop(pet: Pet, to: { x: number; y: number }, up: boolean): void {
   pet.hopTo = to;
   pet.path = [];
   pet.moveProgress = 0;
-  pet.goPerch = false;
+  if (!up) pet.perchTarget = null;
   pet.followTargetId = null;
+  pet.chaseToHug = false;
   pet.frame = 0;
   pet.frameTimer = 0;
 }
 
+/** The current spot of a perch target, or null when it is gone or taken. */
+function resolvePerch(
+  target: PetPerchTarget | null,
+  home: PetHome | null,
+  tablePerch: PetHome['perch'],
+  surroundings: PetSurroundings,
+  characters: Map<number, Character>,
+): PerchSpot | null {
+  if (!target) return null;
+  if (target.kind === 'table') {
+    return home && tablePerch ? { ...tablePerch, footprint: home.footprint } : null;
+  }
+  if (target.kind === 'sofa') {
+    const sofa = surroundings.sofas.find((s) => s.seatId === target.seatId);
+    return sofa
+      ? {
+          x: sofa.x,
+          y: sofa.y,
+          zY: sofa.zY,
+          footprint: { col: sofa.col, row: sofa.row, w: 1, h: 1 },
+        }
+      : null;
+  }
+  return lapSpot(characters.get(target.charId));
+}
+
+/**
+ * Where this pet would like to jump up right now, by species: a dog only onto
+ * a free sofa, a cat onto a seated agent's lap or the free table, anything
+ * else onto the free table. Rolls the dice only when a spot exists.
+ */
+function choosePerch(
+  pet: Pet,
+  home: PetHome | null,
+  tablePerch: PetHome['perch'],
+  surroundings: PetSurroundings,
+  characters: Map<number, Character>,
+): PetPerchTarget | null {
+  const near = (col: number, row: number) => manhattanDistance(pet.tileCol, pet.tileRow, col, row);
+  if (pet.kind === PetKind.DOG) {
+    const sofas = surroundings.sofas.filter(
+      (s) =>
+        !surroundings.claimed.has(`sofa:${s.seatId}`) && withinSeatSearch(pet, home, s.col, s.row),
+    );
+    if (sofas.length === 0 || Math.random() >= PET_SOFA_CHANCE) return null;
+    sofas.sort((a, b) => near(a.col, a.row) - near(b.col, b.row));
+    return { kind: 'sofa', seatId: sofas[0].seatId };
+  }
+  if (pet.kind === PetKind.CAT) {
+    const laps = [...characters.values()].filter(
+      (ch) =>
+        !surroundings.claimed.has(`lap:${ch.id}`) &&
+        lapSpot(ch) !== null &&
+        withinSeatSearch(pet, home, ch.tileCol, ch.tileRow),
+    );
+    if (laps.length > 0 && Math.random() < PET_LAP_CHANCE) {
+      laps.sort((a, b) => near(a.tileCol, a.tileRow) - near(b.tileCol, b.tileRow));
+      return { kind: 'lap', charId: laps[0].id };
+    }
+  }
+  if (home && tablePerch && Math.random() < PET_PERCH_CHANCE) return { kind: 'table' };
+  return null;
+}
+
+/** A walking agent within reach for a dog to chase and hug, nearest first. */
+function findWalkingLeg(
+  pet: Pet,
+  characters: Map<number, Character>,
+  surroundings: PetSurroundings,
+): Character | null {
+  let best: Character | null = null;
+  let bestDist = Number.POSITIVE_INFINITY;
+  for (const ch of characters.values()) {
+    if (ch.state !== CharacterState.WALK || ch.matrixEffect || ch.isSubagent) continue;
+    if (surroundings.claimed.has(`hug:${ch.id}`)) continue;
+    const d = manhattanDistance(pet.tileCol, pet.tileRow, ch.tileCol, ch.tileRow);
+    if (d > PET_HUG_RADIUS_TILES || d >= bestDist) continue;
+    best = ch;
+    bestDist = d;
+  }
+  return best;
+}
+
+/** Back to IDLE with a fresh pause (the shared exit of FOLLOW / HUG). */
+function settleIdle(pet: Pet): void {
+  pet.state = PetState.IDLE;
+  pet.followTargetId = null;
+  pet.chaseToHug = false;
+  pet.path = [];
+  pet.moveProgress = 0;
+  pet.frame = 0;
+  pet.frameTimer = 0;
+  pet.wanderTimer = randomRange(PET_WANDER_PAUSE_MIN_SEC, PET_WANDER_PAUSE_MAX_SEC);
+}
+
+/** Let go of a leg: the agent walks on, the dog drops to the floor. */
+function releaseHug(pet: Pet, target: Character | undefined): void {
+  if (target) {
+    target.petHoldTimer = 0;
+    // The agent was walking, so its tile is floor: the dog drops there
+    pet.tileCol = target.tileCol;
+    pet.tileRow = target.tileRow;
+  }
+  pet.perchZY = null;
+  pet.perchTimer = 0;
+  pet.hugCooldown = PET_HUG_COOLDOWN_SEC;
+  pet.dir = Direction.DOWN;
+  settleIdle(pet);
+}
+
 /** Build a fresh pet at a tile with the IDLE FSM entry point. */
-export function createPet(id: string, petType: number, col: number, row: number): Pet {
+export function createPet(
+  id: string,
+  petType: number,
+  col: number,
+  row: number,
+  kind: Pet['kind'] = PetKind.OTHER,
+): Pet {
   const center = tileCenter(col, row);
   return {
     id,
     name: '', // Filled by OfficeState.addPet() via getPetName(petType)
     petType,
+    kind,
     state: PetState.IDLE,
     dir: Direction.DOWN,
     x: center.x,
@@ -295,7 +505,9 @@ export function createPet(id: string, petType: number, col: number, row: number)
     followRecalcTimer: 0,
     followDuration: 0,
     followDurationLimit: 0,
-    goPerch: false,
+    perchTarget: null,
+    chaseToHug: false,
+    hugCooldown: 0,
     hopUp: true,
     hopProgress: 0,
     hopFrom: { x: center.x, y: center.y },
@@ -320,13 +532,18 @@ export function updatePet(
   tileMap: TileTypeVal[][],
   blockedTiles: Set<string>,
   home: PetHome | null = null,
+  surroundings: PetSurroundings = NO_SURROUNDINGS,
 ): void {
   // Only wander within reach of the table (a pet elsewhere walks back to it).
   const roamTiles = home
     ? walkableTiles.filter((t) => isNearPetHome(home, t.col, t.row))
     : walkableTiles;
-  // The cat only sits on the table while someone is around it.
-  const perch = home?.perch && personNearTable(home, characters) ? home.perch : undefined;
+  // The table is a perch only while it is free and someone is around it.
+  const tablePerch = home?.perch && personNearTable(home, characters) ? home.perch : undefined;
+  const spotOf = (target: PetPerchTarget | null) =>
+    resolvePerch(target, home, tablePerch, surroundings, characters);
+  if (pet.hugCooldown > 0) pet.hugCooldown = Math.max(0, pet.hugCooldown - dt);
+
   switch (pet.state) {
     case PetState.HOP: {
       pet.hopProgress = Math.min(1, pet.hopProgress + dt / PET_HOP_DURATION_SEC);
@@ -337,13 +554,19 @@ export function updatePet(
       if (t < 1) break;
       pet.frame = 0;
       pet.frameTimer = 0;
-      if (pet.hopUp && home?.perch) {
+      const spot = pet.hopUp ? spotOf(pet.perchTarget) : null;
+      if (spot) {
         pet.state = PetState.SIT;
-        pet.perchZY = home.perch.zY;
+        pet.x = spot.x;
+        pet.y = spot.y;
+        pet.perchZY = spot.zY;
+        // On a sofa or a lap the pet faces out of the picture
+        if (pet.perchTarget?.kind !== 'table') pet.dir = Direction.DOWN;
         pet.perchTimer = randomRange(PET_PERCH_DURATION_MIN_SEC, PET_PERCH_DURATION_MAX_SEC);
       } else {
-        // Landed on the floor (or the table vanished mid-jump).
+        // Landed on the floor (or the perch vanished mid-jump).
         pet.state = PetState.IDLE;
+        pet.perchTarget = null;
         pet.perchZY = null;
         pet.wanderTimer = randomRange(PET_WANDER_PAUSE_MIN_SEC, PET_WANDER_PAUSE_MAX_SEC);
         if (pet.groundTile) {
@@ -360,11 +583,35 @@ export function updatePet(
     case PetState.SIT: {
       updateIdleAnimation(pet, dt);
       pet.perchTimer -= dt;
-      // Hop down when rested, or when the table stopped being free (a PC went on it).
-      if (pet.perchTimer > 0 && perch) break;
+      // Hop down when rested, or when the perch stopped being free (a PC went
+      // on the table, someone claimed the sofa, the lap stood up).
+      const spot = spotOf(pet.perchTarget);
+      if (pet.perchTimer > 0 && spot) {
+        pet.x = spot.x;
+        pet.y = spot.y;
+        break;
+      }
       const ground = pet.groundTile ?? { col: pet.tileCol, row: pet.tileRow };
       const c = tileCenter(ground.col, ground.row);
       startHop(pet, { x: c.x, y: c.y }, false);
+      break;
+    }
+
+    case PetState.HUG: {
+      const target = pet.followTargetId !== null ? characters.get(pet.followTargetId) : undefined;
+      pet.perchTimer -= dt;
+      if (!target || target.matrixEffect === 'despawn' || pet.perchTimer <= 0) {
+        releaseHug(pet, target);
+        break;
+      }
+      // Cling to the leg: the agent stands still for as long as the hug lasts
+      target.petHoldTimer = pet.perchTimer;
+      pet.x =
+        target.x + (pet.dir === Direction.RIGHT ? -PET_HUG_SIDE_OFFSET_PX : PET_HUG_SIDE_OFFSET_PX);
+      pet.y = target.y;
+      // Just behind the agent: the paws wrap round the far side of the leg
+      pet.perchZY = target.y + TILE_SIZE / 2 + CHARACTER_Z_SORT_OFFSET - 0.1;
+      updateWalkAnimation(pet, dt); // paws scrabbling, jaws working
       break;
     }
 
@@ -373,13 +620,16 @@ export function updatePet(
       pet.wanderTimer -= dt;
       if (pet.wanderTimer > 0) break;
 
-      // Free table nearby? Sometimes go sit on it.
-      if (home && perch && Math.random() < PET_PERCH_CHANCE) {
-        const ground = findGroundTile(pet, home, tileMap, blockedTiles);
+      // A free perch nearby? Sometimes go sit on it.
+      const target = choosePerch(pet, home, tablePerch, surroundings, characters);
+      const spot = spotOf(target);
+      if (target && spot) {
+        const ground = findGroundTile(pet, spot.footprint, tileMap, blockedTiles);
         if (ground) {
           pet.groundTile = ground;
+          pet.perchTarget = target;
           if (ground.col === pet.tileCol && ground.row === pet.tileRow) {
-            startHop(pet, { x: perch.x, y: perch.y }, true);
+            startHop(pet, { x: spot.x, y: spot.y }, true);
             break;
           }
           const path = findPath(
@@ -392,13 +642,29 @@ export function updatePet(
           );
           if (path.length > 0) {
             pet.state = PetState.WALK;
-            pet.goPerch = true;
             pet.path = path;
             pet.moveProgress = 0;
             pet.frame = 0;
             pet.frameTimer = 0;
             break;
           }
+          pet.perchTarget = null;
+        }
+      }
+
+      // A dog may chase someone walking past to grab their leg
+      if (pet.kind === PetKind.DOG && pet.hugCooldown <= 0) {
+        const leg = findWalkingLeg(pet, characters, surroundings);
+        if (leg && Math.random() < PET_HUG_CHANCE) {
+          pet.state = PetState.FOLLOW;
+          pet.chaseToHug = true;
+          pet.followTargetId = leg.id;
+          pet.followDuration = 0;
+          pet.followRecalcTimer = 0;
+          pet.followDurationLimit = PET_CHASE_MAX_SEC;
+          pet.frame = 0;
+          pet.frameTimer = 0;
+          break;
         }
       }
 
@@ -452,12 +718,13 @@ export function updatePet(
       movePetAlongPath(pet, dt);
 
       if (pet.path.length === 0 && pet.moveProgress === 0) {
-        // Arrived at the table: jump up if it is still free.
-        if (pet.goPerch && perch) {
-          startHop(pet, { x: perch.x, y: perch.y }, true);
+        // Arrived next to the perch: jump up if it is still free.
+        const spot = spotOf(pet.perchTarget);
+        if (spot) {
+          startHop(pet, { x: spot.x, y: spot.y }, true);
           break;
         }
-        pet.goPerch = false;
+        pet.perchTarget = null;
         pet.state = PetState.IDLE;
         pet.wanderTimer = randomRange(PET_WANDER_PAUSE_MIN_SEC, PET_WANDER_PAUSE_MAX_SEC);
         pet.frame = 0;
@@ -470,39 +737,56 @@ export function updatePet(
       pet.followDuration += dt;
       const target = pet.followTargetId !== null ? characters.get(pet.followTargetId) : undefined;
 
-      // Exit: target gone
-      if (!target) {
-        pet.state = PetState.IDLE;
-        pet.followTargetId = null;
-        pet.path = [];
-        pet.moveProgress = 0;
-        pet.frame = 0;
-        pet.frameTimer = 0;
-        pet.wanderTimer = randomRange(PET_WANDER_PAUSE_MIN_SEC, PET_WANDER_PAUSE_MAX_SEC);
+      // Exit: target gone, or the time is up
+      if (!target || pet.followDuration >= pet.followDurationLimit) {
+        settleIdle(pet);
+        break;
+      }
+
+      if (pet.chaseToHug) {
+        // The leg stopped walking (arrived, sat down): nothing to grab
+        if (target.state !== CharacterState.WALK || target.matrixEffect) {
+          settleIdle(pet);
+          break;
+        }
+        // Close enough: grab the leg from whichever side the dog is on
+        if (Math.hypot(pet.x - target.x, pet.y - target.y) <= PET_HUG_REACH_PX) {
+          const holdSec = randomRange(PET_HUG_DURATION_MIN_SEC, PET_HUG_DURATION_MAX_SEC);
+          pet.state = PetState.HUG;
+          pet.chaseToHug = false;
+          pet.dir = pet.x <= target.x ? Direction.RIGHT : Direction.LEFT;
+          pet.perchTimer = holdSec;
+          pet.path = [];
+          pet.moveProgress = 0;
+          pet.frame = 0;
+          pet.frameTimer = 0;
+          target.petHoldTimer = holdSec;
+          break;
+        }
+        // Run after it, re-aiming often since it keeps moving
+        pet.followRecalcTimer -= dt;
+        if (pet.followRecalcTimer <= 0) {
+          const goal = target.path[0] ?? { col: target.tileCol, row: target.tileRow };
+          const path = findPath(
+            pet.tileCol,
+            pet.tileRow,
+            goal.col,
+            goal.row,
+            tileMap,
+            blockedTiles,
+          );
+          // Keep the step in progress: only replace the path once it is done
+          if (path.length > 0 && pet.moveProgress === 0) pet.path = path;
+          pet.followRecalcTimer = PET_CHASE_RECALC_INTERVAL_SEC;
+        }
+        updateWalkAnimation(pet, dt);
+        movePetAlongPath(pet, dt, PET_CHASE_SPEED_PX_PER_SEC);
         break;
       }
 
       // Exit: target walked away from the table
       if (!isNearPetHome(home, target.tileCol, target.tileRow)) {
-        pet.state = PetState.IDLE;
-        pet.followTargetId = null;
-        pet.path = [];
-        pet.moveProgress = 0;
-        pet.frame = 0;
-        pet.frameTimer = 0;
-        pet.wanderTimer = randomRange(PET_WANDER_PAUSE_MIN_SEC, PET_WANDER_PAUSE_MAX_SEC);
-        break;
-      }
-
-      // Exit: duration limit
-      if (pet.followDuration >= pet.followDurationLimit) {
-        pet.state = PetState.IDLE;
-        pet.followTargetId = null;
-        pet.path = [];
-        pet.moveProgress = 0;
-        pet.frame = 0;
-        pet.frameTimer = 0;
-        pet.wanderTimer = randomRange(PET_WANDER_PAUSE_MIN_SEC, PET_WANDER_PAUSE_MAX_SEC);
+        settleIdle(pet);
         break;
       }
 
@@ -513,13 +797,7 @@ export function updatePet(
         if (dist === 1) {
           pet.dir = directionBetween(pet.tileCol, pet.tileRow, target.tileCol, target.tileRow);
         }
-        pet.state = PetState.IDLE;
-        pet.followTargetId = null;
-        pet.path = [];
-        pet.moveProgress = 0;
-        pet.frame = 0;
-        pet.frameTimer = 0;
-        pet.wanderTimer = randomRange(PET_WANDER_PAUSE_MIN_SEC, PET_WANDER_PAUSE_MAX_SEC);
+        settleIdle(pet);
         break;
       }
 
@@ -550,6 +828,11 @@ export function updatePet(
  */
 export function getPetSpriteData(pet: Pet, petSprites: PetSpriteFrames | null): SpriteData | null {
   if (!petSprites) return null;
+
+  if (pet.state === PetState.HUG) {
+    const frames = pet.dir === Direction.LEFT ? petSprites.hugLeft : petSprites.hugRight;
+    return frames[PET_WALK_SEQUENCE[pet.frame % PET_WALK_SEQUENCE.length]];
+  }
 
   if (pet.state === PetState.IDLE || pet.state === PetState.SIT) {
     const frameIdx = PET_IDLE_SEQUENCE[pet.frame % PET_IDLE_SEQUENCE.length];

@@ -502,6 +502,7 @@ function handleWebviewReady(send: WsSend, ctx: ClientMessageContext): void {
         type: 'petSpritesLoaded',
         pets: cache.pets.pets,
         petNames: cache.pets.manifests.map((m) => m.name),
+        petKinds: cache.pets.manifests.map((m) => m.kind ?? ''),
       });
     }
     if (cache.floorTiles) {
