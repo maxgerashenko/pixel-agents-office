@@ -281,7 +281,15 @@ export interface Character {
   maxContextTokens: number;
 }
 
-export const PetState = { IDLE: 'idle', WALK: 'walk', FOLLOW: 'follow' } as const;
+export const PetState = {
+  IDLE: 'idle',
+  WALK: 'walk',
+  FOLLOW: 'follow',
+  /** Mid-jump between the floor and the table top. */
+  HOP: 'hop',
+  /** Sitting on the table top. */
+  SIT: 'sit',
+} as const;
 export type PetState = (typeof PetState)[keyof typeof PetState];
 
 /** Runtime pet (mutated by FSM tick). */
@@ -317,6 +325,20 @@ export interface Pet {
   followDuration: number;
   /** Random [5, 15] limit; FOLLOW exits when followDuration >= this. */
   followDurationLimit: number;
+  /** True while the current WALK is heading to the table to jump onto it. */
+  goPerch: boolean;
+  /** Direction of the current HOP: true = up onto the table, false = back down. */
+  hopUp: boolean;
+  /** 0..1 progress of the current HOP. */
+  hopProgress: number;
+  hopFrom: { x: number; y: number };
+  hopTo: { x: number; y: number };
+  /** Floor tile the cat jumped from, and lands on when it hops down. */
+  groundTile: { col: number; row: number } | null;
+  /** Seconds left sitting on the table. */
+  perchTimer: number;
+  /** Depth-sort override while on the table top (the table's bottom edge), else null. */
+  perchZY: number | null;
   /** Pet's heart-bubble overlay (set on click), or null. */
   bubbleType: 'heart' | null;
   /** Countdown timer for the heart bubble (mirrors character waiting bubble). */
