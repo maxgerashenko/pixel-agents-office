@@ -602,6 +602,8 @@ export const WORK_SPOT_RECHECK_SEC = 3.0;
 export const PAIR_SEAT_MAX_DIST = 2;
 /** Phone ("vibe coding") overlay drawn on a working agent's walk/stand sprite. */
 export const PHONE_CASE_COLOR = '#1b1b24';
+/** Light rim drawn around the phone so it stands out on dark clothes. */
+export const PHONE_OUTLINE_COLOR = '#f2f2ff';
 export const PHONE_SCREEN_COLOR = '#7fe0ff';
 export const PHONE_SCREEN_ALT_COLOR = '#d4f8ff';
 /** Hand colour under the phone when the sprite has no skin pixel to sample. */
