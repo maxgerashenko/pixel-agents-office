@@ -22,6 +22,7 @@ import {
   REST_SEAT_TYPE_PATTERN,
   WAITING_BUBBLE_DURATION_SEC,
 } from '../../constants.js';
+import { arcadePlaySpot } from '../layout/arcadePlacement.js';
 import { getAnimationFrames, getCatalogEntry, getOnStateType } from '../layout/furnitureCatalog.js';
 import {
   createDefaultLayout,
@@ -615,13 +616,12 @@ export class OfficeState {
       if (!PLAY_FURNITURE_TYPE_PATTERN.test(item.type)) continue;
       const entry = getCatalogEntry(item.type);
       if (!entry) continue;
-      // Stand just below the machine, facing it; it must be a free, walkable
+      // Stand in front of the machine, facing it; it must be a free, walkable
       // tile outside every Area and its buffer (Areas are for work only)
-      const col = item.col;
-      const row = item.row + entry.footprintH;
+      const { col, row, dir } = arcadePlaySpot(entry, item.col, item.row);
       if (!this.walkableTiles.some((t) => t.col === col && t.row === row)) continue;
       if (isNearArea(areaTiles, cols, rows, col, row)) continue;
-      this.playSpots.set(`play:${item.uid}`, { col, row, dir: Direction.UP });
+      this.playSpots.set(`play:${item.uid}`, { col, row, dir });
     }
     const clear = this.walkableTiles.filter(
       (t) => !isNearArea(areaTiles, cols, rows, t.col, t.row),

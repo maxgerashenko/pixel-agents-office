@@ -1,5 +1,6 @@
 import type { ColorValue } from '../../components/ui/types.js';
 import { DEFAULT_NEUTRAL_COLOR } from '../../constants.js';
+import { arcadeWallTiles, isArcadeType } from '../layout/arcadePlacement.js';
 import { getCatalogEntry, getRotatedType, getToggledType } from '../layout/furnitureCatalog.js';
 import { getPlacementBlockedTiles } from '../layout/layoutSerializer.js';
 import type {
@@ -471,6 +472,14 @@ export function canPlaceFurniture(
       row + entry.footprintH > layout.rows
     ) {
       return false;
+    }
+  }
+
+  // Arcade machines only stand against a wall (see arcadePlacement)
+  if (isArcadeType(type)) {
+    for (const t of arcadeWallTiles(entry, col, row)) {
+      if (t.col < 0 || t.row < 0 || t.col >= layout.cols || t.row >= layout.rows) return false;
+      if (layout.tiles[t.row * layout.cols + t.col] !== TileType.WALL) return false;
     }
   }
 
