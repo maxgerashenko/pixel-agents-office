@@ -20,6 +20,7 @@ import {
   CHARACTER_SITTING_OFFSET_PX,
   CHARACTER_Z_SORT_OFFSET,
   DELETE_BUTTON_BG,
+  ERASE_TARGET_COLOR,
   FALLBACK_FLOOR_COLOR,
   GHOST_BORDER_HOVER_FILL,
   GHOST_BORDER_HOVER_STROKE,
@@ -736,6 +737,26 @@ export function renderSelectionHighlight(
   ctx.restore();
 }
 
+/** 1px red outline around what the erase tool will remove next. */
+export function renderEraseTarget(
+  ctx: CanvasRenderingContext2D,
+  col: number,
+  row: number,
+  w: number,
+  h: number,
+  offsetX: number,
+  offsetY: number,
+  zoom: number,
+): void {
+  const s = TILE_SIZE * zoom;
+  ctx.save();
+  ctx.strokeStyle = ERASE_TARGET_COLOR;
+  ctx.lineWidth = 1;
+  // Half-pixel inset keeps a 1px line crisp on the device-pixel grid.
+  ctx.strokeRect(offsetX + col * s + 0.5, offsetY + row * s + 0.5, w * s - 1, h * s - 1);
+  ctx.restore();
+}
+
 /** @internal */
 export function renderDeleteButton(
   ctx: CanvasRenderingContext2D,
@@ -906,6 +927,8 @@ export interface EditorRenderState {
   ghostBorderHoverCol: number;
   /** Hovered ghost border tile row (-1 to rows) */
   ghostBorderHoverRow: number;
+  /** Erase tool: the tiles the next erase removes (outlined red), or null. */
+  eraseTarget: { col: number; row: number; w: number; h: number } | null;
 }
 
 export interface SelectionRenderState {
@@ -1042,6 +1065,10 @@ export function renderFrame(
         zoom,
         ghost.mirrored,
       );
+    }
+    if (editor.eraseTarget) {
+      const t = editor.eraseTarget;
+      renderEraseTarget(ctx, t.col, t.row, t.w, t.h, offsetX, offsetY, zoom);
     }
     if (editor.hasSelection) {
       renderSelectionHighlight(

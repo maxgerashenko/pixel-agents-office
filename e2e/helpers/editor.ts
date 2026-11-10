@@ -135,7 +135,7 @@ export async function selectWallTool(frame: Frame): Promise<void> {
 
 /** Select the erase tool (ERASE — clears tiles to VOID and deletes furniture). */
 export async function selectEraseTool(frame: Frame): Promise<void> {
-  await frame.locator('button[title="Erase tiles to void"]').click();
+  await frame.locator('button[title^="Erase the top layer"]').click();
 }
 
 /**

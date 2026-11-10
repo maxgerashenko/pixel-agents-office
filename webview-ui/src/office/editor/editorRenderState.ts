@@ -4,7 +4,12 @@ import type { EditorRenderState, GhostSprite } from '../engine/renderer.js';
 import { getCatalogEntry, isRotatable } from '../layout/furnitureCatalog.js';
 import type { OfficeLayout, PlacedFurniture, SpriteData } from '../types.js';
 import { EditTool } from '../types.js';
-import { canPlaceFurniture, getWallPlacementRow, planFurnitureMove } from './editorActions.js';
+import {
+  canPlaceFurniture,
+  eraseTargetAt,
+  getWallPlacementRow,
+  planFurnitureMove,
+} from './editorActions.js';
 import type { EditorState } from './editorState.js';
 
 /** One ghost sprite for an item at its (target) position; null for unknown types. */
@@ -52,9 +57,24 @@ export function buildEditorRenderState(
     showGhostBorder,
     ghostBorderHoverCol: showGhostBorder ? editorState.ghostCol : GHOST_BORDER_NO_HOVER_TILE,
     ghostBorderHoverRow: showGhostBorder ? editorState.ghostRow : GHOST_BORDER_NO_HOVER_TILE,
+    eraseTarget: null,
   };
 
   const hovering = editorState.ghostCol >= 0;
+
+  // Erase preview: outline exactly what the next erase on the hovered tile
+  // removes — the top item's footprint, else the carpet or tile under it.
+  if (tool === EditTool.ERASE && hovering) {
+    const target = eraseTargetAt(
+      layout,
+      editorState.ghostCol,
+      editorState.ghostRow,
+      editorState.eraseLayer,
+    );
+    if (target) {
+      render.eraseTarget = { col: target.col, row: target.row, w: target.w, h: target.h };
+    }
+  }
 
   // Ghost preview for furniture placement
   const placingType = editorState.placingType;

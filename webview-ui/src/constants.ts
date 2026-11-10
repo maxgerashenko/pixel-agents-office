@@ -79,6 +79,8 @@ export const GHOST_BORDER_STROKE = 'rgba(255, 255, 255, 0.06)';
 export const GHOST_VALID_TINT = '#00ff00';
 export const GHOST_INVALID_TINT = '#ff0000';
 export const SELECTION_HIGHLIGHT_COLOR = '#007fd4';
+/** Erase tool: outline of the item / carpet / tile the next erase removes. */
+export const ERASE_TARGET_COLOR = '#ff3b3b';
 export const DELETE_BUTTON_BG = 'rgba(200, 50, 50, 0.85)';
 export const ROTATE_BUTTON_BG = 'rgba(50, 120, 200, 0.85)';
 export const BUTTON_ICON_COLOR = '#fff';

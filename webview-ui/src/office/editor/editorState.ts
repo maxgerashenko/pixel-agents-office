@@ -8,6 +8,7 @@ import {
 } from '../../constants.js';
 import type { OfficeLayout, TileType as TileTypeVal } from '../types.js';
 import { EditTool, TileType } from '../types.js';
+import type { EraseLayer } from './editorActions.js';
 
 /**
  * A catalog item queued for placement. `color` is what the Copy tool lifted off
@@ -115,6 +116,12 @@ export class EditorState {
   /** First tile of an area drag sets direction: true=erase same label, false=paint. */
   areaDragErasing: boolean | null = null;
 
+  // ── Erase tool stroke state ──────────────────────────────────────
+  /** Layer the current erase stroke peels, latched from its first tile (null = not started). */
+  eraseLayer: EraseLayer | null = null;
+  /** `"col,row"` the stroke last erased, so wiggling on one tile peels one layer, not all. */
+  eraseLastTile: string | null = null;
+
   /**
    * Enter the undo session an edit belongs to. Returns true when the edit opens
    * a new undo entry — the caller pushes undo then — and false when it extends
@@ -133,6 +140,8 @@ export class EditorState {
     this.carpetDragErasing = null;
     this.areaDragErasing = null;
     this.wallDragAdding = null;
+    this.eraseLayer = null;
+    this.eraseLastTile = null;
   }
 
   pushUndo(layout: OfficeLayout): void {
@@ -292,5 +301,7 @@ export class EditorState {
     this.undoSession = null;
     this.selectedAreaLabel = null;
     this.areaDragErasing = null;
+    this.eraseLayer = null;
+    this.eraseLastTile = null;
   }
 }

@@ -123,6 +123,85 @@ export function eraseTile(layout: OfficeLayout, col: number, row: number): Offic
   return removeFurnitureAt(cleared, col, row);
 }
 
+/**
+ * The layers the erase tool peels, top first: a placed item (a surface item
+ * before the desk under it), then the carpet, then the tile itself (floor or
+ * wall → VOID).
+ */
+export type EraseLayer = 'furniture' | 'carpet' | 'tile';
+
+/** What an erase on (col, row) would remove: the layer and the tiles it spans. */
+export interface EraseTarget {
+  layer: EraseLayer;
+  /** The placed item, when the layer is furniture. */
+  item?: PlacedFurniture;
+  col: number;
+  row: number;
+  w: number;
+  h: number;
+}
+
+/**
+ * What the erase tool removes on (col, row): the topmost layer present there,
+ * or — mid-stroke — the layer the stroke latched on its first tile, so a drag
+ * that started on a desk clears furniture and never digs through to the floor.
+ * Undefined when there is nothing of that layer (or nothing at all) to erase.
+ */
+export function eraseTargetAt(
+  layout: OfficeLayout,
+  col: number,
+  row: number,
+  layer?: EraseLayer | null,
+): EraseTarget | undefined {
+  if (col < 0 || col >= layout.cols || row < 0 || row >= layout.rows) return undefined;
+  const idx = row * layout.cols + col;
+  if (!layer || layer === 'furniture') {
+    const item = furnitureAt(layout, col, row);
+    const entry = item ? getCatalogEntry(item.type) : undefined;
+    if (item && entry) {
+      return {
+        layer: 'furniture',
+        item,
+        col: item.col,
+        row: item.row,
+        w: entry.footprintW,
+        h: entry.footprintH,
+      };
+    }
+    if (layer) return undefined;
+  }
+  if ((!layer || layer === 'carpet') && layout.carpetTiles?.[idx] != null) {
+    return { layer: 'carpet', col, row, w: 1, h: 1 };
+  }
+  if (layer === 'carpet') return undefined;
+  if (layout.tiles[idx] !== TileType.VOID) return { layer: 'tile', col, row, w: 1, h: 1 };
+  return undefined;
+}
+
+/**
+ * One tile of an erase stroke with the layered rule: remove only the top layer
+ * on (col, row) — or the stroke's latched `layer` — never the ones below it.
+ * Erasing the tile itself also drops whatever still stands on it, since
+ * nothing can stand on VOID. Returns new layout (immutable).
+ */
+export function eraseTopLayer(
+  layout: OfficeLayout,
+  col: number,
+  row: number,
+  layer?: EraseLayer | null,
+): OfficeLayout {
+  const target = eraseTargetAt(layout, col, row, layer);
+  if (!target) return layout;
+  switch (target.layer) {
+    case 'furniture':
+      return target.item ? removeFurniture(layout, target.item.uid) : layout;
+    case 'carpet':
+      return eraseCarpet(layout, col, row);
+    case 'tile':
+      return eraseCarpet(eraseTile(layout, col, row), col, row);
+  }
+}
+
 /** Footprint tiles of a placed item, as `"col,row"` keys (background rows included). */
 function footprintTiles(item: PlacedFurniture): Set<string> {
   const entry = getCatalogEntry(item.type);
