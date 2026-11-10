@@ -2,6 +2,8 @@ import {
   PET_BITE_BODY_SHARE,
   PET_BITE_FLAT_SHARE,
   PET_BITE_FRAME_PX,
+  PET_BITE_HEAD_NECK_ROWS,
+  PET_BITE_LEG_TRAIL_PX_PER_ROW,
   PET_BITE_TILT_DEG,
 } from '../../constants.js';
 import type { PetKind, SpriteData } from '../types.js';
@@ -74,30 +76,92 @@ function opaqueBounds(s: SpriteData): [number, number, number, number] | null {
   return b;
 }
 
+/** Longest run of opaque pixels in a row. */
+function longestRun(row: string[]): number {
+  let best = 0;
+  let run = 0;
+  for (const px of row) {
+    run = px === '' ? 0 : run + 1;
+    best = Math.max(best, run);
+  }
+  return best;
+}
+
 /**
- * Flat on the floor like a dragged mop: keep the top PET_BITE_BODY_SHARE of the
- * opaque sprite (legs gone), then squash it to PET_BITE_FLAT_SHARE of that
- * height by sampling rows evenly — first and last kept, so the outline closes —
- * and set it on the frame's bottom edge.
+ * Dragged by the leg, belly on the floor: the side walk frame (nose to the
+ * right) cut into three parts and laid back down on the frame's bottom edge.
+ *
+ * - Head: everything above the back line in the front half, kept at full size
+ *   and lowered so the chin rests on the floor, biting the boot.
+ * - Body: the trunk (and tail) above the legs, squashed to PET_BITE_FLAT_SHARE
+ *   of its height and lying on the floor behind the head.
+ * - Legs: the bottom (1 - PET_BITE_BODY_SHARE) of the sprite, squashed and
+ *   sheared back so they trail out behind the rump.
  */
-function lieDown(s: SpriteData): SpriteData {
+function dragPose(s: SpriteData): SpriteData {
   const b = opaqueBounds(s);
   if (!b) return s;
-  const [, top, , bottom] = b;
-  const bodyRows = Math.round((bottom - top + 1) * PET_BITE_BODY_SHARE);
-  const flatRows = Math.max(2, Math.round(bodyRows * PET_BITE_FLAT_SHARE));
-  const kept = Array.from(
-    { length: flatRows },
-    (_, i) => s[top + Math.round((i * (bodyRows - 1)) / (flatRows - 1))],
-  );
+  const [left, top, right, bottom] = b;
+  const h = s.length;
   const w = s[0].length;
-  const blank = (): string[] => Array.from({ length: w }, () => '');
-  return [...Array.from({ length: s.length - kept.length }, blank), ...kept];
+  const legTop = top + Math.round((bottom - top + 1) * PET_BITE_BODY_SHARE);
+  // The back line: the first row whose trunk spans most of the dog's length
+  let backTop = top;
+  for (let r = top; r < legTop; r++) {
+    if (longestRun(s[r]) > (right - left + 1) * 0.6) {
+      backTop = r;
+      break;
+    }
+  }
+  const midX = Math.floor((left + right) / 2);
+  const out: SpriteData = Array.from({ length: h }, () => Array.from({ length: w }, () => ''));
+  const put = (x: number, y: number, px: string, over: boolean) => {
+    if (px === '' || y < 0 || y >= h || x < 0 || x >= w) return;
+    if (over || out[y][x] === '') out[y][x] = px;
+  };
+  const floor = h - 1;
+
+  // Legs, trailing behind: squash to half height, shear each row further back
+  const legRows = bottom - legTop + 1;
+  const legFlat = Math.max(1, Math.ceil(legRows / 2));
+  for (let i = 0; i < legFlat; i++) {
+    const src = legTop + Math.min(legRows - 1, i * 2);
+    const shift = Math.round((i + 1) * PET_BITE_LEG_TRAIL_PX_PER_ROW);
+    const y = floor - (legFlat - 1 - i);
+    for (let x = 0; x < w; x++) put(x - shift, y, s[src][x], true);
+  }
+
+  // Body (trunk and tail, everything behind the head), squashed flat
+  let bodyTop = backTop;
+  for (let r = top; r < backTop; r++) {
+    if (s[r].slice(0, midX).some((px) => px !== '')) {
+      bodyTop = r;
+      break;
+    }
+  }
+  const bodyRows = legTop - bodyTop;
+  const flatRows = Math.max(2, Math.round(bodyRows * PET_BITE_FLAT_SHARE));
+  for (let i = 0; i < flatRows; i++) {
+    const src = bodyTop + Math.round((i * (bodyRows - 1)) / (flatRows - 1));
+    const y = floor - (flatRows - 1 - i);
+    for (let x = 0; x < w; x++) {
+      const isHead = x >= midX && src < backTop;
+      if (!isHead) put(x, y, s[src][x], true);
+    }
+  }
+
+  // Head at full size, chin on the floor, drawn over the body's front
+  const headBottom = backTop + PET_BITE_HEAD_NECK_ROWS;
+  const drop = floor - headBottom;
+  for (let r = top; r <= headBottom && r < legTop; r++) {
+    for (let x = midX; x < w; x++) put(x, r + drop, s[r][x], r < backTop);
+  }
+  return out;
 }
 
 /**
  * Bite frames, dragged along by a leg on the dog's right: the side walk frames
- * laid flat (lieDown), head dipped to the boot (tipped PET_BITE_TILT_DEG
+ * in the drag pose (dragPose), head dipped to the boot (tipped PET_BITE_TILT_DEG
  * clockwise), then placed in a PET_BITE_FRAME_PX square with the nose against
  * its right edge and the belly on its bottom edge — one shared offset, so the
  * frames don't jitter.
@@ -105,7 +169,7 @@ function lieDown(s: SpriteData): SpriteData {
 function biteFrames(
   walkRight: [SpriteData, SpriteData, SpriteData],
 ): [SpriteData, SpriteData, SpriteData] {
-  const turned = walkRight.map((f) => rotateCcw(lieDown(f), -PET_BITE_TILT_DEG));
+  const turned = walkRight.map((f) => rotateCcw(dragPose(f), -PET_BITE_TILT_DEG));
   const bounds = turned.map(opaqueBounds);
   const right = Math.max(...bounds.map((b) => (b ? b[2] : 0)));
   const bottom = Math.max(...bounds.map((b) => (b ? b[3] : 0)));
