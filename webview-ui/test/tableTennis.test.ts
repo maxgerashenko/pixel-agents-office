@@ -276,6 +276,8 @@ test('a rotated table is played end to end: players above and below, ball down i
       [4, 7, Direction.UP],
     ],
   );
+  const netY = 4 * 16 + 24;
+  assert.ok(table.scoreY < netY && table.scoreY > 4 * 16, 'score sits on the net, over the table');
   assert.equal(tableBall(table, 0).x, tableBall(table, 0.45).x, 'ball stays on the centre line');
   assert.ok(tableBall(table, 0).y < tableBall(table, 0.9).y, 'ball travels down the table');
   addIdleAgent(os, 1);

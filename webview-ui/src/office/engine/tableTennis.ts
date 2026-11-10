@@ -35,6 +35,8 @@ const BALL_END_INSET_PX = 6;
  *  and near edges (sprite rows from its top / bottom). */
 const VERTICAL_BALL_TOP_INSET_PX = 8;
 const VERTICAL_BALL_BOTTOM_INSET_PX = 14;
+/** Tall table: the scoreboard's centre rides this far above the net line. */
+const VERTICAL_SCORE_ABOVE_NET_PX = 9;
 /** Z-sort nudge putting the ball after the table (zY = footprint bottom). */
 const BALL_Z_AFTER_TABLE = 0.25;
 
@@ -127,11 +129,14 @@ export function deriveTables(
       ballY1: ball.y1,
       ballZY: (item.row + entry.footprintH) * TILE_SIZE + BALL_Z_AFTER_TABLE,
       scoreX: centerX,
-      scoreY:
-        item.row * TILE_SIZE +
-        entry.footprintH * TILE_SIZE -
-        entry.sprite.length -
-        TABLE_TENNIS_SCORE_LIFT_PX,
+      // Wide table: above the net post. Tall table: sitting on the net itself,
+      // in the middle of the table's length.
+      scoreY: vertical
+        ? item.row * TILE_SIZE + (entry.footprintH * TILE_SIZE) / 2 - VERTICAL_SCORE_ABOVE_NET_PX
+        : item.row * TILE_SIZE +
+          entry.footprintH * TILE_SIZE -
+          entry.sprite.length -
+          TABLE_TENNIS_SCORE_LIFT_PX,
     });
   }
   return tables;
