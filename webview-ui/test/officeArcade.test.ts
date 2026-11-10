@@ -10,7 +10,11 @@ import assert from 'node:assert/strict';
 import { beforeAll, test } from 'vitest';
 
 import { canPlaceFurniture, rotateFurniture } from '../src/office/editor/editorActions.js';
-import { getCharacterSprite, isSeatedPose } from '../src/office/engine/characters.js';
+import {
+  characterDrawOffsetY,
+  getCharacterSprite,
+  isSeatedPose,
+} from '../src/office/engine/characters.js';
 import { OfficeState } from '../src/office/engine/officeState.js';
 import type { LoadedAssetData } from '../src/office/layout/furnitureCatalog.js';
 import {
@@ -234,6 +238,7 @@ test('a left-facing machine stays mirrored while it is lit', () => {
   }
   assert.ok(ch.playSpotId, 'agent started playing');
   assert.equal(ch.dir, Direction.RIGHT);
+  assert.equal(characterDrawOffsetY(ch), 8, 'feet on the cabinet base line');
   simulate(os, 0.5, () => {
     const m = machine()!;
     assert.equal(m.mirrored, true, `${String(m.sprite[0][0])} faces the player`);

@@ -4,7 +4,6 @@ import {
   AUTO_ON_SIDE_DEPTH,
   CHARACTER_HIT_HALF_WIDTH,
   CHARACTER_HIT_HEIGHT,
-  CHARACTER_SITTING_OFFSET_PX,
   DISMISS_BUBBLE_FAST_FADE_SEC,
   FURNITURE_ANIM_INTERVAL_SEC,
   GREETER_ID,
@@ -49,8 +48,8 @@ import type {
 import { CharacterState, Direction, PetState, TILE_SIZE } from '../types.js';
 import type { PlaySpot } from './characters.js';
 import {
+  characterDrawOffsetY,
   createCharacter,
-  isSeatedPose,
   leaveTable,
   settleAtPlaySlot,
   settleOnWorkSpot,
@@ -1900,7 +1899,7 @@ export class OfficeState {
       if (ch.matrixEffect === 'despawn') continue;
       // Character sprite is 16x24, anchored bottom-center
       // Apply sitting offset to match visual position
-      const sittingOffset = isSeatedPose(ch) ? CHARACTER_SITTING_OFFSET_PX : 0;
+      const sittingOffset = characterDrawOffsetY(ch);
       const anchorY = ch.y + sittingOffset;
       const left = ch.x - CHARACTER_HIT_HALF_WIDTH;
       const right = ch.x + CHARACTER_HIT_HALF_WIDTH;
