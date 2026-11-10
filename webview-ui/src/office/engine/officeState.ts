@@ -264,7 +264,9 @@ export class OfficeState {
         const seat = this.seats.get(ch.seatId)!;
         if (!seat.assigned) {
           seat.assigned = true;
-          // Snap character to seat position
+          // Snap a working character to its seat. An idle one stays where it
+          // is: snapping would drop it into a work Area on every layout edit.
+          if (!ch.isActive) continue;
           ch.tileCol = seat.seatCol;
           ch.tileRow = seat.seatRow;
           const cx = seat.seatCol * TILE_SIZE + TILE_SIZE / 2;
@@ -286,6 +288,7 @@ export class OfficeState {
       if (seatId) {
         this.seats.get(seatId)!.assigned = true;
         ch.seatId = seatId;
+        if (!ch.isActive) continue; // idle: walks there when its next turn starts
         const seat = this.seats.get(seatId)!;
         ch.tileCol = seat.seatCol;
         ch.tileRow = seat.seatRow;
@@ -300,7 +303,8 @@ export class OfficeState {
 
     // Relocate any characters that ended up outside bounds or on non-walkable tiles
     for (const ch of this.characters.values()) {
-      if (ch.seatId) continue; // seated characters are fine
+      const seat = ch.seatId ? this.seats.get(ch.seatId) : undefined;
+      if (seat && ch.tileCol === seat.seatCol && ch.tileRow === seat.seatRow) continue;
       if (
         ch.tileCol < 0 ||
         ch.tileCol >= layout.cols ||
@@ -344,8 +348,10 @@ export class OfficeState {
 
   /** Move a character to a random walkable tile */
   private relocateCharacterToWalkable(ch: Character): void {
-    if (this.walkableTiles.length === 0) return;
-    const spawn = this.walkableTiles[Math.floor(Math.random() * this.walkableTiles.length)];
+    // An idle character lands outside the Areas, like everywhere it idles
+    const tiles = ch.isActive ? this.walkableTiles : this.wanderTiles;
+    if (tiles.length === 0) return;
+    const spawn = tiles[Math.floor(Math.random() * tiles.length)];
     ch.tileCol = spawn.col;
     ch.tileRow = spawn.row;
     ch.x = spawn.col * TILE_SIZE + TILE_SIZE / 2;
@@ -749,14 +755,19 @@ export class OfficeState {
       settleAtPlaySlot(ch, slot);
       return true;
     }
-    const path = findPath(
+    // Around the Areas when possible, like every other idle walk
+    let path = findPath(
       ch.tileCol,
       ch.tileRow,
       slot.col,
       slot.row,
       this.tileMap,
       this.blockedTiles,
+      this.noIdleTileKeys,
     );
+    if (path.length === 0) {
+      path = findPath(ch.tileCol, ch.tileRow, slot.col, slot.row, this.tileMap, this.blockedTiles);
+    }
     if (path.length === 0) return false;
     ch.playSlot = slot;
     ch.path = path;
@@ -926,8 +937,9 @@ export class OfficeState {
   /**
    * Re-seat every top-level character whose seat breaks its Area rule (and give
    * seatless ones a seat if one is now free). Characters in a valid seat do not
-   * move; the others walk to their new seat via `reassignSeat`, or stand
-   * seatless when none is free.
+   * move; working ones walk to their new seat via `reassignSeat`, idle ones
+   * only get it assigned (they walk there when their next turn starts), and
+   * the rest stand seatless when none is free.
    */
   private reconcileSeatRules(): void {
     const misplaced: Character[] = [];
@@ -946,7 +958,14 @@ export class OfficeState {
     }
     for (const ch of misplaced) {
       const seatId = this.findFreeSeat(ch.directoryName);
-      if (seatId) {
+      if (seatId && !ch.isActive) {
+        // Idle: the seat is theirs for the next turn, but an idle agent never
+        // walks to a work seat now (it would cross into an Area and sit there).
+        // It carries on idling where it is.
+        const seat = this.seats.get(seatId)!;
+        seat.assigned = true;
+        ch.seatId = seatId;
+      } else if (seatId) {
         ch.seatId = null; // old seat already released
         this.reassignSeat(ch.id, seatId);
       } else if (ch.seatId) {

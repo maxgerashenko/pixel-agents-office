@@ -105,6 +105,7 @@ test('setAreaMappings re-seats a misplaced agent and leaves a correct one alone'
   const betaSeat = betaBefore.seatId;
   const betaPos = { x: betaBefore.x, y: betaBefore.y };
   assert.ok(OUT_SEATS.includes(os.characters.get(1)!.seatId!));
+  os.setAgentActive(1, true); // working: it walks to the new seat now
 
   os.setAreaMappings({ alpha: ['Eng'] });
 
@@ -120,6 +121,27 @@ test('setAreaMappings re-seats a misplaced agent and leaves a correct one alone'
   const beta = os.characters.get(2)!;
   assert.equal(beta.seatId, betaSeat);
   assert.deepEqual({ x: beta.x, y: beta.y }, betaPos, 'correctly placed agent did not move');
+});
+
+test('setAreaMappings gives an idle agent its Area seat without walking it there', () => {
+  const os = makeOffice();
+  os.addAgent(1, 0, 0, undefined, true, 'alpha');
+  const alpha = os.characters.get(1)!;
+  const before = { col: alpha.tileCol, row: alpha.tileRow };
+
+  os.setAreaMappings({ alpha: ['Eng'] });
+
+  assert.ok(IN_SEATS.includes(alpha.seatId!), 'the Area seat is assigned for the next turn');
+  assert.notEqual(alpha.state, CharacterState.WALK, 'an idle agent does not walk into the Area');
+  assert.deepEqual({ col: alpha.tileCol, row: alpha.tileRow }, before);
+
+  os.setAgentActive(1, true);
+  os.update(0.05); // stands up from the old seat
+  os.update(0.05); // plans the way to work
+  const seat = os.seats.get(alpha.seatId!)!;
+  const last = alpha.path[alpha.path.length - 1];
+  assert.equal(alpha.state, CharacterState.WALK, 'its next turn walks it to work');
+  assert.deepEqual([last.col, last.row], [seat.seatCol, seat.seatRow]);
 });
 
 test('setAreaMappings leaves an agent seatless when its Area has no free seat', () => {

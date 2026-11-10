@@ -184,6 +184,26 @@ export function createCharacter(
 }
 
 /**
+ * Path for an idle walk: around every marked Area and its buffer
+ * (`avoidTiles`) when there is such a way, straight through otherwise — idle
+ * agents never cut across a work Area just because it is shorter.
+ */
+function idlePath(
+  ch: Character,
+  col: number,
+  row: number,
+  tileMap: TileTypeVal[][],
+  blockedTiles: Set<string>,
+  avoidTiles: ReadonlySet<string>,
+): Array<{ col: number; row: number }> {
+  if (avoidTiles.size > 0) {
+    const around = findPath(ch.tileCol, ch.tileRow, col, row, tileMap, blockedTiles, avoidTiles);
+    if (around.length > 0) return around;
+  }
+  return findPath(ch.tileCol, ch.tileRow, col, row, tileMap, blockedTiles);
+}
+
+/**
  * Claim a free rest seat (bench/sofa) and start walking to it. Rest seats are
  * chair tiles, so they sit in `blockedTiles`; the claimed one is unblocked for
  * this one query, like an agent's own work seat. Claims are removed from
@@ -196,6 +216,7 @@ function goRest(
   freeRestSeats: Set<string>,
   tileMap: TileTypeVal[][],
   blockedTiles: Set<string>,
+  avoidTiles: ReadonlySet<string>,
 ): boolean {
   const candidates = [...freeRestSeats];
   while (candidates.length > 0) {
@@ -210,14 +231,7 @@ function goRest(
     }
     const key = `${seat.seatCol},${seat.seatRow}`;
     const wasBlocked = blockedTiles.delete(key);
-    const path = findPath(
-      ch.tileCol,
-      ch.tileRow,
-      seat.seatCol,
-      seat.seatRow,
-      tileMap,
-      blockedTiles,
-    );
+    const path = idlePath(ch, seat.seatCol, seat.seatRow, tileMap, blockedTiles, avoidTiles);
     if (wasBlocked) blockedTiles.add(key);
     if (path.length === 0) continue;
     freeRestSeats.delete(uid);
@@ -253,6 +267,7 @@ function goPlay(
   freePlaySpots: Set<string>,
   tileMap: TileTypeVal[][],
   blockedTiles: Set<string>,
+  avoidTiles: ReadonlySet<string>,
 ): boolean {
   const candidates = [...freePlaySpots];
   while (candidates.length > 0) {
@@ -265,7 +280,7 @@ function goPlay(
       startPlaying(ch, spot);
       return true;
     }
-    const path = findPath(ch.tileCol, ch.tileRow, spot.col, spot.row, tileMap, blockedTiles);
+    const path = idlePath(ch, spot.col, spot.row, tileMap, blockedTiles, avoidTiles);
     if (path.length === 0) continue;
     freePlaySpots.delete(id);
     ch.playSpotId = id;
@@ -497,20 +512,22 @@ export function updateCharacter(
           break;
         }
         if (ch.wanderCount >= ch.wanderLimit) {
-          const play = () => goPlay(ch, playSpots, freePlaySpots, tileMap, blockedTiles);
-          const rest = () => goRest(ch, seats, freeRestSeats, tileMap, blockedTiles);
+          const play = () =>
+            goPlay(ch, playSpots, freePlaySpots, tileMap, blockedTiles, noIdleTileKeys);
+          const rest = () =>
+            goRest(ch, seats, freeRestSeats, tileMap, blockedTiles, noIdleTileKeys);
           if (Math.random() < 0.5 ? play() || rest() : rest() || play()) break;
         }
         if (ch.wanderCount >= ch.wanderLimit && ch.seatId && canRestAtWorkSeat) {
           const seat = seats.get(ch.seatId);
           if (seat) {
-            const path = findPath(
-              ch.tileCol,
-              ch.tileRow,
+            const path = idlePath(
+              ch,
               seat.seatCol,
               seat.seatRow,
               tileMap,
               blockedTiles,
+              noIdleTileKeys,
             );
             if (path.length > 0) {
               ch.path = path;
@@ -524,14 +541,7 @@ export function updateCharacter(
         }
         if (wanderTiles.length > 0) {
           const target = wanderTiles[Math.floor(Math.random() * wanderTiles.length)];
-          const path = findPath(
-            ch.tileCol,
-            ch.tileRow,
-            target.col,
-            target.row,
-            tileMap,
-            blockedTiles,
-          );
+          const path = idlePath(ch, target.col, target.row, tileMap, blockedTiles, noIdleTileKeys);
           if (path.length > 0) {
             ch.path = path;
             ch.moveProgress = 0;
