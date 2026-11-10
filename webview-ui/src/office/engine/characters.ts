@@ -760,6 +760,8 @@ export function getCharacterSprite(ch: Character, sprites: CharacterSprites): Sp
     case CharacterState.TYPE:
       // Table tennis: paddle ready, or swinging as the ball arrives
       if (ch.playSlot) return sprites.paddle[ch.dir][ch.playing ? ch.frame % 2 : 0];
+      // Arcade: standing at the machine, hands on the controls
+      if (ch.playSpotId) return sprites.arcade[ch.dir][ch.frame % 2];
       if (isOnPhone(ch)) return sprites.phone[ch.dir][ch.frame % 2];
       if (isReadingTool(ch.currentTool)) {
         return sprites.reading[ch.dir][ch.frame % 2];

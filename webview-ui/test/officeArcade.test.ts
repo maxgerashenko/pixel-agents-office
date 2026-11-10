@@ -10,12 +10,14 @@ import assert from 'node:assert/strict';
 import { beforeAll, test } from 'vitest';
 
 import { canPlaceFurniture, rotateFurniture } from '../src/office/editor/editorActions.js';
+import { getCharacterSprite, isSeatedPose } from '../src/office/engine/characters.js';
 import { OfficeState } from '../src/office/engine/officeState.js';
 import type { LoadedAssetData } from '../src/office/layout/furnitureCatalog.js';
 import {
   buildDynamicCatalog,
   getCatalogByCategory,
 } from '../src/office/layout/furnitureCatalog.js';
+import type { CharacterSprites } from '../src/office/sprites/spriteData.js';
 import type { OfficeLayout, PlacedFurniture } from '../src/office/types.js';
 import { CharacterState, Direction, TileType } from '../src/office/types.js';
 
@@ -257,4 +259,28 @@ test('the machine lights up and animates while an agent plays, and goes dark aft
   os.setAgentActive(1, true);
   simulate(os, 30);
   assert.equal(screen(), 'ARCADE_MACHINE_FRONT_OFF');
+});
+
+test('a player stands at the machine: standing arcade frames, never the seated typing ones', () => {
+  const os = new OfficeState(layout([f('arc', 'ARCADE_MACHINE_FRONT_OFF', 6, 0)]));
+  idleAgent(os, 1);
+  const ch = os.characters.get(1)!;
+  for (let t = 0; t < 1500 && !(ch.playSpotId && ch.state === CharacterState.TYPE); t += 0.05) {
+    os.update(0.05);
+  }
+  assert.ok(ch.playSpotId, 'agent started playing');
+  assert.equal(isSeatedPose(ch), false);
+  const tag = (name: string) => [[[name]], [[name]]];
+  const set = (name: string) =>
+    Object.fromEntries(Object.values(Direction).map((d) => [d, tag(name)]));
+  const sprites = {
+    walk: set('walk'),
+    typing: set('typing'),
+    reading: set('reading'),
+    phoneWalk: set('phoneWalk'),
+    phone: set('phone'),
+    paddle: set('paddle'),
+    arcade: set('arcade'),
+  } as unknown as CharacterSprites;
+  assert.equal(getCharacterSprite(ch, sprites)[0][0], 'arcade');
 });
