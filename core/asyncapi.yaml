@@ -575,6 +575,11 @@ components:
           description: Display names parallel-indexed to `pets` (sourced from each pet's manifest.json).
           items:
             type: string
+        petKinds:
+          type: array
+          description: Species parallel-indexed to `pets` (each manifest's optional `kind`, e.g. "dog" or "cat"; empty when unset). Picks the pet's furniture habits.
+          items:
+            type: string
 
     PetSpriteFrameSet:
       description: One pet's frames keyed by direction + state. All arrays are 3D hex-string arrays (frames × rows × pixels).

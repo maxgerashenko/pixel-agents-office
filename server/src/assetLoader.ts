@@ -708,7 +708,11 @@ export async function loadPetSprites(assetsRoot: string): Promise<LoadedPetSprit
 
         const pngBuffer = fs.readFileSync(pngPath);
         pets.push(decodePetPng(pngBuffer));
-        manifests.push({ id: manifestData.id, name: manifestData.name });
+        manifests.push({
+          id: manifestData.id,
+          name: manifestData.name,
+          ...(typeof manifestData.kind === 'string' ? { kind: manifestData.kind } : {}),
+        });
       } catch (err) {
         console.warn(
           `[AssetLoader] ⚠️  Error loading pet ${dirName}: ${err instanceof Error ? err.message : err}`,
@@ -805,7 +809,11 @@ export async function loadExternalPetSprites(
 
         const pngBuffer = fs.readFileSync(pngPath);
         pets.push(decodePetPng(pngBuffer));
-        manifests.push({ id: manifestData.id, name: manifestData.name });
+        manifests.push({
+          id: manifestData.id,
+          name: manifestData.name,
+          ...(typeof manifestData.kind === 'string' ? { kind: manifestData.kind } : {}),
+        });
       } catch (err) {
         console.warn(
           `[AssetLoader] ⚠️  Error loading external pet ${dirName}: ${err instanceof Error ? err.message : err}`,
@@ -842,6 +850,7 @@ export function sendPetSpritesToWebview(
     type: 'petSpritesLoaded',
     pets: petSprites.pets,
     petNames: petSprites.manifests.map((m) => m.name),
+    petKinds: petSprites.manifests.map((m) => m.kind ?? ''),
   });
   console.log(`📤 Sent ${petSprites.pets.length} pet sprites to webview`);
 }

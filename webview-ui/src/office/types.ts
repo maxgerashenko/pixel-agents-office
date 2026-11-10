@@ -235,6 +235,9 @@ export interface Character {
   /** Play spot (in front of an arcade machine) this idle agent has claimed, or
    *  null. Transient like restSeatId: released the moment the agent works. */
   playSpotId?: string | null;
+  /** Seconds left dragging a dog that bites this agent's leg (walk slowed to
+   *  PET_DRAG_SPEED_FACTOR). Transient, owned by the pet FSM; absent or 0 when free. */
+  petDragTimer?: number;
   /** Where a working agent with no reachable work seat of its own works: a
    *  pairing seat beside a taken computer, or a standing spot where it vibe
    *  codes on its phone. Claimed when it starts working, released the moment
@@ -300,12 +303,29 @@ export const PetState = {
   IDLE: 'idle',
   WALK: 'walk',
   FOLLOW: 'follow',
-  /** Mid-jump between the floor and the table top. */
+  /** Mid-jump between the floor and a perch (table top, sofa, lap). */
   HOP: 'hop',
-  /** Sitting on the table top. */
+  /** Sitting on a perch (table top, sofa, lap). */
   SIT: 'sit',
+  /** A dog lying low biting a walking agent's leg, dragged along. */
+  BITE: 'bite',
 } as const;
 export type PetState = (typeof PetState)[keyof typeof PetState];
+
+/** Species from the pet's manifest `kind`; it picks the pet's furniture habits. */
+export const PetKind = {
+  /** Jumps only onto free sofas, and bites walking agents' legs. */
+  DOG: 'dog',
+  /** Sits on a free table and on seated agents' laps. */
+  CAT: 'cat',
+  /** Unknown species: sits on a free table only. */
+  OTHER: 'other',
+} as const;
+export type PetKind = (typeof PetKind)[keyof typeof PetKind];
+
+/** What a pet is jumping onto or sitting on. */
+export type PetPerchTarget =
+  { kind: 'table' } | { kind: 'sofa'; seatId: string } | { kind: 'lap'; charId: number };
 
 /** Runtime pet (mutated by FSM tick). */
 export interface Pet {
@@ -315,6 +335,8 @@ export interface Pet {
   name: string;
   /** Index into the loaded PetSpriteFrames[] array. */
   petType: number;
+  /** Species (from the manifest); picks where the pet jumps up. */
+  kind: PetKind;
   state: PetState;
   dir: Direction;
   /** Pixel position (bottom-center anchor). */
@@ -340,19 +362,23 @@ export interface Pet {
   followDuration: number;
   /** Random [5, 15] limit; FOLLOW exits when followDuration >= this. */
   followDurationLimit: number;
-  /** True while the current WALK is heading to the table to jump onto it. */
-  goPerch: boolean;
-  /** Direction of the current HOP: true = up onto the table, false = back down. */
+  /** The perch the pet is heading to, jumping onto or sitting on, else null. */
+  perchTarget: PetPerchTarget | null;
+  /** True while the current FOLLOW is a dog chasing a walking agent to bite its leg. */
+  chaseToBite: boolean;
+  /** Seconds before this dog may bite a leg again. */
+  biteCooldown: number;
+  /** Direction of the current HOP: true = up onto the perch, false = back down. */
   hopUp: boolean;
   /** 0..1 progress of the current HOP. */
   hopProgress: number;
   hopFrom: { x: number; y: number };
   hopTo: { x: number; y: number };
-  /** Floor tile the cat jumped from, and lands on when it hops down. */
+  /** Floor tile the pet jumped from, and lands on when it hops down. */
   groundTile: { col: number; row: number } | null;
-  /** Seconds left sitting on the table. */
+  /** Seconds left sitting on the perch, or biting a leg. */
   perchTimer: number;
-  /** Depth-sort override while on the table top (the table's bottom edge), else null. */
+  /** Depth-sort override while up on a perch or biting a leg, else null. */
   perchZY: number | null;
   /** Pet's heart-bubble overlay (set on click), or null. */
   bubbleType: 'heart' | null;

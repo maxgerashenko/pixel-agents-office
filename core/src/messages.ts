@@ -265,6 +265,7 @@ export interface PetSpritesLoaded {
   type: 'petSpritesLoaded';
   pets: PetSpriteFrameSet[];
   petNames: string[];
+  petKinds?: string[];
 }
 
 export interface PetSpriteFrameSet {

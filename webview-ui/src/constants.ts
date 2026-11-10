@@ -349,6 +349,53 @@ export const PET_HOP_DURATION_SEC = 0.35;
 export const PET_HOP_ARC_PX = 10;
 /** Furniture-type substrings the pet picks as its table, best first. */
 export const PET_HOME_TABLE_PATTERNS = ['TABLE_TENNIS', 'PING_PONG', 'TABLE'] as const;
+/** Seat furniture a dog may jump onto when nobody is sitting there or heading to it. */
+export const PET_SOFA_TYPE_PATTERN = /SOFA|COUCH/i;
+/** How far (Manhattan tiles) from the pet's table a sofa or lap may be for it to go there. */
+export const PET_SEAT_SEARCH_RADIUS_TILES = 6;
+/** Chance, at each idle decision, that a dog goes to a free sofa. */
+export const PET_SOFA_CHANCE = 0.35;
+/** Chance, at each idle decision, that a cat goes to a seated agent's lap. */
+export const PET_LAP_CHANCE = 0.35;
+/** Dog on a sofa: feet this far (px) below the seat tile's centre (on the cushion). */
+export const PET_SOFA_SEAT_Y_OFFSET_PX = 3;
+/** Cat on a lap: feet this far (px) below the agent's tile centre (the seated lap). */
+export const PET_LAP_Y_OFFSET_PX = 9;
+/** Cat on a sideways-facing lap: shift (px) toward the way the agent faces. */
+export const PET_LAP_SIDE_SHIFT_PX = 3;
+/** Chance, at each idle decision, that a dog chases a walking agent to bite its leg. */
+export const PET_BITE_CHANCE = 0.3;
+/** How close (Manhattan tiles) a walking agent must be for the dog to chase it. */
+export const PET_BITE_RADIUS_TILES = 5;
+/** Dog's running speed while chasing a leg (agents walk at 48 px/s). */
+export const PET_CHASE_SPEED_PX_PER_SEC = 64;
+/** Seconds between path re-computations while chasing (the target keeps moving). */
+export const PET_CHASE_RECALC_INTERVAL_SEC = 0.3;
+/** Give up a chase after this many seconds. */
+export const PET_CHASE_MAX_SEC = 8.0;
+/** The dog grabs the leg once this close (world px between feet). */
+export const PET_BITE_REACH_PX = 12;
+/** How long the dog hangs on to the leg, being dragged along. */
+export const PET_BITE_DURATION_MIN_SEC = 2.0;
+export const PET_BITE_DURATION_MAX_SEC = 3.0;
+/** Seconds before a dog may bite a leg again. */
+export const PET_BITE_COOLDOWN_SEC = 20.0;
+/** An agent dragging a dog walks at this fraction of its normal speed. */
+export const PET_DRAG_SPEED_FACTOR = 0.4;
+/** The flat (dragged-mop) pose keeps this share of the side sprite's height as
+ *  body, dropping the legs below it... */
+export const PET_BITE_BODY_SHARE = 0.7;
+/** ...and squashes that body to this share of its height, flat on the floor. */
+export const PET_BITE_FLAT_SHARE = 0.55;
+/** The flat pose dips its head to the boot by tipping forward (degrees, clockwise). */
+export const PET_BITE_TILT_DEG = 8;
+/** Bite frames are this square size (px); nose at the right edge, belly at the bottom. */
+export const PET_BITE_FRAME_PX = 32;
+/** Biting dog's sprite centre: this far (px) to the side of the agent's centre,
+ *  which puts its nose on the leg (frame half-width minus 4). */
+export const PET_BITE_SIDE_OFFSET_PX = 12;
+/** When the agent walks up or down, the dog trails this far (px) behind it. */
+export const PET_BITE_TRAIL_PX = 3;
 export const PET_HIT_HALF_WIDTH = 8;
 /** Hit-box height (world px) measured upward from the bottom-center anchor. */
 export const PET_HIT_HEIGHT = 16;
