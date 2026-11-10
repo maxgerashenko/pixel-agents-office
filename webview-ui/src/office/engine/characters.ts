@@ -1,4 +1,6 @@
 import {
+  ARCADE_SIDE_PLAYER_OFFSET_PX,
+  CHARACTER_SITTING_OFFSET_PX,
   DEFAULT_MAX_CONTEXT_TOKENS,
   PLAY_MAX_SEC,
   PLAY_MIN_SEC,
@@ -63,6 +65,25 @@ export function isSeatedPose(ch: Character): boolean {
   if (ch.restSeatId) return true;
   if (ch.workSpot) return ch.workSpot.kind === 'pair';
   return ch.seatId !== null;
+}
+
+/**
+ * How far below its tile centre a character is drawn: seated on a chair, or
+ * standing beside an arcade machine with the feet on the cabinet's base line.
+ */
+export function characterDrawOffsetY(ch: Character): number {
+  if (isSeatedPose(ch)) return CHARACTER_SITTING_OFFSET_PX;
+  if (isArcadeSidePlayer(ch)) return ARCADE_SIDE_PLAYER_OFFSET_PX;
+  return 0;
+}
+
+/** Playing at a machine from its side (facing left or right). */
+export function isArcadeSidePlayer(ch: Character): boolean {
+  return (
+    ch.state === CharacterState.TYPE &&
+    !!ch.playSpotId &&
+    (ch.dir === Direction.LEFT || ch.dir === Direction.RIGHT)
+  );
 }
 
 /** Vibe coding on the phone: a working agent on its way to work, or one that
@@ -760,6 +781,8 @@ export function getCharacterSprite(ch: Character, sprites: CharacterSprites): Sp
     case CharacterState.TYPE:
       // Table tennis: paddle ready, or swinging as the ball arrives
       if (ch.playSlot) return sprites.paddle[ch.dir][ch.playing ? ch.frame % 2 : 0];
+      // Arcade: standing at the machine, hands on the controls
+      if (ch.playSpotId) return sprites.arcade[ch.dir][ch.frame % 2];
       if (isOnPhone(ch)) return sprites.phone[ch.dir][ch.frame % 2];
       if (isReadingTool(ch.currentTool)) {
         return sprites.reading[ch.dir][ch.frame % 2];

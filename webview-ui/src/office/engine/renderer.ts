@@ -17,7 +17,6 @@ import {
   BUTTON_RADIUS_ZOOM_FACTOR,
   CARPET_DEFAULT_ACCENT_COLOR,
   CARPET_DEFAULT_COLOR,
-  CHARACTER_SITTING_OFFSET_PX,
   CHARACTER_Z_SORT_OFFSET,
   DELETE_BUTTON_BG,
   ERASE_TARGET_COLOR,
@@ -73,7 +72,7 @@ import type {
 } from '../types.js';
 import { TILE_SIZE, TileType } from '../types.js';
 import { getWallInstances, hasWallSprites, wallColorToHex } from '../wallTiles.js';
-import { getCharacterSprite, isSeatedPose } from './characters.js';
+import { characterDrawOffsetY, getCharacterSprite } from './characters.js';
 import { renderMatrixEffect } from './matrixEffect.js';
 import { getPetSpriteData } from './petEntity.js';
 import type { TableBall, TableScore } from './tableTennis.js';
@@ -454,7 +453,7 @@ export function renderScene(
     const spriteData = getCharacterSprite(ch, sprites);
     const cached = getCachedSprite(spriteData, zoom);
     // Sitting offset: shift character down when seated so they visually sit in the chair
-    const sittingOffset = isSeatedPose(ch) ? CHARACTER_SITTING_OFFSET_PX : 0;
+    const sittingOffset = characterDrawOffsetY(ch);
     // Anchor at bottom-center of character — round to integer device pixels
     const drawX = Math.round(offsetX + ch.x * zoom - cached.width / 2);
     const drawY = Math.round(offsetY + (ch.y + sittingOffset) * zoom - cached.height);

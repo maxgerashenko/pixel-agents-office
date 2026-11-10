@@ -82,9 +82,55 @@ export interface CharacterSprites {
   /** Table tennis, standing with a paddle: [ready, swing]. Facing up/down the
    *  paddle is hidden (players only ever face left or right). */
   paddle: Record<Direction, [SpriteData, SpriteData]>;
+  /** Playing at an arcade machine, standing: [hands on the controls, pressing]. */
+  arcade: Record<Direction, [SpriteData, SpriteData]>;
 }
 
-type BaseSprites = Omit<CharacterSprites, 'phoneWalk' | 'phone' | 'paddle'>;
+type BaseSprites = Omit<CharacterSprites, 'phoneWalk' | 'phone' | 'paddle' | 'arcade'>;
+
+/**
+ * Copy a block of pixels (rows r0..r1, cols c0..c1) by (dr, dc). The vacated
+ * cells take `fill` ('' = transparent); the moved pixels are drawn on top.
+ */
+function moveBlock(
+  sprite: SpriteData,
+  r0: number,
+  r1: number,
+  c0: number,
+  c1: number,
+  dr: number,
+  dc: number,
+  fill: string,
+): SpriteData {
+  const out = sprite.map((row) => [...row]);
+  for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) if (out[r]) out[r][c] = fill;
+  for (let r = r0; r <= r1; r++) {
+    for (let c = c0; c <= c1; c++) {
+      const px = sprite[r]?.[c];
+      const tr = r + dr;
+      const tc = c + dc;
+      if (px && out[tr] && tc >= 0 && tc < out[tr].length) out[tr][tc] = px;
+    }
+  }
+  return out;
+}
+
+/**
+ * Standing at an arcade machine, from the standing walk frame (the typing
+ * frames are drawn seated). Facing up or down both arms lift to the controls,
+ * one row more on the press frame; facing right the hand reaches forward to
+ * the buttons (left is the mirror).
+ */
+function arcadePose(stand: SpriteData, dir: 'vertical' | 'right', press: boolean): SpriteData {
+  const lift = press ? -2 : -1;
+  if (dir === 'vertical') {
+    const left = moveBlock(stand, 21, 24, 1, 3, lift, 0, '');
+    return moveBlock(left, 21, 24, 12, 14, lift, 0, '');
+  }
+  // The torso colour fills where the hand hung, so no hole shows in the body
+  const torso = stand[20]?.[7] ?? '';
+  return moveBlock(stand, 22, 24, 6, 9, lift, 3, torso);
+}
 
 /**
  * Draw a table-tennis paddle in the hand of a right-facing character (left is
@@ -174,8 +220,21 @@ function addPhoneSprites(base: BaseSprites): CharacterSprites {
   ];
   const ready = withPaddle(walkRight[1], false, skin);
   const swing = withPaddle(walkRight[2], true, skin);
+  const arcadeRight: [SpriteData, SpriteData] = [
+    arcadePose(walkRight[1], 'right', false),
+    arcadePose(walkRight[1], 'right', true),
+  ];
   return {
     ...base,
+    arcade: {
+      [Dir.DOWN]: [
+        arcadePose(walkDown[1], 'vertical', false),
+        arcadePose(walkDown[1], 'vertical', true),
+      ],
+      [Dir.UP]: [arcadePose(walkUp[1], 'vertical', false), arcadePose(walkUp[1], 'vertical', true)],
+      [Dir.RIGHT]: arcadeRight,
+      [Dir.LEFT]: [flipSpriteHorizontal(arcadeRight[0]), flipSpriteHorizontal(arcadeRight[1])],
+    } as Record<Direction, [SpriteData, SpriteData]>,
     paddle: {
       [Dir.DOWN]: [walkDown[1], walkDown[1]],
       [Dir.UP]: [walkUp[1], walkUp[1]],

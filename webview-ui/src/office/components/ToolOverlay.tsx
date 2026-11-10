@@ -2,10 +2,10 @@ import { Fragment, useEffect, useRef, useState } from 'react';
 
 import { Button } from '../../components/ui/Button.js';
 import {
+  ARCADE_SIDE_PLAYER_OFFSET_PX,
   BUBBLE_FADE_DURATION_SEC,
   BUBBLE_SITTING_OFFSET_PX,
   BUBBLE_VERTICAL_OFFSET_PX,
-  CHARACTER_SITTING_OFFSET_PX,
   CONTEXT_CRITICAL_THRESHOLD,
   CONTEXT_DANGER_THRESHOLD,
   CONTEXT_GAUGE_BG,
@@ -25,7 +25,7 @@ import {
   TOOL_OVERLAY_VERTICAL_OFFSET,
 } from '../../constants.js';
 import type { SubagentCharacter } from '../../hooks/useExtensionMessages.js';
-import { isSeatedPose } from '../engine/characters.js';
+import { characterDrawOffsetY, isArcadeSidePlayer, isSeatedPose } from '../engine/characters.js';
 import type { OfficeState } from '../engine/officeState.js';
 import { overlayProjection } from '../projection.js';
 import { getCachedSprite } from '../sprites/spriteCache.js';
@@ -177,7 +177,11 @@ export function ToolOverlay({
             ch.bubbleType === 'permission' ? BUBBLE_PERMISSION_SPRITE : BUBBLE_WAITING_SPRITE,
             zoom,
           );
-          const bubbleSittingOff = isSeatedPose(ch) ? BUBBLE_SITTING_OFFSET_PX : 0;
+          const bubbleSittingOff = isSeatedPose(ch)
+            ? BUBBLE_SITTING_OFFSET_PX
+            : isArcadeSidePlayer(ch)
+              ? ARCADE_SIDE_PLAYER_OFFSET_PX
+              : 0;
           const alpha =
             ch.bubbleType === 'waiting' && ch.bubbleTimer < BUBBLE_FADE_DURATION_SEC
               ? ch.bubbleTimer / BUBBLE_FADE_DURATION_SEC
@@ -209,7 +213,7 @@ export function ToolOverlay({
         }
 
         // Position above character
-        const sittingOffset = isSeatedPose(ch) ? CHARACTER_SITTING_OFFSET_PX : 0;
+        const sittingOffset = characterDrawOffsetY(ch);
         const screenX = project.toScreenX(ch.x);
         const screenY = project.toScreenY(ch.y + sittingOffset - TOOL_OVERLAY_VERTICAL_OFFSET);
 

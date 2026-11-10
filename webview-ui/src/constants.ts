@@ -47,6 +47,9 @@ export const MATRIX_TRAIL_DIM_THRESHOLD = 0.66;
 
 // ── Rendering ────────────────────────────────────────────────
 export const CHARACTER_SITTING_OFFSET_PX = 6;
+/** A player at the side of an arcade machine stands on the machine's base
+ *  line: drawn this far down so the feet meet the bottom of the cabinet. */
+export const ARCADE_SIDE_PLAYER_OFFSET_PX = 8;
 export const CHARACTER_Z_SORT_OFFSET = 0.5;
 export const OUTLINE_Z_SORT_OFFSET = 0.001;
 export const SELECTED_OUTLINE_ALPHA = 1.0;
