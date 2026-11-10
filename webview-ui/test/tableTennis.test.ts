@@ -287,6 +287,8 @@ test('a rotated table is played end to end: players above and below, ball down i
       rallied = true;
       const [a, b] = players.sort((x, y) => x.tileRow - y.tileRow);
       assert.deepEqual([a.tileCol, a.tileRow, a.dir], [4, 3, Direction.DOWN]);
+      assert.equal(a.x, 5 * 16, 'stands in the middle of the table width');
+      assert.equal(b.x, 5 * 16, 'stands in the middle of the table width');
       assert.deepEqual([b.tileCol, b.tileRow, b.dir], [4, 7, Direction.UP]);
     }
   });

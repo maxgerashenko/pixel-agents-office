@@ -117,6 +117,7 @@ export function settleOnWorkSpot(ch: Character, spot: WorkSpot): void {
 export function settleAtPlaySlot(ch: Character, slot: PlaySlot): void {
   ch.state = CharacterState.TYPE;
   ch.dir = slot.dir;
+  if (slot.offsetX) ch.x = tileCenter(slot.col, slot.row).x + slot.offsetX;
   ch.playing = false;
   ch.frame = 0;
   ch.frameTimer = 0;

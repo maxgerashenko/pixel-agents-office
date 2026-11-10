@@ -86,6 +86,8 @@ export function deriveTables(
     );
     if (!ok) continue;
     const centerX = (item.col + entry.footprintW / 2) * TILE_SIZE;
+    // A tall table's players stand in the middle of its width, not on a tile centre
+    const offsetX = vertical ? centerX - (item.col * TILE_SIZE + TILE_SIZE / 2) : 0;
     const ball = vertical
       ? {
           x0: centerX,
@@ -108,6 +110,7 @@ export function deriveTables(
           col: end0.col,
           row: end0.row,
           dir: vertical ? Direction.DOWN : Direction.RIGHT,
+          offsetX,
         },
         {
           tableUid: item.uid,
@@ -115,6 +118,7 @@ export function deriveTables(
           col: end1.col,
           row: end1.row,
           dir: vertical ? Direction.UP : Direction.LEFT,
+          offsetX,
         },
       ],
       ballX0: ball.x0,
