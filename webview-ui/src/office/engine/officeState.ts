@@ -927,6 +927,7 @@ export class OfficeState {
    *   - Mapped (`areaMappings[directoryName]` has at least one label that is
    *     painted in the layout): only free seats inside one of those Areas.
    *   - Unmapped (no mapping, or its labels are painted nowhere): only free
+   *     seats in the Area named Support when one is painted, else only free
    *     seats outside every Area.
    *
    * Returns null when the allowed set has no free work seat — the agent then goes seatless

@@ -25,17 +25,18 @@ const ROWS = 4;
 const IN_SEATS = ['in1', 'in2']; // cols 1,2 → inside "Eng" (cols 0-4)
 const OUT_SEATS = ['out1', 'out2']; // cols 7,8 → outside every Area
 
-function makeOffice(opts: { paintArea?: boolean } = {}): OfficeState {
+function makeOffice(opts: { paintArea?: boolean; label?: string } = {}): OfficeState {
   const paint = opts.paintArea ?? true;
+  const label = opts.label ?? 'Eng';
   const layout: OfficeLayout = {
     version: 1,
     cols: COLS,
     rows: ROWS,
     tiles: new Array<TileType>(COLS * ROWS).fill(TileType.FLOOR_1),
     furniture: [],
-    areas: [{ label: 'Eng' } as never],
+    areas: [{ label } as never],
     areaTiles: Array.from({ length: COLS * ROWS }, (_, i) =>
-      paint && i % COLS < 5 ? 'Eng' : null,
+      paint && i % COLS < 5 ? label : null,
     ),
   };
   const os = new OfficeState(layout);
@@ -153,4 +154,23 @@ test('setAreaMappings leaves an agent seatless when its Area has no free seat', 
   const seated = [1, 2, 3].filter((id) => os.characters.get(id)!.seatId !== null);
   assert.equal(seated.length, 2, 'only two in-area seats exist');
   for (const id of seated) assert.ok(IN_SEATS.includes(os.characters.get(id)!.seatId!));
+});
+
+test('an agent with no mapping works in the Support Area when one is painted', () => {
+  const os = makeOffice({ label: 'Support' });
+  os.areaMappings = { alpha: ['Ghost'] };
+  os.addAgent(1, 0, 0, undefined, true, 'beta'); // no mapping at all
+  os.addAgent(2, 0, 0, undefined, true, 'alpha'); // mapping painted nowhere
+  os.addAgent(3, 0, 0, undefined, true); // no directory
+  assert.ok(IN_SEATS.includes(os.characters.get(1)!.seatId!));
+  assert.ok(IN_SEATS.includes(os.characters.get(2)!.seatId!));
+  assert.equal(os.characters.get(3)!.seatId, null, 'Support is full: no fallback outside');
+  assert.ok(!OUT_SEATS.some((u) => os.seats.get(u)!.assigned));
+});
+
+test('a mapped agent keeps its own Area even when a Support Area exists', () => {
+  const os = makeOffice({ label: 'Support' });
+  os.areaMappings = { alpha: ['Support'] };
+  os.addAgent(1, 0, 0, undefined, true, 'alpha');
+  assert.ok(IN_SEATS.includes(os.characters.get(1)!.seatId!));
 });
