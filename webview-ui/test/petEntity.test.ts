@@ -564,7 +564,7 @@ test('a cat ignores the lap of an agent sitting with its back to us', () => {
   assert.equal(pet.perchTarget, null);
 });
 
-test('a dog bites a walking agent’s leg, hangs on 2–3 s, then lets go', () => {
+test('a dog chases and bites a walking agent’s leg, then lets go after 3 tiles', () => {
   const tileMap = buildOpenTileMap(10, 10);
   const walkable = buildWalkableTiles(10, 10);
   const walker = makeChar(1, 5, 5);
@@ -579,18 +579,104 @@ test('a dog bites a walking agent’s leg, hangs on 2–3 s, then lets go', () =
   assert.equal(pet.chaseToBite, true);
   tickWhile(pet, PetState.FOLLOW, [walkable, people, tileMap, new Set()]);
   assert.equal(pet.state, PetState.BITE);
-  assert.ok(walker.petDragTimer! >= 2 && walker.petDragTimer! <= 3);
+  assert.ok(walker.petDragTimer! > 0);
   assert.equal(pet.dir, Direction.RIGHT, 'the dog came from the left');
   assert.ok(pet.x < walker.x);
-  let held = 0;
-  while (pet.state === PetState.BITE && held < 10) {
-    updatePet(pet, 0.1, walkable, people, tileMap, new Set());
-    held += 0.1;
-  }
-  assert.ok(held >= 1.9 && held <= 3.1, `held for ${held}s`);
-  assert.equal(pet.state, PetState.IDLE);
+  assert.equal(pet.biteStepsLeft, 3);
+  walkSteps(pet, walker, people, walkable, tileMap, 2);
+  assert.equal(pet.state, PetState.BITE, 'still hanging on after 2 tiles');
+  walkSteps(pet, walker, people, walkable, tileMap, 1);
+  assert.equal(pet.state, PetState.IDLE, 'lets go after the 3rd tile');
   assert.equal(walker.petDragTimer, 0);
   assert.ok(pet.biteCooldown > 0);
+});
+
+/** Move `walker` one tile to the right per step, ticking the dog after each. */
+function walkSteps(
+  pet: ReturnType<typeof createPet>,
+  walker: ReturnType<typeof makeChar>,
+  people: Map<number, ReturnType<typeof makeChar>>,
+  walkable: Array<{ col: number; row: number }>,
+  tileMap: ReturnType<typeof buildOpenTileMap>,
+  steps: number,
+): void {
+  for (let i = 0; i < steps; i++) {
+    walker.tileCol++;
+    walker.x += 16;
+    updatePet(pet, 0.1, walkable, people, tileMap, new Set());
+  }
+}
+
+test('a resting dog bites whoever steps onto its tile, and lets go early when they stop', () => {
+  const tileMap = buildOpenTileMap(10, 10);
+  const walkable = buildWalkableTiles(10, 10);
+  const walker = makeChar(1, 4, 5);
+  walker.state = CharacterState.WALK;
+  walker.path = [{ col: 6, row: 5 }];
+  const people = new Map([[1, walker]]);
+  const pet = createPet('d', 0, 5, 5, PetKind.DOG);
+  pet.wanderTimer = 99; // resting
+  updatePet(pet, 0.1, walkable, people, tileMap, new Set());
+  assert.equal(pet.state, PetState.IDLE, 'next to the dog, not on it');
+  walker.tileCol = 5;
+  walker.x = 5 * 16 + 8;
+  updatePet(pet, 0.1, walkable, people, tileMap, new Set());
+  assert.equal(pet.state, PetState.BITE);
+  assert.equal(pet.followTargetId, 1);
+  assert.equal(pet.biteStepsLeft, 3);
+  assert.ok(walker.petDragTimer! > 0);
+  // The agent takes a step, then stops
+  walkSteps(pet, walker, people, walkable, tileMap, 1);
+  assert.equal(pet.state, PetState.BITE);
+  walker.state = CharacterState.IDLE;
+  updatePet(pet, 0.1, walkable, people, tileMap, new Set());
+  assert.equal(pet.state, PetState.IDLE);
+  assert.equal(walker.petDragTimer, 0);
+});
+
+test('a resting dog ignores an agent that was already on its tile and walks off', () => {
+  const tileMap = buildOpenTileMap(10, 10);
+  const walkable = buildWalkableTiles(10, 10);
+  const walker = makeChar(1, 5, 5);
+  const people = new Map([[1, walker]]);
+  const pet = createPet('d', 0, 5, 5, PetKind.DOG);
+  pet.wanderTimer = 99;
+  updatePet(pet, 0.1, walkable, people, tileMap, new Set()); // standing there
+  walker.state = CharacterState.WALK;
+  walker.path = [{ col: 6, row: 5 }];
+  updatePet(pet, 0.1, walkable, people, tileMap, new Set()); // starts walking off
+  assert.equal(pet.state, PetState.IDLE);
+});
+
+test('a dog on a sofa bites an agent stepping onto its seat tile; cats and arrivals do not', () => {
+  const tileMap = buildOpenTileMap(10, 10);
+  const walkable = buildWalkableTiles(10, 10);
+  const sofa = sofaAt(5, 5);
+  const free = { sofas: [sofa], claimed: new Set<string>() };
+  const dog = createPet('d', 0, 4, 5, PetKind.DOG);
+  dog.state = PetState.SIT;
+  dog.perchTarget = { kind: 'sofa', seatId: 'sofa1' };
+  dog.perchTimer = 99;
+  dog.x = sofa.x;
+  dog.y = sofa.y;
+  const walker = makeChar(1, 5, 5);
+  walker.state = CharacterState.WALK;
+  walker.path = [{ col: 6, row: 5 }];
+  updatePet(dog, 0.1, walkable, new Map([[1, walker]]), tileMap, new Set(), null, free);
+  assert.equal(dog.state, PetState.BITE);
+  assert.equal(dog.perchTarget, null);
+
+  const cat = createPet('c', 0, 5, 5, PetKind.CAT);
+  updatePet(cat, 0.1, walkable, new Map([[1, walker]]), tileMap, new Set());
+  assert.notEqual(cat.state, PetState.BITE);
+
+  // An agent that arrives (nowhere left to walk) has no leg to drag
+  const arriving = makeChar(2, 5, 5);
+  arriving.state = CharacterState.WALK;
+  const dog2 = createPet('d2', 0, 5, 5, PetKind.DOG);
+  dog2.wanderTimer = 99;
+  updatePet(dog2, 0.1, walkable, new Map([[2, arriving]]), tileMap, new Set());
+  assert.equal(dog2.state, PetState.IDLE);
 });
 
 test('an agent dragging a dog walks on at a slower pace until it lets go', async () => {
@@ -621,7 +707,8 @@ test('the dog trails the leg it bites as the agent drags it sideways', () => {
   const pet = createPet('d', 0, 4, 5, PetKind.DOG);
   pet.state = PetState.BITE;
   pet.followTargetId = 1;
-  pet.perchTimer = 2;
+  pet.biteStepsLeft = 3;
+  pet.biteTile = { col: 5, row: 5 };
   pet.dir = Direction.RIGHT;
   updatePet(pet, 0.1, walkable, new Map([[1, walker]]), tileMap, new Set());
   assert.equal(pet.dir, Direction.LEFT, 'turned to follow the leg');
