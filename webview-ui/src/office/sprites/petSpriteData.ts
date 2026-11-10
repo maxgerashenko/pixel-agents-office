@@ -1,6 +1,6 @@
 import {
   PET_BITE_BODY_SHARE,
-  PET_BITE_FEET_ROWS,
+  PET_BITE_FLAT_SHARE,
   PET_BITE_FRAME_PX,
   PET_BITE_TILT_DEG,
 } from '../../constants.js';
@@ -21,8 +21,8 @@ export interface PetSpriteFrames {
   walkLeft: [SpriteData, SpriteData, SpriteData];
   idleRight: [SpriteData, SpriteData, SpriteData];
   idleLeft: [SpriteData, SpriteData, SpriteData];
-  /** Dog lying low, biting a leg on its right and being dragged (derived from
-   *  walkRight: legs folded, head dipped). */
+  /** Dog flat on the floor biting the boot on its right, dragged like a mop
+   *  (derived from walkRight: legs gone, body squashed, head dipped). */
   biteRight: [SpriteData, SpriteData, SpriteData];
   /** Same, biting a leg on its left. */
   biteLeft: [SpriteData, SpriteData, SpriteData];
@@ -75,18 +75,21 @@ function opaqueBounds(s: SpriteData): [number, number, number, number] | null {
 }
 
 /**
- * Lying low: keep the top PET_BITE_BODY_SHARE of the opaque body and the
- * bottom PET_BITE_FEET_ROWS (paws), dropping the leg rows between, so the dog
- * sinks onto its belly with its paws dug in.
+ * Flat on the floor like a dragged mop: keep the top PET_BITE_BODY_SHARE of the
+ * opaque sprite (legs gone), then squash it to PET_BITE_FLAT_SHARE of that
+ * height by sampling rows evenly — first and last kept, so the outline closes —
+ * and set it on the frame's bottom edge.
  */
 function lieDown(s: SpriteData): SpriteData {
   const b = opaqueBounds(s);
   if (!b) return s;
   const [, top, , bottom] = b;
-  const bodyEnd = top + Math.round((bottom - top + 1) * PET_BITE_BODY_SHARE); // exclusive
-  const feetStart = bottom + 1 - PET_BITE_FEET_ROWS;
-  if (feetStart <= bodyEnd) return s;
-  const kept = [...s.slice(top, bodyEnd), ...s.slice(feetStart, bottom + 1)];
+  const bodyRows = Math.round((bottom - top + 1) * PET_BITE_BODY_SHARE);
+  const flatRows = Math.max(2, Math.round(bodyRows * PET_BITE_FLAT_SHARE));
+  const kept = Array.from(
+    { length: flatRows },
+    (_, i) => s[top + Math.round((i * (bodyRows - 1)) / (flatRows - 1))],
+  );
   const w = s[0].length;
   const blank = (): string[] => Array.from({ length: w }, () => '');
   return [...Array.from({ length: s.length - kept.length }, blank), ...kept];
@@ -94,10 +97,10 @@ function lieDown(s: SpriteData): SpriteData {
 
 /**
  * Bite frames, dragged along by a leg on the dog's right: the side walk frames
- * lowered onto the belly (lieDown), head dipped to the ankle (tipped
- * PET_BITE_TILT_DEG clockwise), then laid into a PET_BITE_FRAME_PX square with
- * the nose against its right edge and the belly on its bottom edge — one shared
- * offset, so the frames (scrabbling paws) don't jitter.
+ * laid flat (lieDown), head dipped to the boot (tipped PET_BITE_TILT_DEG
+ * clockwise), then placed in a PET_BITE_FRAME_PX square with the nose against
+ * its right edge and the belly on its bottom edge — one shared offset, so the
+ * frames don't jitter.
  */
 function biteFrames(
   walkRight: [SpriteData, SpriteData, SpriteData],

@@ -377,12 +377,13 @@ export const PET_BITE_DURATION_MAX_SEC = 3.0;
 export const PET_BITE_COOLDOWN_SEC = 20.0;
 /** An agent dragging a dog walks at this fraction of its normal speed. */
 export const PET_DRAG_SPEED_FACTOR = 0.4;
-/** The lying pose keeps this share of the side sprite's height as body; the
- *  legs below it fold away, leaving only the bottom PET_BITE_FEET_ROWS. */
+/** The flat (dragged-mop) pose keeps this share of the side sprite's height as
+ *  body, dropping the legs below it... */
 export const PET_BITE_BODY_SHARE = 0.7;
-export const PET_BITE_FEET_ROWS = 3;
-/** The lying pose dips its head to the ankle by tipping forward (degrees, clockwise). */
-export const PET_BITE_TILT_DEG = 10;
+/** ...and squashes that body to this share of its height, flat on the floor. */
+export const PET_BITE_FLAT_SHARE = 0.55;
+/** The flat pose dips its head to the boot by tipping forward (degrees, clockwise). */
+export const PET_BITE_TILT_DEG = 8;
 /** Bite frames are this square size (px); nose at the right edge, belly at the bottom. */
 export const PET_BITE_FRAME_PX = 32;
 /** Biting dog's sprite centre: this far (px) to the side of the agent's centre,
