@@ -5,7 +5,7 @@
  * dependency-free — OfficeState's real Seat/Character satisfy them.
  */
 
-import { AREA_IDLE_BUFFER_TILES } from '../../constants.js';
+import { AREA_IDLE_BUFFER_TILES, SUPPORT_AREA_LABEL } from '../../constants.js';
 
 export interface SeatLike {
   seatCol: number;
@@ -72,23 +72,26 @@ export function paintedAreaLabels(
 }
 
 /**
- * The Area labels an agent may work in, or null when it is unmapped. Mapped
- * labels painted nowhere in the layout are dropped; if none survive the agent
- * is treated as unmapped (it must not be locked out of every seat by a stale
- * mapping).
+ * The Area labels an agent may work in. Mapped labels painted nowhere in the
+ * layout are dropped. An agent with no live mapping falls back to the Support
+ * Area (matched case-insensitively) when one is painted; with no Support Area
+ * it returns null, meaning "outside every Area" (the seat rule below).
  */
 export function workLabelsFor(
   mapped: readonly string[] | undefined,
   painted: ReadonlySet<string>,
 ): Set<string> | null {
-  if (!mapped) return null;
-  const live = mapped.filter((l) => painted.has(l));
-  return live.length > 0 ? new Set(live) : null;
+  const live = (mapped ?? []).filter((l) => painted.has(l));
+  if (live.length > 0) return new Set(live);
+  const target = SUPPORT_AREA_LABEL.toLowerCase();
+  for (const label of painted) if (label.trim().toLowerCase() === target) return new Set([label]);
+  return null;
 }
 
 /**
  * The seat rule. A mapped agent (`work` non-null) may sit only inside one of
- * its labels; an unmapped agent (`work` null) only outside every Area. No
+ * its labels; an agent with no work Areas (`work` null: unmapped and no Support Area) only
+ * outside every Area. No
  * fallback either way. `zone` is the seat tile's Area label, or null.
  */
 export function seatSatisfiesRule(zone: string | null, work: ReadonlySet<string> | null): boolean {
