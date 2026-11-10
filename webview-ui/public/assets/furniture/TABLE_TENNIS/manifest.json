@@ -2,12 +2,32 @@
   "id": "TABLE_TENNIS",
   "name": "Table Tennis",
   "category": "misc",
-  "type": "asset",
+  "type": "group",
+  "groupType": "rotation",
+  "rotationScheme": "2-way",
   "canPlaceOnWalls": false,
   "canPlaceOnSurfaces": false,
   "backgroundTiles": 0,
-  "width": 48,
-  "height": 32,
-  "footprintW": 3,
-  "footprintH": 2
+  "members": [
+    {
+      "type": "asset",
+      "id": "TABLE_TENNIS",
+      "file": "TABLE_TENNIS.png",
+      "width": 48,
+      "height": 32,
+      "footprintW": 3,
+      "footprintH": 2,
+      "orientation": "front"
+    },
+    {
+      "type": "asset",
+      "id": "TABLE_TENNIS_SIDE",
+      "file": "TABLE_TENNIS_SIDE.png",
+      "width": 32,
+      "height": 48,
+      "footprintW": 2,
+      "footprintH": 3,
+      "orientation": "side"
+    }
+  ]
 }

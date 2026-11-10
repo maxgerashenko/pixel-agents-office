@@ -10,6 +10,7 @@ import assert from 'node:assert/strict';
 import { beforeAll, test } from 'vitest';
 
 import { TABLE_TENNIS_BALL_BOUNCE_AT, TABLE_TENNIS_BALL_CROSS_SEC } from '../src/constants.js';
+import { rotateFurniture } from '../src/office/editor/editorActions.js';
 import { OfficeState } from '../src/office/engine/officeState.js';
 import {
   advanceTableGame,
@@ -21,9 +22,10 @@ import {
   tableBall,
 } from '../src/office/engine/tableTennis.js';
 import type { LoadedAssetData } from '../src/office/layout/furnitureCatalog.js';
+import { getRotatedType } from '../src/office/layout/furnitureCatalog.js';
 import { buildDynamicCatalog } from '../src/office/layout/furnitureCatalog.js';
 import type { OfficeLayout, PlacedFurniture } from '../src/office/types.js';
-import { CharacterState, TileType } from '../src/office/types.js';
+import { CharacterState, Direction, TileType } from '../src/office/types.js';
 
 type CatalogAsset = LoadedAssetData['catalog'][number];
 
@@ -46,7 +48,24 @@ beforeAll(() => {
     asset('DESK', 'desks', { isDesk: true }),
     asset('PC', 'electronics', { canPlaceOnSurfaces: true }),
     asset('WOODEN_CHAIR', 'chairs'),
-    asset('TABLE_TENNIS', 'misc', { width: 48, height: 32, footprintW: 3, footprintH: 2 }),
+    asset('TABLE_TENNIS', 'misc', {
+      width: 48,
+      height: 32,
+      footprintW: 3,
+      footprintH: 2,
+      groupId: 'TABLE_TENNIS',
+      orientation: 'front',
+      rotationScheme: '2-way',
+    }),
+    asset('TABLE_TENNIS_SIDE', 'misc', {
+      width: 32,
+      height: 48,
+      footprintW: 2,
+      footprintH: 3,
+      groupId: 'TABLE_TENNIS',
+      orientation: 'side',
+      rotationScheme: '2-way',
+    }),
   ];
   const sprites = Object.fromEntries(catalog.map((a) => [a.id, [[]]]));
   assert.ok(buildDynamicCatalog({ catalog, sprites }));
@@ -137,14 +156,14 @@ test('the ball leaves a paddle, bounces on the far half and reaches the other pa
   const os = new OfficeState(layout());
   const table = os.tennisTables[0];
   const at = (sec: number) => tableBall(table, sec);
-  assert.equal(at(0).x, table.ballLeftX);
+  assert.equal(at(0).x, table.ballX0);
   assert.ok(at(0).z > 0, 'hit above the table');
   assert.equal(at(0).near[0], 1);
   const bounce = at(TABLE_TENNIS_BALL_CROSS_SEC * TABLE_TENNIS_BALL_BOUNCE_AT);
   assert.ok(Math.abs(bounce.z) < 1e-9, 'touches the table');
-  assert.ok(bounce.x > (table.ballLeftX + table.ballRightX) / 2, 'on the far half');
+  assert.ok(bounce.x > (table.ballX0 + table.ballX1) / 2, 'on the far half');
   const back = at(TABLE_TENNIS_BALL_CROSS_SEC);
-  assert.ok(Math.abs(back.x - table.ballRightX) < 1e-9);
+  assert.ok(Math.abs(back.x - table.ballX1) < 1e-9);
   assert.equal(swingFrame(back.near[1]), 1, 'receiver swings as it arrives');
   assert.equal(swingFrame(back.near[0]), 0, 'server is back to ready');
 });
@@ -235,4 +254,49 @@ test('a point scored mid-game updates the board and hands the serve on', () => {
   assert.equal(game.server, 1);
   assert.equal(game.winner, null);
   assert.ok(game.pause > 0, 'breather before the next serve');
+});
+
+test('the table rotates between its wide and tall orientations', () => {
+  assert.equal(getRotatedType('TABLE_TENNIS', 'cw'), 'TABLE_TENNIS_SIDE');
+  assert.equal(getRotatedType('TABLE_TENNIS_SIDE', 'cw'), 'TABLE_TENNIS');
+  const rotated = rotateFurniture(layout(), 'tt', 'cw');
+  assert.equal(rotated.furniture.find((x) => x.uid === 'tt')?.type, 'TABLE_TENNIS_SIDE');
+});
+
+test('a rotated table is played end to end: players above and below, ball down its length', () => {
+  const l = layout();
+  l.furniture = l.furniture.map((x) => (x.uid === 'tt' ? { ...x, type: 'TABLE_TENNIS_SIDE' } : x));
+  const os = new OfficeState(l);
+  assert.equal(os.tennisTables.length, 1);
+  const table = os.tennisTables[0];
+  assert.deepEqual(
+    table.slots.map((s) => [s.col, s.row, s.dir]),
+    [
+      [4, 3, Direction.DOWN],
+      [4, 7, Direction.UP],
+    ],
+  );
+  assert.equal(tableBall(table, 0).x, tableBall(table, 0.45).x, 'ball stays on the centre line');
+  assert.ok(tableBall(table, 0).y < tableBall(table, 0.9).y, 'ball travels down the table');
+  addIdleAgent(os, 1);
+  addIdleAgent(os, 2);
+  let rallied = false;
+  simulate(os, 3000, () => {
+    const players = [...os.characters.values()].filter((c) => c.playing);
+    if (players.length === 2) {
+      rallied = true;
+      const [a, b] = players.sort((x, y) => x.tileRow - y.tileRow);
+      assert.deepEqual([a.tileCol, a.tileRow, a.dir], [4, 3, Direction.DOWN]);
+      assert.deepEqual([b.tileCol, b.tileRow, b.dir], [4, 7, Direction.UP]);
+    }
+  });
+  assert.ok(rallied, 'two agents played');
+});
+
+test('a rotated table whose end sits against the wall is not a tennis table', () => {
+  const l = layout();
+  l.furniture = l.furniture.map((x) =>
+    x.uid === 'tt' ? { ...x, type: 'TABLE_TENNIS_SIDE', row: 0 } : x,
+  );
+  assert.equal(new OfficeState(l).tennisTables.length, 0, 'no room for the top player');
 });
