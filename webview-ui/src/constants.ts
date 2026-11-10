@@ -377,20 +377,26 @@ export const PET_CHASE_RECALC_INTERVAL_SEC = 0.3;
 export const PET_CHASE_MAX_SEC = 8.0;
 /** The dog grabs the leg once this close (world px between feet). */
 export const PET_BITE_REACH_PX = 12;
-/** How long the dog hangs on to the leg, being dragged along. */
-export const PET_BITE_DURATION_MIN_SEC = 2.0;
-export const PET_BITE_DURATION_MAX_SEC = 3.0;
+/** The dog hangs on to the leg for this many tiles of the agent's walk, then lets go
+ *  (sooner if the agent stops). */
+export const PET_BITE_DRAG_TILES = 3;
+/** Seconds of slowed walk each tick of a bite grants the agent (the pet renews it every tick). */
+export const PET_BITE_DRAG_HOLD_SEC = 1.0;
 /** Seconds before a dog may bite a leg again. */
 export const PET_BITE_COOLDOWN_SEC = 20.0;
 /** An agent dragging a dog walks at this fraction of its normal speed. */
 export const PET_DRAG_SPEED_FACTOR = 0.4;
-/** The flat (dragged-mop) pose keeps this share of the side sprite's height as
- *  body, dropping the legs below it... */
+/** The dragged pose treats the top this share of the side sprite's height as
+ *  head + body, and the rest as legs (laid trailing behind)... */
 export const PET_BITE_BODY_SHARE = 0.7;
-/** ...and squashes that body to this share of its height, flat on the floor. */
+/** ...squashes the body below the back line to this share of its height... */
 export const PET_BITE_FLAT_SHARE = 0.55;
-/** The flat pose dips its head to the boot by tipping forward (degrees, clockwise). */
-export const PET_BITE_TILT_DEG = 8;
+/** ...keeps the head full size, with this many rows of neck under the back line... */
+export const PET_BITE_HEAD_NECK_ROWS = 2;
+/** ...and shears each squashed leg row this many px further back. */
+export const PET_BITE_LEG_TRAIL_PX_PER_ROW = 2;
+/** The dragged pose dips its head to the boot by tipping forward (degrees, clockwise). */
+export const PET_BITE_TILT_DEG = 4;
 /** Bite frames are this square size (px); nose at the right edge, belly at the bottom. */
 export const PET_BITE_FRAME_PX = 32;
 /** Biting dog's sprite centre: this far (px) to the side of the agent's centre,

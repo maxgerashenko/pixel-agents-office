@@ -2,8 +2,8 @@ import {
   CHARACTER_Z_SORT_OFFSET,
   PET_BITE_CHANCE,
   PET_BITE_COOLDOWN_SEC,
-  PET_BITE_DURATION_MAX_SEC,
-  PET_BITE_DURATION_MIN_SEC,
+  PET_BITE_DRAG_HOLD_SEC,
+  PET_BITE_DRAG_TILES,
   PET_BITE_RADIUS_TILES,
   PET_BITE_REACH_PX,
   PET_BITE_SIDE_OFFSET_PX,
@@ -450,6 +450,55 @@ function findWalkingLeg(
   return best;
 }
 
+/**
+ * A walking agent that has just stepped onto the tile a resting dog occupies
+ * (and still has somewhere to go, so there is a leg to drag along).
+ */
+function findSteppingLeg(
+  pet: Pet,
+  characters: Map<number, Character>,
+  surroundings: PetSurroundings,
+): Character | null {
+  const col = Math.floor(pet.x / TILE_SIZE);
+  const row = Math.floor(pet.y / TILE_SIZE);
+  for (const ch of characters.values()) {
+    // Only an agent that just arrived: one already on the tile (or leaving it) is not stepping on
+    if (pet.onTileIds.has(ch.id)) continue;
+    if (ch.state !== CharacterState.WALK || ch.matrixEffect || ch.isSubagent) continue;
+    if (ch.tileCol !== col || ch.tileRow !== row || ch.path.length === 0) continue;
+    if ((ch.petDragTimer ?? 0) > 0 || surroundings.claimed.has(`bite:${ch.id}`)) continue;
+    return ch;
+  }
+  return null;
+}
+
+/** Remember who stands on the dog's tile this tick, so only a new arrival counts as a step-on. */
+function trackOccupants(pet: Pet, characters: Map<number, Character>): void {
+  const col = Math.floor(pet.x / TILE_SIZE);
+  const row = Math.floor(pet.y / TILE_SIZE);
+  pet.onTileIds.clear();
+  for (const ch of characters.values()) {
+    if (ch.tileCol === col && ch.tileRow === row) pet.onTileIds.add(ch.id);
+  }
+}
+
+/** Sink the teeth in: the dog sticks to the leg for the next PET_BITE_DRAG_TILES tiles. */
+function startBite(pet: Pet, target: Character): void {
+  pet.state = PetState.BITE;
+  pet.chaseToBite = false;
+  pet.followTargetId = target.id;
+  pet.perchTarget = null;
+  pet.dir = pet.x <= target.x ? Direction.RIGHT : Direction.LEFT;
+  // A leg caught mid-step first finishes the tile it is leaving: that one does not count
+  pet.biteStepsLeft = PET_BITE_DRAG_TILES + (target.moveProgress > 0 ? 1 : 0);
+  pet.biteTile = { col: target.tileCol, row: target.tileRow };
+  pet.path = [];
+  pet.moveProgress = 0;
+  pet.frame = 0;
+  pet.frameTimer = 0;
+  target.petDragTimer = PET_BITE_DRAG_HOLD_SEC;
+}
+
 /** Back to IDLE with a fresh pause (the shared exit of FOLLOW / BITE). */
 function settleIdle(pet: Pet): void {
   pet.state = PetState.IDLE;
@@ -469,9 +518,14 @@ function releaseBite(pet: Pet, target: Character | undefined): void {
     // The agent was walking, so its tile is floor: the dog drops there
     pet.tileCol = target.tileCol;
     pet.tileRow = target.tileRow;
+    const c = tileCenter(target.tileCol, target.tileRow);
+    pet.x = c.x;
+    pet.y = c.y;
   }
   pet.perchZY = null;
   pet.perchTimer = 0;
+  pet.biteTile = null;
+  pet.biteStepsLeft = 0;
   pet.biteCooldown = PET_BITE_COOLDOWN_SEC;
   pet.dir = Direction.DOWN;
   settleIdle(pet);
@@ -509,6 +563,9 @@ export function createPet(
     perchTarget: null,
     chaseToBite: false,
     biteCooldown: 0,
+    biteStepsLeft: 0,
+    biteTile: null,
+    onTileIds: new Set(),
     hopUp: true,
     hopProgress: 0,
     hopFrom: { x: center.x, y: center.y },
@@ -544,6 +601,15 @@ export function updatePet(
   const spotOf = (target: PetPerchTarget | null) =>
     resolvePerch(target, home, tablePerch, surroundings, characters);
   if (pet.biteCooldown > 0) pet.biteCooldown = Math.max(0, pet.biteCooldown - dt);
+
+  // A resting dog (on the floor, or up on a sofa) bites whoever steps onto its tile
+  const resting =
+    pet.state === PetState.IDLE || (pet.state === PetState.SIT && pet.perchTarget?.kind === 'sofa');
+  if (pet.kind === PetKind.DOG && resting && pet.biteCooldown <= 0) {
+    const leg = findSteppingLeg(pet, characters, surroundings);
+    if (leg) startBite(pet, leg);
+  }
+  if (pet.state !== PetState.BITE) trackOccupants(pet, characters);
 
   switch (pet.state) {
     case PetState.HOP: {
@@ -600,18 +666,25 @@ export function updatePet(
 
     case PetState.BITE: {
       const target = pet.followTargetId !== null ? characters.get(pet.followTargetId) : undefined;
-      pet.perchTimer -= dt;
-      if (!target || target.matrixEffect === 'despawn' || pet.perchTimer <= 0) {
+      // Let go once the agent stops (sat down, went to work, arrived)
+      if (!target || target.matrixEffect === 'despawn' || target.state !== CharacterState.WALK) {
         releaseBite(pet, target);
         break;
       }
-      // An agent that sat down or went to work is no longer walking off with us
-      if (target.state === CharacterState.TYPE) {
-        releaseBite(pet, target);
-        break;
+      // Count the tiles the agent has dragged us over; let go after the last
+      if (
+        pet.biteTile &&
+        (target.tileCol !== pet.biteTile.col || target.tileRow !== pet.biteTile.row)
+      ) {
+        pet.biteStepsLeft--;
+        pet.biteTile = { col: target.tileCol, row: target.tileRow };
+        if (pet.biteStepsLeft <= 0) {
+          releaseBite(pet, target);
+          break;
+        }
       }
       // Hang on to the leg: the agent walks on slowly, dragging the dog
-      target.petDragTimer = pet.perchTimer;
+      target.petDragTimer = PET_BITE_DRAG_HOLD_SEC;
       // Lying side-on behind the leg: walking sideways turns the dog to follow,
       // walking up or down keeps the side it caught the leg from
       if (target.dir === Direction.RIGHT || target.dir === Direction.LEFT) pet.dir = target.dir;
@@ -768,16 +841,7 @@ export function updatePet(
         }
         // Close enough: grab the leg from whichever side the dog is on
         if (Math.hypot(pet.x - target.x, pet.y - target.y) <= PET_BITE_REACH_PX) {
-          const holdSec = randomRange(PET_BITE_DURATION_MIN_SEC, PET_BITE_DURATION_MAX_SEC);
-          pet.state = PetState.BITE;
-          pet.chaseToBite = false;
-          pet.dir = pet.x <= target.x ? Direction.RIGHT : Direction.LEFT;
-          pet.perchTimer = holdSec;
-          pet.path = [];
-          pet.moveProgress = 0;
-          pet.frame = 0;
-          pet.frameTimer = 0;
-          target.petDragTimer = holdSec;
+          startBite(pet, target);
           break;
         }
         // Run after it, re-aiming often since it keeps moving

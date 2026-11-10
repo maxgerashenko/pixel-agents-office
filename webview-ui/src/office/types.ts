@@ -235,8 +235,8 @@ export interface Character {
   /** Play spot (in front of an arcade machine) this idle agent has claimed, or
    *  null. Transient like restSeatId: released the moment the agent works. */
   playSpotId?: string | null;
-  /** Seconds left dragging a dog that bites this agent's leg (walk slowed to
-   *  PET_DRAG_SPEED_FACTOR). Transient, owned by the pet FSM; absent or 0 when free. */
+  /** Positive while a dog hangs on this agent's leg (walk slowed to PET_DRAG_SPEED_FACTOR).
+   *  Transient, renewed every tick by the pet FSM and zeroed when it lets go; absent or 0 when free. */
   petDragTimer?: number;
   /** Where a working agent with no reachable work seat of its own works: a
    *  pairing seat beside a taken computer, or a standing spot where it vibe
@@ -368,6 +368,12 @@ export interface Pet {
   chaseToBite: boolean;
   /** Seconds before this dog may bite a leg again. */
   biteCooldown: number;
+  /** Tiles of the agent's walk still to be dragged before the dog lets go. */
+  biteStepsLeft: number;
+  /** The tile the bitten agent was last seen on, to count its steps. */
+  biteTile: { col: number; row: number } | null;
+  /** Characters standing on the pet's tile last tick (a step-on is a NEW arrival). */
+  onTileIds: Set<number>;
   /** Direction of the current HOP: true = up onto the perch, false = back down. */
   hopUp: boolean;
   /** 0..1 progress of the current HOP. */
@@ -376,7 +382,7 @@ export interface Pet {
   hopTo: { x: number; y: number };
   /** Floor tile the pet jumped from, and lands on when it hops down. */
   groundTile: { col: number; row: number } | null;
-  /** Seconds left sitting on the perch, or biting a leg. */
+  /** Seconds left sitting on the perch. */
   perchTimer: number;
   /** Depth-sort override while up on a perch or biting a leg, else null. */
   perchZY: number | null;
