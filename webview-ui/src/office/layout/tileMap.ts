@@ -34,7 +34,10 @@ export function getWalkableTiles(
   return tiles;
 }
 
-/** BFS pathfinding on 4-connected grid (no diagonals). Returns path excluding start, including end. */
+/**
+ * BFS pathfinding on 4-connected grid (no diagonals). Returns path excluding start, including end.
+ * `avoidTiles` ("col,row" keys) are never stepped through; the end tile is exempt.
+ */
 export function findPath(
   startCol: number,
   startRow: number,
@@ -42,6 +45,7 @@ export function findPath(
   endRow: number,
   tileMap: TileType[][],
   blockedTiles: Set<string>,
+  avoidTiles?: ReadonlySet<string>,
 ): Array<{ col: number; row: number }> {
   if (startCol === endCol && startRow === endRow) return [];
 
@@ -93,6 +97,8 @@ export function findPath(
 
       if (visited.has(nk)) continue;
       if (!isWalkable(nc, nr, tileMap, blockedTiles)) continue;
+      // Avoided tiles may be the destination, never a step on the way
+      if (avoidTiles?.has(nk) && nk !== endKey) continue;
 
       visited.add(nk);
       parent.set(nk, currKey);

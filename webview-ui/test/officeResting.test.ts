@@ -376,3 +376,34 @@ test('an idle agent arriving at its own seat inside an Area does not rest there'
   assert.ok(arrived, 'reached the seat');
   assert.ok(!NO_IDLE_KEYS(os, ch), 'ended up out of the Area');
 });
+
+test('idle walks go around an Area and its buffer, never through them', () => {
+  const os = new OfficeState(layout());
+  addIdleAgent(os, 1, 'w1'); // left of the Area
+  addIdleAgent(os, 2, 'w3'); // right of the Area
+  const out = new Set<number>();
+  simulate(os, 900, () => {
+    for (const ch of os.characters.values()) {
+      const banned = NO_IDLE_KEYS(os, ch);
+      if (!banned) out.add(ch.id);
+      else if (out.has(ch.id)) {
+        assert.fail(`agent ${ch.id} stepped on ${ch.tileCol},${ch.tileRow} (${ch.state})`);
+      }
+    }
+  });
+  assert.equal(out.size, 2);
+});
+
+test('a layout edit does not snap an idle agent onto its seat in an Area', () => {
+  const os = new OfficeState(layout());
+  addMappedAgent(os);
+  const ch = os.characters.get(1)!;
+  simulate(os, 20); // walks out of the Area
+  assert.ok(!NO_IDLE_KEYS(os, ch));
+  const pos = { col: ch.tileCol, row: ch.tileRow };
+
+  os.rebuildFromLayout(os.layout);
+
+  assert.equal(ch.seatId, 'w2', 'keeps its Area seat for the next turn');
+  assert.deepEqual({ col: ch.tileCol, row: ch.tileRow }, pos, 'stays where it was');
+});
