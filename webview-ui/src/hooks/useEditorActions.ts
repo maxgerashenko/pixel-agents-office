@@ -17,7 +17,9 @@ import {
   dropFurniture,
   eraseArea,
   eraseCarpet,
+  eraseTargetAt,
   eraseTile,
+  eraseTopLayer,
   expandLayout,
   furnitureAt,
   isFloorTile,
@@ -210,6 +212,26 @@ export function useEditorActions(
   const applyStrokeEdit = useCallback(
     (newLayout: OfficeLayout) => commitLayout(newLayout, 'stroke'),
     [commitLayout],
+  );
+
+  /**
+   * One tile of an Erase-tool stroke: peel the top layer — furniture (a surface
+   * item before its desk), then carpet, then the tile. The stroke's first tile
+   * latches which layer it peels, so dragging off a desk clears furniture only;
+   * the floor under it goes on the next click. A tile is acted on once per
+   * stroke, so jitter on one tile can't strip every layer at once.
+   */
+  const eraseStrokeTile = useCallback(
+    (layout: OfficeLayout, col: number, row: number) => {
+      const key = `${col},${row}`;
+      if (editorState.eraseLastTile === key) return;
+      editorState.eraseLastTile = key;
+      const target = eraseTargetAt(layout, col, row, editorState.eraseLayer);
+      if (!target) return;
+      editorState.eraseLayer ??= target.layer;
+      applyStrokeEdit(eraseTopLayer(layout, col, row, editorState.eraseLayer));
+    },
+    [editorState, applyStrokeEdit],
   );
 
   const colorActions = useFurnitureColorActions(
@@ -669,7 +691,7 @@ export function useEditorActions(
           return;
         }
         case EditTool.ERASE:
-          applyStrokeEdit(eraseTile(layout, col, row));
+          eraseStrokeTile(layout, col, row);
           return;
         case EditTool.CARPET_PAINT:
           applyStrokeEdit(
@@ -756,7 +778,16 @@ export function useEditorActions(
         }
       }
     },
-    [getOfficeState, editorState, applyEdit, applyStrokeEdit, maybeExpand, colorActions, bumpTick],
+    [
+      getOfficeState,
+      editorState,
+      applyEdit,
+      applyStrokeEdit,
+      eraseStrokeTile,
+      maybeExpand,
+      colorActions,
+      bumpTick,
+    ],
   );
 
   /**
@@ -777,11 +808,14 @@ export function useEditorActions(
         case EditTool.CARPET_PAINT:
           applyStrokeEdit(eraseCarpet(layout, col, row));
           return;
+        case EditTool.ERASE:
+          eraseStrokeTile(layout, col, row);
+          return;
         default:
           applyStrokeEdit(eraseTile(layout, col, row));
       }
     },
-    [getOfficeState, editorState, applyEdit, applyStrokeEdit],
+    [getOfficeState, editorState, applyEdit, applyStrokeEdit, eraseStrokeTile],
   );
 
   return {

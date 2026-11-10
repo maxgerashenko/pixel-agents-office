@@ -288,7 +288,7 @@ export function EditorToolbar({
           variant={isEraseActive ? 'active' : 'default'}
           size="md"
           onClick={() => onToolChange(EditTool.ERASE)}
-          title="Erase tiles to void"
+          title="Erase the top layer: furniture, then carpet, then floor"
         >
           Erase
         </Button>

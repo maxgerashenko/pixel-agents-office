@@ -14,7 +14,12 @@ import assert from 'node:assert/strict';
 import { beforeAll, describe, test } from 'vitest';
 
 import { diffAreaRenames, renameAreaInMappings } from '../../core/src/areaRenames.js';
-import { rotateFurniture } from '../src/office/editor/editorActions.js';
+import {
+  eraseTargetAt,
+  eraseTopLayer,
+  paintCarpet,
+  rotateFurniture,
+} from '../src/office/editor/editorActions.js';
 import type { LoadedAssetData } from '../src/office/layout/furnitureCatalog.js';
 import { buildDynamicCatalog } from '../src/office/layout/furnitureCatalog.js';
 import type { OfficeLayout, PlacedFurniture } from '../src/office/types.js';
@@ -127,6 +132,67 @@ describe('rotateFurniture validates the whole desk group', () => {
       { uid: 'pc', type: 'PC_FRONT_OFF', col: 4, row: 10 },
     ]);
     assert.equal(rotateFurniture(layout, 'desk', 'cw'), layout);
+  });
+});
+
+describe('erase peels one layer at a time, top first', () => {
+  function deskWithPc(): OfficeLayout {
+    const layout = floorLayout(12, 12, [
+      { uid: 'desk', type: 'DESK_FRONT', col: 3, row: 3 },
+      { uid: 'pc', type: 'PC_FRONT_OFF', col: 4, row: 3 },
+    ]);
+    return paintCarpet(layout, 4, 4, 0);
+  }
+
+  test('the PC on the desk goes first, then the desk, then the carpet, then the floor', () => {
+    let layout = deskWithPc();
+    const peeled: string[] = [];
+    for (let i = 0; i < 5; i++) {
+      const target = eraseTargetAt(layout, 4, 4);
+      peeled.push(target ? (target.item?.uid ?? target.layer) : 'nothing');
+      layout = eraseTopLayer(layout, 4, 4);
+    }
+    assert.deepEqual(peeled, ['pc', 'desk', 'carpet', 'tile', 'nothing']);
+    assert.equal(layout.tiles[4 * 12 + 4], TileType.VOID);
+  });
+
+  test('removing furniture leaves the floor and carpet under it untouched', () => {
+    const layout = eraseTopLayer(deskWithPc(), 3, 3);
+    assert.deepEqual(
+      layout.furniture.map((f) => f.uid),
+      ['pc'],
+    );
+    assert.equal(layout.tiles[3 * 12 + 3], TileType.FLOOR_1);
+    assert.ok(layout.carpetTiles?.[4 * 12 + 4]);
+  });
+
+  test('the target outlines the whole footprint of the item it will delete', () => {
+    const target = eraseTargetAt(deskWithPc(), 5, 4);
+    assert.deepEqual(
+      target && {
+        uid: target.item?.uid,
+        col: target.col,
+        row: target.row,
+        w: target.w,
+        h: target.h,
+      },
+      { uid: 'desk', col: 3, row: 3, w: 3, h: 2 },
+    );
+  });
+
+  test('a stroke latched on furniture skips bare tiles instead of erasing the floor', () => {
+    const layout = deskWithPc();
+    assert.equal(eraseTargetAt(layout, 8, 8, 'furniture'), undefined);
+    assert.equal(eraseTopLayer(layout, 8, 8, 'furniture'), layout);
+  });
+
+  test('a stroke latched on the tile clears it and anything still standing there', () => {
+    const layout = eraseTopLayer(deskWithPc(), 3, 3, 'tile');
+    assert.equal(layout.tiles[3 * 12 + 3], TileType.VOID);
+    assert.deepEqual(
+      layout.furniture.map((f) => f.uid),
+      ['pc'],
+    );
   });
 });
 

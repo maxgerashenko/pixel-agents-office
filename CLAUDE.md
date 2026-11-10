@@ -452,7 +452,7 @@ Toggle via "Layout" button. Tools: SELECT (default), Floor paint, Wall paint, Er
 
 **Multi-stage Esc**: exit furniture pick → deselect catalog → close tool tab → deselect furniture → close editor.
 
-**Erase tool**: Sets tiles to `TileType.VOID` (transparent, non-walkable, no furniture) **and deletes any furniture whose footprint the stroke passes through** (`removeFurnitureAt`). Right-click in floor/wall/erase tools also erases to VOID + furniture (drag-erasing supported). Context menu suppressed in edit mode.
+**Erase tool**: Peels **one layer at a time, top first** (`eraseTargetAt` / `eraseTopLayer`): a placed item (a surface item before the desk under it), then the carpet, then the tile itself (→ `TileType.VOID`, which also drops anything still standing on it). A stroke latches the layer its first tile hit (`editorState.eraseLayer`), so a drag that starts on furniture never digs through to the floor, and each tile is acted on once per stroke (`eraseLastTile`). While hovering, the next erase's target is outlined 1px red (`EditorRenderState.eraseTarget`, the item's whole footprint). Right-click with the Erase tool follows the same rule; right-click in floor/wall tools still erases to VOID + furniture in one go (drag-erasing supported). Context menu suppressed in edit mode.
 
 **Grid expansion**: In floor/wall/erase tools, a ghost border (dashed outline) appears 1 tile outside the grid. Clicking a ghost tile calls `expandLayout()` to grow the grid by 1 tile in that direction. New tiles are VOID. Furniture positions and character positions shift when expanding left/up. Max: `MAX_COLS`×`MAX_ROWS` (64×64). Default: `DEFAULT_COLS`×`DEFAULT_ROWS` (20×11). Characters outside bounds after resize relocated to random walkable tiles.
 

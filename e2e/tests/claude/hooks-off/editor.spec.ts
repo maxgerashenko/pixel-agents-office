@@ -31,8 +31,9 @@ import { buildSeedLayout } from '../../../helpers/layout-seed';
  * e2e coverage for the layout editor: erase semantics, stroke-based undo,
  * desks carrying what stands on them, and the colour eyedropper.
  *
- *  1. Erase clears a tile to VOID *and* deletes any furniture whose footprint
- *     the stroke passes through (eraseTile in editorActions.ts).
+ *  1. Erase peels the top layer first: a click on furniture deletes the item
+ *     and leaves the floor; the next click clears the tile to VOID
+ *     (eraseTopLayer in editorActions.ts).
  *  2. One click-drag = one undo entry for every drag-painting tool — floor,
  *     wall, and erase (the 'stroke' undo session). Carpet is covered in
  *     carpet.spec.ts.
@@ -98,7 +99,7 @@ test.describe('Layout editor — erase', () => {
     })(),
   });
 
-  test('erasing a tile deletes the furniture it passes through @area:editor', async ({
+  test('erasing removes the furniture first, then the floor under it @area:editor', async ({
     pixelAgents,
   }) => {
     const { frame, narrator } = pixelAgents;
@@ -115,10 +116,16 @@ test.describe('Layout editor — erase', () => {
     await paintTile(frame, 3, 3);
 
     await waitForFurnitureCount(frame, 0);
-    narrator.check('furniture count 1 → 0: the erase stroke deleted the item it crossed');
+    narrator.check('furniture count 1 → 0: the first erase deleted the item');
 
-    expect(await readTilesAt(frame, [[3, 3]])).toEqual([TILE.VOID]);
-    narrator.check('tile (3,3) is VOID — the tile itself was cleared too');
+    expect(await readTilesAt(frame, [[3, 3]])).toEqual([TILE.FLOOR_1]);
+    narrator.check('tile (3,3) is still floor — only the top layer went');
+
+    narrator.step('erasing (3,3) again in a new stroke');
+    await endStroke(frame);
+    await paintTile(frame, 3, 3);
+    await expect.poll(() => readTilesAt(frame, [[3, 3]])).toEqual([TILE.VOID]);
+    narrator.check('tile (3,3) is VOID — the second erase took the floor');
   });
 
   test('erasing away from an item leaves it in place @area:editor', async ({ pixelAgents }) => {
@@ -155,13 +162,14 @@ test.describe('Layout editor — erase', () => {
     await enterEditMode(frame);
     await selectEraseTool(frame);
 
-    // One continuous stroke across the desk plus two bare tiles.
+    // One continuous stroke across the desk plus two more tiles. It starts on
+    // furniture, so it removes furniture only and leaves the floor.
     narrator.step('erasing (3,3), (4,3) and (5,3) in one continuous stroke');
     await paintTile(frame, 3, 3);
     await paintTile(frame, 4, 3);
     await paintTile(frame, 5, 3);
     await waitForFurnitureCount(frame, 0);
-    narrator.check('the desk is gone and the stroke cleared its tiles');
+    narrator.check('the desk is gone');
 
     narrator.step('clicking Undo once');
     await undo(frame);
@@ -178,7 +186,7 @@ test.describe('Layout editor — erase', () => {
         ]),
       )
       .toEqual([TILE.FLOOR_1, TILE.FLOOR_1, TILE.FLOOR_1]);
-    narrator.check('all three tiles restored — tile + furniture share one undo entry');
+    narrator.check('tiles are floor after one undo, with the desk back');
   });
 
   test('a right-drag erase stroke is a single undo entry @area:editor', async ({ pixelAgents }) => {
