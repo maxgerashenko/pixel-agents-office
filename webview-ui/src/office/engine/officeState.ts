@@ -1535,12 +1535,14 @@ export class OfficeState {
       }
     }
 
-    // A server rack lights up while any agent works in the Area it stands in
+    // A server rack lights up while ANY agent assigned to the Area it stands in is
+    // working (one is enough, every rack in that Area lights together). It goes by
+    // the agent's Area assignment, not by where the agent is standing.
     const workedZones = new Set<string>();
     for (const ch of this.characters.values()) {
       if (!ch.isActive || ch.isSubagent) continue;
-      const zone = zoneAt(this.layout.areaTiles, this.layout.cols, ch.tileCol, ch.tileRow);
-      if (zone) workedZones.add(zone);
+      const assigned = this.workLabels(ch.directoryName);
+      if (assigned) for (const label of assigned) workedZones.add(label);
     }
     const litRackUids = new Set<string>();
     if (workedZones.size > 0) {
