@@ -226,6 +226,8 @@ export const INACTIVE_SEAT_TIMER_RANGE_SEC = 2.0;
 /** Default/fallback palette count (bundled characters). Actual count comes from getLoadedCharacterCount(). */
 export const PALETTE_COUNT = 6;
 export const AUTO_ON_FACING_DEPTH = 3;
+/** Furniture type prefixes of the racks (GB200 NVL72, DGX Spark rack), which light by Area rather than by desk. */
+export const SERVER_RACK_TYPE_PREFIXES = ['SERVER_RACK', 'DGX_SPARK_RACK'] as const;
 export const AUTO_ON_SIDE_DEPTH = 2;
 export const CHARACTER_HIT_HALF_WIDTH = 8;
 export const CHARACTER_HIT_HEIGHT = 24;

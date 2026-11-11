@@ -21,6 +21,7 @@ import {
   PHONE_SPOT_MAX_ATTEMPTS,
   PLAY_FURNITURE_TYPE_PATTERN,
   REST_SEAT_TYPE_PATTERN,
+  SERVER_RACK_TYPE_PREFIXES,
   TABLE_TENNIS_START_CHANCE,
   WAITING_BUBBLE_DURATION_SEC,
 } from '../../constants.js';
@@ -1532,7 +1533,23 @@ export class OfficeState {
       }
     }
 
-    if (autoOnTiles.size === 0 && playedUids.size === 0) {
+    // A server rack lights up while any agent works in the Area it stands in
+    const workedZones = new Set<string>();
+    for (const ch of this.characters.values()) {
+      if (!ch.isActive || ch.isSubagent) continue;
+      const zone = zoneAt(this.layout.areaTiles, this.layout.cols, ch.tileCol, ch.tileRow);
+      if (zone) workedZones.add(zone);
+    }
+    const litRackUids = new Set<string>();
+    if (workedZones.size > 0) {
+      for (const item of this.layout.furniture) {
+        if (!SERVER_RACK_TYPE_PREFIXES.some((p) => item.type.startsWith(p))) continue;
+        const zone = zoneAt(this.layout.areaTiles, this.layout.cols, item.col, item.row);
+        if (zone && workedZones.has(zone)) litRackUids.add(item.uid);
+      }
+    }
+
+    if (autoOnTiles.size === 0 && playedUids.size === 0 && litRackUids.size === 0) {
       this.furniture = layoutToFurnitureInstances(this.layout.furniture);
       return;
     }
@@ -1542,7 +1559,8 @@ export class OfficeState {
     const modifiedFurniture: PlacedFurniture[] = this.layout.furniture.map((item) => {
       const entry = getCatalogEntry(item.type);
       if (!entry) return item;
-      if (playedUids.has(item.uid)) return { ...item, type: this.lightUp(item.type, animFrame) };
+      if (playedUids.has(item.uid) || litRackUids.has(item.uid))
+        return { ...item, type: this.lightUp(item.type, animFrame) };
       // Check if any tile of this furniture overlaps an auto-on tile
       for (let dr = 0; dr < entry.footprintH; dr++) {
         for (let dc = 0; dc < entry.footprintW; dc++) {

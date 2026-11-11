@@ -1,0 +1,179 @@
+{
+  "id": "DGX_SPARK_RACK",
+  "name": "DGX Spark Rack",
+  "category": "electronics",
+  "type": "group",
+  "groupType": "rotation",
+  "rotationScheme": "4-way",
+  "canPlaceOnWalls": false,
+  "canPlaceOnSurfaces": false,
+  "backgroundTiles": 1,
+  "members": [
+    {
+      "type": "group",
+      "groupType": "state",
+      "orientation": "front",
+      "members": [
+        {
+          "type": "group",
+          "groupType": "animation",
+          "state": "on",
+          "members": [
+            {
+              "type": "asset",
+              "id": "DGX_SPARK_RACK_FRONT_ON_1",
+              "file": "DGX_SPARK_RACK_FRONT_ON_1.png",
+              "width": 16,
+              "height": 32,
+              "footprintW": 1,
+              "footprintH": 2,
+              "frame": 0
+            },
+            {
+              "type": "asset",
+              "id": "DGX_SPARK_RACK_FRONT_ON_2",
+              "file": "DGX_SPARK_RACK_FRONT_ON_2.png",
+              "width": 16,
+              "height": 32,
+              "footprintW": 1,
+              "footprintH": 2,
+              "frame": 1
+            },
+            {
+              "type": "asset",
+              "id": "DGX_SPARK_RACK_FRONT_ON_3",
+              "file": "DGX_SPARK_RACK_FRONT_ON_3.png",
+              "width": 16,
+              "height": 32,
+              "footprintW": 1,
+              "footprintH": 2,
+              "frame": 2
+            }
+          ]
+        },
+        {
+          "type": "asset",
+          "id": "DGX_SPARK_RACK_FRONT_OFF",
+          "file": "DGX_SPARK_RACK_FRONT_OFF.png",
+          "width": 16,
+          "height": 32,
+          "footprintW": 1,
+          "footprintH": 2,
+          "state": "off"
+        }
+      ]
+    },
+    {
+      "type": "group",
+      "groupType": "state",
+      "orientation": "back",
+      "members": [
+        {
+          "type": "group",
+          "groupType": "animation",
+          "state": "on",
+          "members": [
+            {
+              "type": "asset",
+              "id": "DGX_SPARK_RACK_BACK_ON_1",
+              "file": "DGX_SPARK_RACK_BACK_ON_1.png",
+              "width": 16,
+              "height": 32,
+              "footprintW": 1,
+              "footprintH": 2,
+              "frame": 0
+            },
+            {
+              "type": "asset",
+              "id": "DGX_SPARK_RACK_BACK_ON_2",
+              "file": "DGX_SPARK_RACK_BACK_ON_2.png",
+              "width": 16,
+              "height": 32,
+              "footprintW": 1,
+              "footprintH": 2,
+              "frame": 1
+            },
+            {
+              "type": "asset",
+              "id": "DGX_SPARK_RACK_BACK_ON_3",
+              "file": "DGX_SPARK_RACK_BACK_ON_3.png",
+              "width": 16,
+              "height": 32,
+              "footprintW": 1,
+              "footprintH": 2,
+              "frame": 2
+            }
+          ]
+        },
+        {
+          "type": "asset",
+          "id": "DGX_SPARK_RACK_BACK_OFF",
+          "file": "DGX_SPARK_RACK_BACK_OFF.png",
+          "width": 16,
+          "height": 32,
+          "footprintW": 1,
+          "footprintH": 2,
+          "state": "off"
+        }
+      ]
+    },
+    {
+      "type": "group",
+      "groupType": "state",
+      "orientation": "side",
+      "members": [
+        {
+          "type": "group",
+          "groupType": "animation",
+          "state": "on",
+          "members": [
+            {
+              "type": "asset",
+              "id": "DGX_SPARK_RACK_SIDE_ON_1",
+              "file": "DGX_SPARK_RACK_SIDE_ON_1.png",
+              "width": 16,
+              "height": 32,
+              "footprintW": 1,
+              "footprintH": 2,
+              "frame": 0,
+              "mirrorSide": true
+            },
+            {
+              "type": "asset",
+              "id": "DGX_SPARK_RACK_SIDE_ON_2",
+              "file": "DGX_SPARK_RACK_SIDE_ON_2.png",
+              "width": 16,
+              "height": 32,
+              "footprintW": 1,
+              "footprintH": 2,
+              "frame": 1,
+              "mirrorSide": true
+            },
+            {
+              "type": "asset",
+              "id": "DGX_SPARK_RACK_SIDE_ON_3",
+              "file": "DGX_SPARK_RACK_SIDE_ON_3.png",
+              "width": 16,
+              "height": 32,
+              "footprintW": 1,
+              "footprintH": 2,
+              "frame": 2,
+              "mirrorSide": true
+            }
+          ]
+        },
+        {
+          "type": "asset",
+          "id": "DGX_SPARK_RACK_SIDE_OFF",
+          "file": "DGX_SPARK_RACK_SIDE_OFF.png",
+          "width": 16,
+          "height": 32,
+          "footprintW": 1,
+          "footprintH": 2,
+          "state": "off",
+          "mirrorSide": true
+        }
+      ]
+    }
+  ]
+}
