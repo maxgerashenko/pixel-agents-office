@@ -96,36 +96,50 @@ test('rotates through all four directions and stands against a wall', () => {
   for (const t of seen) assert.ok(canPlaceFurniture(empty, t, 6, 0), `${t} against the top wall`);
 });
 
-test("lights up while an agent works in the rack's Area, not another one", () => {
-  const lit = (os: OfficeState): boolean => {
-    const rack = os.furniture.find(
-      (x) =>
-        x.sprite === getCatalogEntry('SERVER_RACK_FRONT_ON_1')?.sprite ||
-        x.sprite === getCatalogEntry('SERVER_RACK_FRONT_ON_2')?.sprite ||
-        x.sprite === getCatalogEntry('SERVER_RACK_FRONT_ON_3')?.sprite,
+test("lights up while an agent assigned to the rack's Area works, wherever it stands", () => {
+  const lit = (os: OfficeState): boolean =>
+    os.furniture.some((x) =>
+      [1, 2, 3].some((n) => x.sprite === getCatalogEntry(`SERVER_RACK_FRONT_ON_${n}`)?.sprite),
     );
-    return !!rack;
-  };
-  // Rack in columns 0-4 (Area); the agent has no desk, so it works in place
   const os = new OfficeState(
     layout([{ uid: 'r', type: 'SERVER_RACK_FRONT_OFF', col: 2, row: 2 }], [0, 4]),
   );
+  os.areaMappings = { proj: ['Eng'], other: ['Elsewhere'] };
   os.addAgent(1, undefined, undefined, undefined, true);
-  const ch = os.characters.get(1)!;
-  ch.tileCol = 2;
-  ch.tileRow = 5;
+  os.addAgent(2, undefined, undefined, undefined, true);
+  os.characters.get(1)!.directoryName = 'proj';
+  os.characters.get(2)!.directoryName = 'other';
+  os.setAgentActive(2, true);
+  os.update(0.6);
+  assert.ok(!lit(os), 'dark when only an agent of another Area works');
   os.setAgentActive(1, true);
-  ch.tileCol = 2;
-  ch.tileRow = 5;
+  os.characters.get(1)!.tileCol = 7; // standing outside the Area changes nothing
   os.update(0.6);
-  assert.ok(lit(os), 'lit while an agent works in the same Area');
-  ch.tileCol = 7; // outside the Area
-  os.update(0.6);
-  assert.ok(!lit(os), 'dark when the agent works elsewhere');
+  assert.ok(lit(os), 'lit as soon as one assigned agent works, wherever it stands');
   os.setAgentActive(1, false);
-  ch.tileCol = 2;
   os.update(0.6);
-  assert.ok(!lit(os), 'dark when nobody works');
+  assert.ok(!lit(os), 'dark when no assigned agent works');
+});
+
+test('every rack in the Area lights together', () => {
+  const os = new OfficeState(
+    layout(
+      [
+        { uid: 'a', type: 'SERVER_RACK_FRONT_OFF', col: 1, row: 2 },
+        { uid: 'b', type: 'DGX_SPARK_RACK_FRONT_OFF', col: 3, row: 2 },
+      ],
+      [0, 4],
+    ),
+  );
+  os.areaMappings = { proj: ['Eng'] };
+  os.addAgent(1, undefined, undefined, undefined, true);
+  os.characters.get(1)!.directoryName = 'proj';
+  os.setAgentActive(1, true);
+  os.update(0.6);
+  const onSprites = ['SERVER_RACK', 'DGX_SPARK_RACK'].flatMap((b) =>
+    [1, 2, 3].map((n) => getCatalogEntry(`${b}_FRONT_ON_${n}`)?.sprite),
+  );
+  assert.equal(os.furniture.filter((x) => onSprites.includes(x.sprite)).length, 2);
 });
 
 test('DGX Spark is a desk-top electronics item that rotates and lights with 3 frames', () => {
@@ -164,10 +178,9 @@ test('DGX Spark rack matches the NVL72 size, rotates, and lights with its Area',
     layout([{ uid: 'r', type: 'DGX_SPARK_RACK_FRONT_OFF', col: 2, row: 2 }], [0, 4]),
   );
   os.addAgent(1, undefined, undefined, undefined, true);
-  const ch = os.characters.get(1)!;
+  os.areaMappings = { proj: ['Eng'] };
+  os.characters.get(1)!.directoryName = 'proj';
   os.setAgentActive(1, true);
-  ch.tileCol = 2;
-  ch.tileRow = 5;
   os.update(0.6);
   const frames = [1, 2, 3].map((n) => getCatalogEntry(`DGX_SPARK_RACK_FRONT_ON_${n}`)?.sprite);
   assert.ok(
