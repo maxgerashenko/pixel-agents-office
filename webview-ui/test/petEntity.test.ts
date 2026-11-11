@@ -495,7 +495,7 @@ test('a dog jumps onto a free sofa, and hops off when someone claims it', () => 
   const pet = createPet('d', 0, 2, 5, PetKind.DOG);
   pet.wanderTimer = 0;
   randomQueue = [0];
-  const free = { sofas: [sofa], claimed: new Set<string>() };
+  const free = { sofas: [sofa], trees: [], claimed: new Set<string>() };
   updatePet(pet, 0.01, walkable, new Map(), tileMap, blocked, null, free);
   assert.deepEqual(pet.perchTarget, { kind: 'sofa', seatId: 'sofa1' });
   tickWhile(pet, PetState.WALK, [walkable, new Map(), tileMap, blocked, null, free]);
@@ -505,7 +505,7 @@ test('a dog jumps onto a free sofa, and hops off when someone claims it', () => 
   assert.equal(pet.y, sofa.y);
   assert.equal(pet.perchZY, sofa.zY);
   // An agent claims the seat: it drops out of the free list and the dog hops off
-  const taken = { sofas: [], claimed: new Set<string>() };
+  const taken = { sofas: [], trees: [], claimed: new Set<string>() };
   updatePet(pet, 0.01, walkable, new Map(), tileMap, blocked, null, taken);
   assert.equal(pet.state, PetState.HOP);
   tickWhile(pet, PetState.HOP, [walkable, new Map(), tileMap, blocked, null, taken]);
@@ -519,7 +519,7 @@ test('a dog skips a sofa another pet already took', () => {
   const pet = createPet('d', 0, 4, 5, PetKind.DOG);
   pet.wanderTimer = 0;
   randomQueue = [0, 0.99, 0.99, 0];
-  const claimed = { sofas: [sofaAt(5, 5)], claimed: new Set(['sofa:sofa1']) };
+  const claimed = { sofas: [sofaAt(5, 5)], trees: [], claimed: new Set(['sofa:sofa1']) };
   updatePet(pet, 0.01, walkable, new Map(), tileMap, new Set(['5,5']), null, claimed);
   assert.equal(pet.perchTarget, null);
 });
@@ -652,7 +652,7 @@ test('a dog on a sofa bites an agent stepping onto its seat tile; cats and arriv
   const tileMap = buildOpenTileMap(10, 10);
   const walkable = buildWalkableTiles(10, 10);
   const sofa = sofaAt(5, 5);
-  const free = { sofas: [sofa], claimed: new Set<string>() };
+  const free = { sofas: [sofa], trees: [], claimed: new Set<string>() };
   const dog = createPet('d', 0, 4, 5, PetKind.DOG);
   dog.state = PetState.SIT;
   dog.perchTarget = { kind: 'sofa', seatId: 'sofa1' };
@@ -756,4 +756,37 @@ test('bite frames lay the side sprite on the frame’s bottom and leg edges', as
     'mirrored for the other side',
   );
   assert.equal(getPetKind(0), PetKind.DOG);
+});
+
+test('a cat climbs a free cat tree and sits on its top platform; a dog never does', () => {
+  const tileMap = buildOpenTileMap(10, 10);
+  const walkable = buildWalkableTiles(10, 10);
+  const tree = {
+    uid: 'tree1',
+    footprint: { col: 5, row: 4, w: 1, h: 2 },
+    x: 5 * 16 + 8,
+    y: 4 * 16 + 9,
+    zY: 6 * 16 + 1.5,
+  };
+  const blocked = new Set(['5,4', '5,5']);
+  const surroundings = { sofas: [], trees: [tree], claimed: new Set<string>() };
+
+  const dog = createPet('d', 0, 2, 5, PetKind.DOG);
+  dog.wanderTimer = 0;
+  randomQueue = [0];
+  updatePet(dog, 0.01, walkable, new Map(), tileMap, blocked, null, surroundings);
+  assert.notDeepEqual(dog.perchTarget, { kind: 'tree', uid: 'tree1' });
+
+  const cat = createPet('c', 0, 2, 5, PetKind.CAT);
+  cat.wanderTimer = 0;
+  randomQueue = [0];
+  updatePet(cat, 0.01, walkable, new Map(), tileMap, blocked, null, surroundings);
+  assert.deepEqual(cat.perchTarget, { kind: 'tree', uid: 'tree1' });
+  const args = [walkable, new Map(), tileMap, blocked, null, surroundings] as const;
+  tickWhile(cat, PetState.WALK, [...args]);
+  tickWhile(cat, PetState.HOP, [...args]);
+  assert.equal(cat.state, PetState.SIT);
+  assert.equal(cat.x, tree.x);
+  assert.equal(cat.y, tree.y);
+  assert.equal(cat.perchZY, tree.zY);
 });

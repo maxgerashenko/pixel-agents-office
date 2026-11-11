@@ -12,6 +12,8 @@ import {
   INACTIVE_SEAT_TIMER_RANGE_SEC,
   MAX_PET_ID_LENGTH,
   PAIR_SEAT_MAX_DIST,
+  PET_CAT_TREE_PERCH_Y_PX,
+  PET_CAT_TREE_TYPE_PATTERN,
   PET_HIT_HALF_WIDTH,
   PET_HIT_HEIGHT,
   PET_SOFA_SEAT_Y_OFFSET_PX,
@@ -59,7 +61,7 @@ import {
   updateCharacter,
 } from './characters.js';
 import { advanceMatrixEffect, startMatrixEffect } from './matrixEffectState.js';
-import type { PetHome, PetSofaSpot } from './petEntity.js';
+import type { PetHome, PetSofaSpot, PetTreeSpot } from './petEntity.js';
 import { createPet, findPetHome, isNearPetHome, petClaims, updatePet } from './petEntity.js';
 import {
   anchorTile,
@@ -1714,6 +1716,26 @@ export class OfficeState {
     return spots;
   }
 
+  /** Cat trees a cat may climb, with the top platform as the perch. */
+  getCatTreeSpots(): PetTreeSpot[] {
+    const spots: PetTreeSpot[] = [];
+    for (const item of this.layout.furniture) {
+      if (!PET_CAT_TREE_TYPE_PATTERN.test(item.type)) continue;
+      const entry = getCatalogEntry(item.type);
+      const w = entry?.footprintW ?? 1;
+      const h = entry?.footprintH ?? 2;
+      spots.push({
+        uid: item.uid,
+        footprint: { col: item.col, row: item.row, w, h },
+        x: (item.col + w / 2) * TILE_SIZE,
+        y: item.row * TILE_SIZE + PET_CAT_TREE_PERCH_Y_PX,
+        // In front of the tree's own sprite
+        zY: (item.row + h) * TILE_SIZE + 1.5,
+      });
+    }
+    return spots;
+  }
+
   /** Remove a pet by id. Idempotent. */
   removePet(id: string): void {
     // A dog removed mid-bite must not leave the agent walking slowly
@@ -1930,6 +1952,7 @@ export class OfficeState {
     // ── Pet FSM ────────────────────────────────────────────────
     const petHome = this.pets.length > 0 ? this.getPetHome() : null;
     const sofas = this.pets.some((p) => p.kind === PetKind.DOG) ? this.getFreeSofaSpots() : [];
+    const trees = this.pets.some((p) => p.kind === PetKind.CAT) ? this.getCatTreeSpots() : [];
     for (const pet of this.pets) {
       // What the other pets already took: a pet never shares a sofa, lap or leg
       const claimed = new Set<string>();
@@ -1944,7 +1967,7 @@ export class OfficeState {
         this.tileMap,
         this.blockedTiles,
         petHome,
-        { sofas, claimed },
+        { sofas, trees, claimed },
       );
 
       // Tick heart bubble timer (mirrors character waiting-bubble pattern)

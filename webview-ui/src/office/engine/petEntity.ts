@@ -8,6 +8,7 @@ import {
   PET_BITE_REACH_PX,
   PET_BITE_SIDE_OFFSET_PX,
   PET_BITE_TRAIL_PX,
+  PET_CAT_TREE_CHANCE,
   PET_CHASE_MAX_SEC,
   PET_CHASE_RECALC_INTERVAL_SEC,
   PET_CHASE_SPEED_PX_PER_SEC,
@@ -85,14 +86,27 @@ export interface PetSofaSpot {
   zY: number;
 }
 
-/** What the pet can see beyond the characters: free sofas, and what other pets took. */
+/** A cat tree a cat may climb (derived by OfficeState each tick). */
+export interface PetTreeSpot {
+  /** The placed furniture's uid. */
+  uid: string;
+  /** The tree's tiles. */
+  footprint: { col: number; row: number; w: number; h: number };
+  /** Where the cat sits on the top platform (pixel feet position) and its depth key. */
+  x: number;
+  y: number;
+  zY: number;
+}
+
+/** What the pet can see beyond the characters: free sofas and trees, and what other pets took. */
 export interface PetSurroundings {
   sofas: readonly PetSofaSpot[];
+  trees: readonly PetTreeSpot[];
   /** `perchKey`s / `bite:<id>` already taken by OTHER pets. */
   claimed: ReadonlySet<string>;
 }
 
-const NO_SURROUNDINGS: PetSurroundings = { sofas: [], claimed: new Set() };
+const NO_SURROUNDINGS: PetSurroundings = { sofas: [], trees: [], claimed: new Set() };
 
 /** A resolved perch: where to sit, its depth key, and the tiles to jump up from. */
 interface PerchSpot {
@@ -106,6 +120,7 @@ interface PerchSpot {
 export function perchKey(target: PetPerchTarget): string {
   if (target.kind === 'sofa') return `sofa:${target.seatId}`;
   if (target.kind === 'lap') return `lap:${target.charId}`;
+  if (target.kind === 'tree') return `tree:${target.uid}`;
   return 'table';
 }
 
@@ -390,6 +405,10 @@ function resolvePerch(
         }
       : null;
   }
+  if (target.kind === 'tree') {
+    const tree = surroundings.trees.find((t) => t.uid === target.uid);
+    return tree ? { x: tree.x, y: tree.y, zY: tree.zY, footprint: tree.footprint } : null;
+  }
   return lapSpot(characters.get(target.charId));
 }
 
@@ -416,6 +435,17 @@ function choosePerch(
     return { kind: 'sofa', seatId: sofas[0].seatId };
   }
   if (pet.kind === PetKind.CAT) {
+    const trees = surroundings.trees.filter(
+      (t) =>
+        !surroundings.claimed.has(`tree:${t.uid}`) &&
+        withinSeatSearch(pet, home, t.footprint.col, t.footprint.row),
+    );
+    if (trees.length > 0 && Math.random() < PET_CAT_TREE_CHANCE) {
+      trees.sort(
+        (a, b) => near(a.footprint.col, a.footprint.row) - near(b.footprint.col, b.footprint.row),
+      );
+      return { kind: 'tree', uid: trees[0].uid };
+    }
     const laps = [...characters.values()].filter(
       (ch) =>
         !surroundings.claimed.has(`lap:${ch.id}`) &&
