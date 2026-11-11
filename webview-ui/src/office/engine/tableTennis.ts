@@ -37,6 +37,9 @@ const VERTICAL_BALL_TOP_INSET_PX = 8;
 const VERTICAL_BALL_BOTTOM_INSET_PX = 14;
 /** Tall table: the scoreboard centre rides this far above the table middle (halfway between the net and the far edge). */
 const VERTICAL_SCORE_ABOVE_NET_PX = 13;
+/** Tall table: the far (top) player steps this far down from their tile centre so
+ *  they stand at the table's edge, not a tile away (the near player's feet already land there). */
+const VERTICAL_FAR_PLAYER_OFFSET_Y_PX = 12;
 /** Z-sort nudge putting the ball after the table (zY = footprint bottom). */
 const BALL_Z_AFTER_TABLE = 0.25;
 
@@ -113,6 +116,7 @@ export function deriveTables(
           row: end0.row,
           dir: vertical ? Direction.DOWN : Direction.RIGHT,
           offsetX,
+          offsetY: vertical ? VERTICAL_FAR_PLAYER_OFFSET_Y_PX : 0,
         },
         {
           tableUid: item.uid,

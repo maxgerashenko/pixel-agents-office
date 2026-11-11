@@ -118,6 +118,7 @@ export function settleAtPlaySlot(ch: Character, slot: PlaySlot): void {
   ch.state = CharacterState.TYPE;
   ch.dir = slot.dir;
   if (slot.offsetX) ch.x = tileCenter(slot.col, slot.row).x + slot.offsetX;
+  if (slot.offsetY) ch.y = tileCenter(slot.col, slot.row).y + slot.offsetY;
   ch.playing = false;
   ch.frame = 0;
   ch.frameTimer = 0;

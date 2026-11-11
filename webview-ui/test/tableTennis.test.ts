@@ -291,6 +291,8 @@ test('a rotated table is played end to end: players above and below, ball down i
       assert.deepEqual([a.tileCol, a.tileRow, a.dir], [4, 3, Direction.DOWN]);
       assert.equal(a.x, 5 * 16, 'stands in the middle of the table width');
       assert.equal(b.x, 5 * 16, 'stands in the middle of the table width');
+      assert.ok(a.y > 3 * 16 + 8, 'top player steps down to the table edge, not a tile away');
+      assert.equal(b.y, 7 * 16 + 8, 'bottom player stays on their tile centre');
       assert.deepEqual([b.tileCol, b.tileRow, b.dir], [4, 7, Direction.UP]);
     }
   });

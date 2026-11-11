@@ -189,6 +189,8 @@ export interface PlaySlot {
   /** Pixels the player stands right of the tile centre (a tall table is
    *  2 tiles wide: players stand in its middle, on the tile boundary). */
   offsetX?: number;
+  /** Pixels below the tile centre the player stands (the tall table's far end, so they stand at the table edge). */
+  offsetY?: number;
 }
 
 export interface Character {
