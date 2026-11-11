@@ -31,17 +31,24 @@ import { Direction, TILE_SIZE } from '../types.js';
 const TABLE_SURFACE_CENTER_PX = 14;
 /** The paddle blade sits this far in front of a player's tile centre. */
 const BALL_END_INSET_PX = 6;
+/** Vertical table: ball turning points sit this far inside the surface's far
+ *  and near edges (sprite rows from its top / bottom). */
+const VERTICAL_BALL_TOP_INSET_PX = 8;
+const VERTICAL_BALL_BOTTOM_INSET_PX = 14;
+/** Tall table: the scoreboard centre rides this far above the table middle (halfway between the net and the far edge). */
+const VERTICAL_SCORE_ABOVE_NET_PX = 13;
 /** Z-sort nudge putting the ball after the table (zY = footprint bottom). */
 const BALL_Z_AFTER_TABLE = 0.25;
 
 export interface TableTennisTable {
   uid: string;
   slots: [PlaySlot, PlaySlot];
-  /** Pixel x of the two ball turning points (left, right). */
-  ballLeftX: number;
-  ballRightX: number;
-  /** Pixel y of the ball's resting line (the table surface's centre line). */
-  ballY: number;
+  /** Pixel position of the ball at slot 0's paddle and at slot 1's: the two
+   *  turning points along the table's length (horizontal or vertical). */
+  ballX0: number;
+  ballY0: number;
+  ballX1: number;
+  ballY1: number;
   /** Z-sort key for the ball: just in front of the table, behind the players. */
   ballZY: number;
   /** Scoreboard anchor: above the net, over the table's sprite top. */
@@ -52,10 +59,12 @@ export interface TableTennisTable {
 /**
  * Tables whose two end tiles are both usable: walkable and not somewhere an
  * idle agent may not stand (an Area or its buffer — Areas are for work only).
- * Slot 0 is left of the table facing right, slot 1 right of it facing left,
- * both on the table's lower footprint row: the table top is drawn raised, so
- * its centre line sits over that row's ground and a player standing there is
- * level with the line, paddle at table height.
+ * A wide table (the default orientation): slot 0 is left of it facing right,
+ * slot 1 right of it facing left, both on the table's lower footprint row: the
+ * table top is drawn raised, so its centre line sits over that row's ground
+ * and a player standing there is level with the line, paddle at table height.
+ * A tall (rotated) table: slot 0 is above it facing down, slot 1 below it
+ * facing up, both in the table's left footprint column.
  */
 export function deriveTables(
   furniture: readonly PlacedFurniture[],
@@ -67,29 +76,67 @@ export function deriveTables(
     if (!TABLE_TENNIS_TYPE_PATTERN.test(item.type)) continue;
     const entry = getCatalogEntry(item.type);
     if (!entry) continue;
-    const row = item.row + Math.floor(entry.footprintH / 2);
-    const left = { col: item.col - 1, row };
-    const right = { col: item.col + entry.footprintW, row };
-    const ok = [left, right].every(
+    const vertical = entry.footprintH > entry.footprintW;
+    const end0 = vertical
+      ? { col: item.col, row: item.row - 1 }
+      : { col: item.col - 1, row: item.row + Math.floor(entry.footprintH / 2) };
+    const end1 = vertical
+      ? { col: item.col, row: item.row + entry.footprintH }
+      : { col: item.col + entry.footprintW, row: end0.row };
+    const ok = [end0, end1].every(
       (t) => isStandable(t.col, t.row) && !noIdleTileKeys.has(`${t.col},${t.row}`),
     );
     if (!ok) continue;
+    const centerX = (item.col + entry.footprintW / 2) * TILE_SIZE;
+    // A tall table's players stand in the middle of its width, not on a tile centre
+    const offsetX = vertical ? centerX - (item.col * TILE_SIZE + TILE_SIZE / 2) : 0;
+    const ball = vertical
+      ? {
+          x0: centerX,
+          y0: item.row * TILE_SIZE + VERTICAL_BALL_TOP_INSET_PX,
+          x1: centerX,
+          y1: (item.row + entry.footprintH) * TILE_SIZE - VERTICAL_BALL_BOTTOM_INSET_PX,
+        }
+      : {
+          x0: end0.col * TILE_SIZE + TILE_SIZE / 2 + BALL_END_INSET_PX,
+          y0: item.row * TILE_SIZE + TABLE_SURFACE_CENTER_PX,
+          x1: end1.col * TILE_SIZE + TILE_SIZE / 2 - BALL_END_INSET_PX,
+          y1: item.row * TILE_SIZE + TABLE_SURFACE_CENTER_PX,
+        };
     tables.push({
       uid: item.uid,
       slots: [
-        { tableUid: item.uid, index: 0, col: left.col, row: left.row, dir: Direction.RIGHT },
-        { tableUid: item.uid, index: 1, col: right.col, row: right.row, dir: Direction.LEFT },
+        {
+          tableUid: item.uid,
+          index: 0,
+          col: end0.col,
+          row: end0.row,
+          dir: vertical ? Direction.DOWN : Direction.RIGHT,
+          offsetX,
+        },
+        {
+          tableUid: item.uid,
+          index: 1,
+          col: end1.col,
+          row: end1.row,
+          dir: vertical ? Direction.UP : Direction.LEFT,
+          offsetX,
+        },
       ],
-      ballLeftX: left.col * TILE_SIZE + TILE_SIZE / 2 + BALL_END_INSET_PX,
-      ballRightX: right.col * TILE_SIZE + TILE_SIZE / 2 - BALL_END_INSET_PX,
-      ballY: item.row * TILE_SIZE + TABLE_SURFACE_CENTER_PX,
+      ballX0: ball.x0,
+      ballY0: ball.y0,
+      ballX1: ball.x1,
+      ballY1: ball.y1,
       ballZY: (item.row + entry.footprintH) * TILE_SIZE + BALL_Z_AFTER_TABLE,
-      scoreX: (item.col + entry.footprintW / 2) * TILE_SIZE,
-      scoreY:
-        item.row * TILE_SIZE +
-        entry.footprintH * TILE_SIZE -
-        entry.sprite.length -
-        TABLE_TENNIS_SCORE_LIFT_PX,
+      scoreX: centerX,
+      // Wide table: above the net post. Tall table: sitting on the net itself,
+      // in the middle of the table's length.
+      scoreY: vertical
+        ? item.row * TILE_SIZE + (entry.footprintH * TILE_SIZE) / 2 - VERTICAL_SCORE_ABOVE_NET_PX
+        : item.row * TILE_SIZE +
+          entry.footprintH * TILE_SIZE -
+          entry.sprite.length -
+          TABLE_TENNIS_SCORE_LIFT_PX,
     });
   }
   return tables;
@@ -232,8 +279,8 @@ export function tableBall(table: TableTennisTable, elapsed: number, server: 0 | 
   const fromSlot0 = (leg % 2 === 0) === (server === 0);
   const t = fromSlot0 ? u : 1 - u; // 0 at slot 0's paddle, 1 at slot 1's
   return {
-    x: table.ballLeftX + (table.ballRightX - table.ballLeftX) * t,
-    y: table.ballY,
+    x: table.ballX0 + (table.ballX1 - table.ballX0) * t,
+    y: table.ballY0 + (table.ballY1 - table.ballY0) * t,
     z: ballHeight(u),
     zY: table.ballZY,
     near: [1 - t, t],
