@@ -321,7 +321,7 @@ export type PetState = (typeof PetState)[keyof typeof PetState];
 export const PetKind = {
   /** Jumps only onto free sofas, and bites walking agents' legs. */
   DOG: 'dog',
-  /** Sits on a free table and on seated agents' laps. */
+  /** Sits on a free table, on seated agents' laps and on cat trees. */
   CAT: 'cat',
   /** Unknown species: sits on a free table only. */
   OTHER: 'other',
@@ -330,7 +330,10 @@ export type PetKind = (typeof PetKind)[keyof typeof PetKind];
 
 /** What a pet is jumping onto or sitting on. */
 export type PetPerchTarget =
-  { kind: 'table' } | { kind: 'sofa'; seatId: string } | { kind: 'lap'; charId: number };
+  | { kind: 'table' }
+  | { kind: 'sofa'; seatId: string }
+  | { kind: 'lap'; charId: number }
+  | { kind: 'tree'; uid: string };
 
 /** Runtime pet (mutated by FSM tick). */
 export interface Pet {

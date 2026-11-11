@@ -353,6 +353,12 @@ export const PET_HOP_ARC_PX = 10;
 export const PET_HOME_TABLE_PATTERNS = ['TABLE_TENNIS', 'PING_PONG', 'TABLE'] as const;
 /** Seat furniture a dog may jump onto when nobody is sitting there or heading to it. */
 export const PET_SOFA_TYPE_PATTERN = /SOFA|COUCH/i;
+/** Furniture type a cat may climb onto (its top platform). */
+export const PET_CAT_TREE_TYPE_PATTERN = /CAT_TREE/i;
+/** Chance, at each idle decision, that a cat climbs a free cat tree. */
+export const PET_CAT_TREE_CHANCE = 0.4;
+/** Cat on a tree: feet this far (px) below the top of the tree's sprite (its top platform). */
+export const PET_CAT_TREE_PERCH_Y_PX = 9;
 /** How far (Manhattan tiles) from the pet's table a sofa or lap may be for it to go there. */
 export const PET_SEAT_SEARCH_RADIUS_TILES = 6;
 /** Chance, at each idle decision, that a dog goes to a free sofa. */
