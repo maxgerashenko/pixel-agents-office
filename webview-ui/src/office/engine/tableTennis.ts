@@ -35,8 +35,8 @@ const BALL_END_INSET_PX = 6;
  *  and near edges (sprite rows from its top / bottom). */
 const VERTICAL_BALL_TOP_INSET_PX = 8;
 const VERTICAL_BALL_BOTTOM_INSET_PX = 14;
-/** Tall table: the scoreboard centre rides this far above the table middle (about a 12px gap above the net, plate half-height included). */
-const VERTICAL_SCORE_ABOVE_NET_PX = 21;
+/** Tall table: the scoreboard centre rides this far above the table middle (halfway between the net and the far edge). */
+const VERTICAL_SCORE_ABOVE_NET_PX = 13;
 /** Z-sort nudge putting the ball after the table (zY = footprint bottom). */
 const BALL_Z_AFTER_TABLE = 0.25;
 
