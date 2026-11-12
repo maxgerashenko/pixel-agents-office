@@ -13,6 +13,7 @@ import {
   EMPTY_SPRITE_THUMBNAIL_BG,
   PET_THUMB_SCALE_MARGIN,
   PET_THUMB_ZOOM,
+  SUPPORT_AREA_LABEL,
 } from '../../constants.js';
 import { getColorizedSprite } from '../colorize.js';
 import { getColorizedFloorSprite, getFloorPatternCount, hasFloorSprites } from '../floorTiles.js';
@@ -782,6 +783,8 @@ function AreaCard({
     [directories, mappedFolders],
   );
 
+  const isSupport = area.label.trim().toLowerCase() === SUPPORT_AREA_LABEL.toLowerCase();
+
   const commitRename = () => {
     setRenaming(false);
     const trimmed = renameDraft.trim();
@@ -854,7 +857,9 @@ function AreaCard({
 
       <div className="flex flex-col gap-2 max-h-80 overflow-y-auto pixel-scrollbar">
         {mappedFolders.length === 0 ? (
-          <span className="text-xs text-text-muted italic">No folders mapped</span>
+          <span className="text-xs text-text-muted italic">
+            {isSupport ? 'Folders with no Area work here' : 'No folders mapped'}
+          </span>
         ) : (
           mappedFolders.map((folder) => (
             <div key={folder} className="flex items-center gap-4 py-1 px-2">
