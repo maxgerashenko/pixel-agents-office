@@ -10,6 +10,8 @@ import {
   GREETER_TILE_MARGIN,
   INACTIVE_SEAT_TIMER_MIN_SEC,
   INACTIVE_SEAT_TIMER_RANGE_SEC,
+  LAVA_LAMP_ANIM_INTERVAL_SEC,
+  LAVA_LAMP_TYPE_PREFIX,
   MAX_PET_ID_LENGTH,
   PAIR_SEAT_MAX_DIST,
   PET_CAT_TREE_PERCH_Y_PX,
@@ -1551,7 +1553,19 @@ export class OfficeState {
       }
     }
 
-    if (autoOnTiles.size === 0 && playedUids.size === 0 && litRackUids.size === 0) {
+    // A lava lamp is always lit and flows at its own calm pace, worked or not
+    const lavaFrame = Math.floor(this.furnitureAnimTimer / LAVA_LAMP_ANIM_INTERVAL_SEC);
+    const lavaUids = new Set<string>();
+    for (const item of this.layout.furniture) {
+      if (item.type.startsWith(LAVA_LAMP_TYPE_PREFIX)) lavaUids.add(item.uid);
+    }
+
+    if (
+      autoOnTiles.size === 0 &&
+      playedUids.size === 0 &&
+      litRackUids.size === 0 &&
+      lavaUids.size === 0
+    ) {
       this.furniture = layoutToFurnitureInstances(this.layout.furniture);
       return;
     }
@@ -1561,6 +1575,7 @@ export class OfficeState {
     const modifiedFurniture: PlacedFurniture[] = this.layout.furniture.map((item) => {
       const entry = getCatalogEntry(item.type);
       if (!entry) return item;
+      if (lavaUids.has(item.uid)) return { ...item, type: this.lightUp(item.type, lavaFrame) };
       if (playedUids.has(item.uid) || litRackUids.has(item.uid))
         return { ...item, type: this.lightUp(item.type, animFrame) };
       // Check if any tile of this furniture overlaps an auto-on tile
@@ -1884,7 +1899,10 @@ export class OfficeState {
     const prevFrame = Math.floor(this.furnitureAnimTimer / FURNITURE_ANIM_INTERVAL_SEC);
     this.furnitureAnimTimer += dt;
     const newFrame = Math.floor(this.furnitureAnimTimer / FURNITURE_ANIM_INTERVAL_SEC);
-    if (newFrame !== prevFrame) {
+    const lavaChanged =
+      Math.floor((this.furnitureAnimTimer - dt) / LAVA_LAMP_ANIM_INTERVAL_SEC) !==
+      Math.floor(this.furnitureAnimTimer / LAVA_LAMP_ANIM_INTERVAL_SEC);
+    if (newFrame !== prevFrame || lavaChanged) {
       this.rebuildFurnitureInstances();
     }
 

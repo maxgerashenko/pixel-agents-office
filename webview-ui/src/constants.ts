@@ -212,6 +212,10 @@ export const PERMISSION_VOLUME = 0.12;
 
 // ── Furniture Animation ─────────────────────────────────────
 export const FURNITURE_ANIM_INTERVAL_SEC = 0.2;
+/** A lava lamp is always lit; its lava drifts one frame per this many seconds. */
+export const LAVA_LAMP_ANIM_INTERVAL_SEC = 0.8;
+/** Placed-furniture type prefix shared by every lava lamp variant. */
+export const LAVA_LAMP_TYPE_PREFIX = 'LAVA_LAMP';
 
 // ── Version Notice ──────────────────────────────────────────
 export const WHATS_NEW_AUTO_CLOSE_MS = 20000;
