@@ -20,7 +20,7 @@ const positionStyles: Record<string, { className: string; style: React.CSSProper
 export function Tooltip({ title, onDismiss, position = 'top-right', children }: TooltipProps) {
   return (
     <div
-      className={`absolute z-20 pixel-panel whitespace-nowrap p-0 ${positionStyles[position].className}`}
+      className={`absolute z-44 pixel-panel whitespace-nowrap p-0 ${positionStyles[position].className}`}
       style={positionStyles[position].style}
     >
       <div className="flex items-center justify-between py-4 px-8 border-b border-border">

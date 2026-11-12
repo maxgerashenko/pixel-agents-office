@@ -78,7 +78,7 @@ export function BottomToolbar({
     return (
       <div
         data-fit-obstacle="bottom"
-        className="absolute left-10 bottom-10 z-20 flex items-center gap-4 pixel-panel p-4"
+        className="absolute left-10 bottom-10 z-44 flex items-center gap-4 pixel-panel p-4"
       >
         {['+ Agent', 'Layout', 'Settings'].map((label) => (
           <Button key={label} variant="disabled" disabled title={READ_ONLY_CONTROL_HINT}>
@@ -94,7 +94,7 @@ export function BottomToolbar({
     // reaches these buttons and no lift is needed.
     <div
       data-fit-obstacle="bottom"
-      className="absolute left-10 bottom-10 z-20 flex items-center gap-4 pixel-panel p-4"
+      className="absolute left-10 bottom-10 z-44 flex items-center gap-4 pixel-panel p-4"
     >
       {showUnavailable && (
         <Button

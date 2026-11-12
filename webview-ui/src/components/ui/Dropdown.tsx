@@ -46,7 +46,7 @@ export function Dropdown({ isOpen, children, className = '', fitViewport = false
   if (!isOpen) return null;
 
   return (
-    <div className="absolute bottom-full left-0 pb-10 z-10">
+    <div className="absolute bottom-full left-0 pb-10 z-44">
       <div
         ref={panelRef}
         style={fitViewport ? { maxHeight } : undefined}
