@@ -250,6 +250,10 @@ export const INTRO_BUBBLE_Z_INDEX = 45;
 export const OVERLAY_LABEL_Z_INDEX = 41;
 export const OVERLAY_LABEL_SELECTED_Z_INDEX = 42;
 export const OVERLAY_BUBBLE_Z_INDEX = 43;
+/** Anything the user opens (toolbars hosting dropdowns, tooltips, colour picker
+ *  popups, version popup) sits at z-44 (Tailwind `z-44`) so static office chrome —
+ *  agent labels, speech bubbles — can never cover it. Keep in step with the class. */
+export const POPUP_Z_INDEX = 44;
 /** The greeter stands this many tiles in from the office's bottom-left corner
  *  (target tile (margin, rows-1-margin); nearest walkable tile if blocked). */
 export const GREETER_TILE_MARGIN = 3;
