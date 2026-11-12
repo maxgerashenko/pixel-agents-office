@@ -779,8 +779,8 @@ function AreaCard({
     [areaMappings, area.label],
   );
   const availableFolders = useMemo(
-    () => directories.filter((f) => !mappedFolders.includes(f.name)),
-    [directories, mappedFolders],
+    () => directories.filter((f) => (areaMappings[f.name]?.length ?? 0) === 0),
+    [directories, areaMappings],
   );
 
   const isSupport = area.label.trim().toLowerCase() === SUPPORT_AREA_LABEL.toLowerCase();
@@ -894,11 +894,15 @@ function AreaCard({
             if (availableFolders.length === 0) return;
             setAddFolderOpen((v) => !v);
           }}
-          title={availableFolders.length === 0 ? 'All folders already mapped' : 'Map a folder…'}
+          title={
+            availableFolders.length === 0
+              ? 'All folders already assigned to areas'
+              : 'Map a folder…'
+          }
         >
           Add folder…
         </Button>
-        <Dropdown isOpen={addFolderOpen}>
+        <Dropdown isOpen={addFolderOpen} className="max-h-160 overflow-y-auto pixel-scrollbar">
           {availableFolders.map((f) => (
             <DropdownItem
               key={f.path}
