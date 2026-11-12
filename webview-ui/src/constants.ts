@@ -389,9 +389,6 @@ export const PET_CHASE_RECALC_INTERVAL_SEC = 0.3;
 export const PET_CHASE_MAX_SEC = 8.0;
 /** The dog grabs the leg once this close (world px between feet). */
 export const PET_BITE_REACH_PX = 12;
-/** The dog hangs on to the leg for this many tiles of the agent's walk, then lets go
- *  (sooner if the agent stops). */
-export const PET_BITE_DRAG_TILES = 3;
 /** Seconds of slowed walk each tick of a bite grants the agent (the pet renews it every tick). */
 export const PET_BITE_DRAG_HOLD_SEC = 1.0;
 /** Seconds before a dog may bite a leg again. */

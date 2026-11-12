@@ -376,10 +376,6 @@ export interface Pet {
   chaseToBite: boolean;
   /** Seconds before this dog may bite a leg again. */
   biteCooldown: number;
-  /** Tiles of the agent's walk still to be dragged before the dog lets go. */
-  biteStepsLeft: number;
-  /** The tile the bitten agent was last seen on, to count its steps. */
-  biteTile: { col: number; row: number } | null;
   /** Characters standing on the pet's tile last tick (a step-on is a NEW arrival). */
   onTileIds: Set<number>;
   /** Direction of the current HOP: true = up onto the perch, false = back down. */
