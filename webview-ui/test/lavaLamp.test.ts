@@ -1,6 +1,6 @@
 /**
- * Lava lamp: a desk-top decor item whose lava flows while an agent works at
- * the desk it stands on. Loads the real manifest through the real loader.
+ * Lava lamp: a desk-top decor item that is always lit, its lava flowing slowly.
+ * Loads the real manifest through the real loader.
  *
  * Run with: npm test
  */
