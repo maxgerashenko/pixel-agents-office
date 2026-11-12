@@ -3,7 +3,6 @@ import {
   PET_BITE_CHANCE,
   PET_BITE_COOLDOWN_SEC,
   PET_BITE_DRAG_HOLD_SEC,
-  PET_BITE_DRAG_TILES,
   PET_BITE_RADIUS_TILES,
   PET_BITE_REACH_PX,
   PET_BITE_SIDE_OFFSET_PX,
@@ -512,7 +511,7 @@ function trackOccupants(pet: Pet, characters: Map<number, Character>): void {
   }
 }
 
-/** Sink the teeth in: the dog sticks to the leg for the next PET_BITE_DRAG_TILES tiles. */
+/** Sink the teeth in: the dog sticks to the leg until the agent stops moving. */
 function startBite(pet: Pet, target: Character): void {
   pet.state = PetState.BITE;
   pet.chaseToBite = false;
@@ -520,8 +519,6 @@ function startBite(pet: Pet, target: Character): void {
   pet.perchTarget = null;
   pet.dir = pet.x <= target.x ? Direction.RIGHT : Direction.LEFT;
   // A leg caught mid-step first finishes the tile it is leaving: that one does not count
-  pet.biteStepsLeft = PET_BITE_DRAG_TILES + (target.moveProgress > 0 ? 1 : 0);
-  pet.biteTile = { col: target.tileCol, row: target.tileRow };
   pet.path = [];
   pet.moveProgress = 0;
   pet.frame = 0;
@@ -554,8 +551,6 @@ function releaseBite(pet: Pet, target: Character | undefined): void {
   }
   pet.perchZY = null;
   pet.perchTimer = 0;
-  pet.biteTile = null;
-  pet.biteStepsLeft = 0;
   pet.biteCooldown = PET_BITE_COOLDOWN_SEC;
   pet.dir = Direction.DOWN;
   settleIdle(pet);
@@ -593,8 +588,6 @@ export function createPet(
     perchTarget: null,
     chaseToBite: false,
     biteCooldown: 0,
-    biteStepsLeft: 0,
-    biteTile: null,
     onTileIds: new Set(),
     hopUp: true,
     hopProgress: 0,
@@ -700,18 +693,6 @@ export function updatePet(
       if (!target || target.matrixEffect === 'despawn' || target.state !== CharacterState.WALK) {
         releaseBite(pet, target);
         break;
-      }
-      // Count the tiles the agent has dragged us over; let go after the last
-      if (
-        pet.biteTile &&
-        (target.tileCol !== pet.biteTile.col || target.tileRow !== pet.biteTile.row)
-      ) {
-        pet.biteStepsLeft--;
-        pet.biteTile = { col: target.tileCol, row: target.tileRow };
-        if (pet.biteStepsLeft <= 0) {
-          releaseBite(pet, target);
-          break;
-        }
       }
       // Hang on to the leg: the agent walks on slowly, dragging the dog
       target.petDragTimer = PET_BITE_DRAG_HOLD_SEC;

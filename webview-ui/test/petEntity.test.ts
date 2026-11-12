@@ -582,11 +582,11 @@ test('a dog chases and bites a walking agent’s leg, then lets go after 3 tiles
   assert.ok(walker.petDragTimer! > 0);
   assert.equal(pet.dir, Direction.RIGHT, 'the dog came from the left');
   assert.ok(pet.x < walker.x);
-  assert.equal(pet.biteStepsLeft, 3);
-  walkSteps(pet, walker, people, walkable, tileMap, 2);
-  assert.equal(pet.state, PetState.BITE, 'still hanging on after 2 tiles');
-  walkSteps(pet, walker, people, walkable, tileMap, 1);
-  assert.equal(pet.state, PetState.IDLE, 'lets go after the 3rd tile');
+  walkSteps(pet, walker, people, walkable, tileMap, 6);
+  assert.equal(pet.state, PetState.BITE, 'still hanging on after 6 tiles');
+  walker.state = CharacterState.IDLE;
+  updatePet(pet, 0.1, walkable, people, tileMap, new Set());
+  assert.equal(pet.state, PetState.IDLE, 'lets go when the agent stops');
   assert.equal(walker.petDragTimer, 0);
   assert.ok(pet.biteCooldown > 0);
 });
@@ -623,7 +623,6 @@ test('a resting dog bites whoever steps onto its tile, and lets go early when th
   updatePet(pet, 0.1, walkable, people, tileMap, new Set());
   assert.equal(pet.state, PetState.BITE);
   assert.equal(pet.followTargetId, 1);
-  assert.equal(pet.biteStepsLeft, 3);
   assert.ok(walker.petDragTimer! > 0);
   // The agent takes a step, then stops
   walkSteps(pet, walker, people, walkable, tileMap, 1);
@@ -707,8 +706,6 @@ test('the dog trails the leg it bites as the agent drags it sideways', () => {
   const pet = createPet('d', 0, 4, 5, PetKind.DOG);
   pet.state = PetState.BITE;
   pet.followTargetId = 1;
-  pet.biteStepsLeft = 3;
-  pet.biteTile = { col: 5, row: 5 };
   pet.dir = Direction.RIGHT;
   updatePet(pet, 0.1, walkable, new Map([[1, walker]]), tileMap, new Set());
   assert.equal(pet.dir, Direction.LEFT, 'turned to follow the leg');

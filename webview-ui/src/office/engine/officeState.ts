@@ -343,8 +343,6 @@ export class OfficeState {
           pet.perchZY = null;
           pet.perchTarget = null;
           pet.chaseToBite = false;
-          pet.biteStepsLeft = 0;
-          pet.biteTile = null;
         }
       }
     }
