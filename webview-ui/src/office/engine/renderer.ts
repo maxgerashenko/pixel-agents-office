@@ -75,6 +75,7 @@ import { getWallInstances, hasWallSprites, wallColorToHex } from '../wallTiles.j
 import { characterDrawOffsetY, getCharacterSprite } from './characters.js';
 import { renderMatrixEffect } from './matrixEffect.js';
 import { getPetSpriteData } from './petEntity.js';
+import { drawSky } from './skyDraw.js';
 import type { TableBall, TableScore } from './tableTennis.js';
 
 // ── Settings ────────────────────────────────────────────────────
@@ -962,7 +963,7 @@ export function renderFrame(
   balls?: TableBall[],
   scores?: TableScore[],
 ): { offsetX: number; offsetY: number } {
-  // Clear
+  // Clear, then the day/night sky (visible wherever the layout doesn't cover)
   ctx.clearRect(0, 0, canvasWidth, canvasHeight);
 
   // Use layout dimensions (fallback to tileMap size)
@@ -972,6 +973,14 @@ export function renderFrame(
   // Center map in viewport + pan offset (integer device pixels). Shared with
   // the DOM overlays so a label lands exactly on the sprite it belongs to.
   const { offsetX, offsetY } = mapOffset(canvasWidth, canvasHeight, cols, rows, zoom, panX, panY);
+
+  // Day/night sky behind everything; the sun and moon stay out of the layout's footprint
+  drawSky(ctx, canvasWidth, canvasHeight, zoom, {
+    x: offsetX,
+    y: offsetY,
+    w: cols * TILE_SIZE * zoom,
+    h: rows * TILE_SIZE * zoom,
+  });
 
   // Draw tiles (floor + wall base color)
   renderTileGrid(ctx, tileMap, offsetX, offsetY, zoom, tileColors, layoutCols);

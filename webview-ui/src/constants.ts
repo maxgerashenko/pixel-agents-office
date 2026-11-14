@@ -756,3 +756,37 @@ export const TABLE_TENNIS_BALL_SHADOW_COLOR = 'rgba(0, 0, 0, 0.35)';
 export const TABLE_TENNIS_PADDLE_COLOR = '#d23a3a';
 export const TABLE_TENNIS_PADDLE_RIM_COLOR = '#8e2026';
 export const TABLE_TENNIS_PADDLE_HANDLE_COLOR = '#9a6a35';
+
+// ── Day/night sky (the space around and behind the office layout) ──────────
+
+/** Sky keyframes across one real clock hour. `at` is the fraction of the hour
+ *  (0 = :00, 1 = the next :00); colours blend linearly between neighbours and
+ *  the last keyframe equals the first so the cycle loops with no jump. Day
+ *  runs :00–:30, sunset :30–:43, night :43–:56, a short dawn :56–:00. */
+export const SKY_KEYFRAMES: ReadonlyArray<{ at: number; top: string; bottom: string }> = [
+  { at: 0, top: '#4aa8e8', bottom: '#bfe6f7' },
+  { at: 0.5, top: '#4aa8e8', bottom: '#bfe6f7' },
+  { at: 0.62, top: '#6a4a9c', bottom: '#f08a4b' },
+  { at: 0.72, top: '#0b0b24', bottom: '#1d1a47' },
+  { at: 0.94, top: '#0b0b24', bottom: '#1d1a47' },
+  { at: 0.98, top: '#3b3a7a', bottom: '#f2a07a' },
+  { at: 1, top: '#4aa8e8', bottom: '#bfe6f7' },
+];
+/** The sun is up from the top of the hour until this fraction, then below the horizon. */
+export const SKY_SUN_SET_AT = 0.72;
+/** The moon rises at this fraction and sets at the end of the hour. */
+export const SKY_MOON_RISE_AT = 0.62;
+/** Stars fade in over [in0, in1] and out over [out0, out1]. */
+export const SKY_STAR_FADE = { in0: 0.64, in1: 0.74, out0: 0.94, out1: 1 } as const;
+export const SKY_STAR_COUNT = 48;
+/** Height of one gradient band, in sprite pixels (gives the sky a stepped, pixel look). */
+export const SKY_BAND_SPRITE_PX = 4;
+/** Sun/moon radius in sprite pixels. */
+export const SKY_BODY_RADIUS_SPRITE_PX = 5;
+export const SKY_SUN_COLOR = '#ffe066';
+export const SKY_SUN_SETTING_COLOR = '#ff8a3d';
+export const SKY_MOON_COLOR = '#e8e8f4';
+export const SKY_MOON_CRATER_COLOR = '#b8b8d0';
+export const SKY_STAR_COLOR = '#ffffff';
+/** Twinkle period range in seconds. */
+export const SKY_TWINKLE_SEC = 3;
