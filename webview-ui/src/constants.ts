@@ -767,8 +767,8 @@ export const SKY_KEYFRAMES: ReadonlyArray<{ at: number; top: string; bottom: str
   { at: 0, top: '#4aa8e8', bottom: '#bfe6f7' },
   { at: 0.5, top: '#4aa8e8', bottom: '#bfe6f7' },
   { at: 0.62, top: '#6a4a9c', bottom: '#f08a4b' },
-  { at: 0.72, top: '#0b0b24', bottom: '#1d1a47' },
-  { at: 0.94, top: '#0b0b24', bottom: '#1d1a47' },
+  { at: 0.72, top: '#142a6e', bottom: '#2d5eb5' },
+  { at: 0.94, top: '#142a6e', bottom: '#2d5eb5' },
   { at: 0.98, top: '#3b3a7a', bottom: '#f2a07a' },
   { at: 1, top: '#4aa8e8', bottom: '#bfe6f7' },
 ];
@@ -785,8 +785,9 @@ export const SKY_BAND_SPRITE_PX = 4;
 export const SKY_BODY_RADIUS_SPRITE_PX = 14;
 export const SKY_SUN_COLOR = '#ffe066';
 export const SKY_SUN_SETTING_COLOR = '#ff8a3d';
-export const SKY_MOON_COLOR = '#e8e8f4';
-export const SKY_MOON_CRATER_COLOR = '#b8b8d0';
+export const SKY_MOON_COLOR = '#f2b81c';
+/** The crescent's bright inner edge. */
+export const SKY_MOON_CRATER_COLOR = '#f8e060';
 export const SKY_STAR_COLOR = '#ffffff';
 /** Twinkle period range in seconds. */
 export const SKY_TWINKLE_SEC = 3;
@@ -808,18 +809,40 @@ export const SKY_BIRD_CROSS_SEC = 40;
 /** Seconds per wing flap. */
 export const SKY_BIRD_FLAP_SEC = 0.3;
 /** Starry-Night night sky: swirling bands and big glowing stars with halos. */
-export const SKY_SWIRL_COLORS = ['#1c2a6b', '#2c4a9a', '#4a78c8'] as const;
-export const SKY_SWIRL_COUNT = 5;
+/** Brushstroke palette for the night sky, darkest to palest (strokes near a spiral's core run paler). */
+export const SKY_SWIRL_COLORS = [
+  '#0f2260',
+  '#1b3a8c',
+  '#2a58b8',
+  '#4a7ed0',
+  '#7fa8e0',
+  '#c8e0f0',
+] as const;
+export const SKY_NIGHT_BASE_COLOR = '#173a8a';
+/** The pale band of cloud rolling through the lower sky. */
+export const SKY_NIGHT_BAND_COLOR = '#cfe6ee';
+/** The two spirals: centre (fractions of the canvas), reach (share of the smaller side). */
+export const SKY_VORTICES = [
+  { x: 0.46, y: 0.36, r: 0.24 },
+  { x: 0.74, y: 0.52, r: 0.13 },
+] as const;
+/** Canvas device pixels per brushstroke, in sprite-pixel area (lower = denser). */
+export const SKY_STROKE_AREA_SPRITE_PX = 22;
+export const SKY_STROKE_MAX = 14000;
 export const SKY_BIG_STAR_COUNT = 11;
-export const SKY_BIG_STAR_CORE_COLOR = '#fff3a0';
-export const SKY_BIG_STAR_HALO_COLORS = ['#fff3a0', '#ffd84a', '#ffffff', '#f0a030', '#9ec4f0'] as const;
+export const SKY_BIG_STAR_CORE_COLOR = '#f6c928';
+export const SKY_BIG_STAR_HALO_COLORS = [
+  '#f8e27a',
+  '#f2f0b8',
+  '#ffffff',
+  '#cfe6ee',
+  '#8fb4e4',
+] as const;
 /** Sun polish: glow, rotating rays, shading highlight, face. */
 export const SKY_SUN_RIM_COLOR = '#ff8a1f';
 export const SKY_SUN_HIGHLIGHT_COLOR = '#fff4b0';
 export const SKY_SUN_FLARE_COLOR = '#ff7a1a';
 export const SKY_SUN_SPOT_COLOR = '#8a2a0a';
 export const SKY_SUN_FLARE_COUNT = 7;
-/** Realistic moon: shaded sphere with maria (dark patches) and craters. */
-export const SKY_MOON_SHADE_COLOR = '#a9aac4';
-export const SKY_MOON_MARE_COLOR = '#c4c5da';
-export const SKY_MOON_GLOW_COLOR = '#b8c4ff';
+/** Starry Night moon: a yellow crescent inside a pale glowing halo. */
+export const SKY_MOON_GLOW_COLOR = '#f3efb0';

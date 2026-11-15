@@ -15,11 +15,13 @@ import {
   SKY_MOON_CRATER_COLOR,
   SKY_MOON_DESIGN_RADIUS,
   SKY_MOON_GLOW_COLOR,
-  SKY_MOON_MARE_COLOR,
   SKY_MOON_MAX_CANVAS_SHARE,
   SKY_MOON_RADIUS_SPRITE_PX,
-  SKY_MOON_SHADE_COLOR,
+  SKY_NIGHT_BAND_COLOR,
+  SKY_NIGHT_BASE_COLOR,
   SKY_STAR_COLOR,
+  SKY_STROKE_AREA_SPRITE_PX,
+  SKY_STROKE_MAX,
   SKY_SUN_FLARE_COLOR,
   SKY_SUN_FLARE_COUNT,
   SKY_SUN_HIGHLIGHT_COLOR,
@@ -27,6 +29,7 @@ import {
   SKY_SUN_SPOT_COLOR,
   SKY_SWIRL_COLORS,
   SKY_TWINKLE_SEC,
+  SKY_VORTICES,
 } from '../../constants.js';
 import {
   BIG_STARS,
@@ -38,7 +41,6 @@ import {
   skyAt,
   skyOverride,
   STARS,
-  SWIRLS,
   toCss,
 } from './skyCycle.js';
 
@@ -56,6 +58,75 @@ function disc(
       }
     }
   }
+}
+
+let nightCache: { key: string; canvas: HTMLCanvasElement } | null = null;
+
+/**
+ * The Starry Night sky: thousands of short brushstrokes following a flow field
+ * that curls around two spirals and rolls in gentle waves elsewhere. Painted
+ * once per canvas size into an offscreen canvas (it never changes), then
+ * blitted each frame.
+ */
+function nightBackdrop(w: number, h: number, px: number): HTMLCanvasElement {
+  const key = `${w}x${h}x${px}`;
+  if (nightCache?.key === key) return nightCache.canvas;
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const c = canvas.getContext('2d');
+  nightCache = { key, canvas };
+  if (!c) return canvas;
+  c.fillStyle = SKY_NIGHT_BASE_COLOR;
+  c.fillRect(0, 0, w, h);
+  let seed = 2024;
+  const rnd = (): number => {
+    seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+    return seed / 0x7fffffff;
+  };
+  const side = Math.min(w, h);
+  const count = Math.min(
+    SKY_STROKE_MAX,
+    Math.floor((w * h) / (SKY_STROKE_AREA_SPRITE_PX * px * px)),
+  );
+  const step = 2 * px;
+  const last = SKY_SWIRL_COLORS.length - 1;
+  for (let n = 0; n < count; n++) {
+    let x = rnd() * w;
+    let y = rnd() * h;
+    // how close this stroke starts to a spiral core (paler there)
+    let near = 0;
+    for (const v of SKY_VORTICES) {
+      const d = Math.hypot(x - v.x * w, y - v.y * h) / (v.r * side);
+      near = Math.max(near, Math.exp(-d * d));
+    }
+    const band = 0.66 + 0.07 * Math.sin((x / w) * 5 + 0.6);
+    const inBand = Math.abs(y / h - band) < 0.05 && rnd() < 0.55;
+    c.fillStyle = inBand
+      ? SKY_NIGHT_BAND_COLOR
+      : SKY_SWIRL_COLORS[Math.min(last, Math.floor(rnd() * 3.4 + near * 2.4))];
+    const len = 4 + Math.floor(rnd() * 5);
+    for (let s = 0; s < len; s++) {
+      c.fillRect(Math.round(x / px) * px, Math.round(y / px) * px, 2 * px, px);
+      // flow: gentle rolling waves, bent into a spiral near each vortex
+      const wave = Math.sin((x / w) * 7 + (y / h) * 4) * 0.5;
+      let fx = Math.cos(wave) * 0.5;
+      let fy = Math.sin(wave) * 0.5;
+      for (const v of SKY_VORTICES) {
+        const dx = x - v.x * w;
+        const dy = y - v.y * h;
+        const dist = Math.hypot(dx, dy) || 1;
+        const reach = dist / (v.r * side * 1.7);
+        const pull = Math.exp(-reach * reach) * 2.2;
+        fx += pull * (-dy / dist - (0.3 * dx) / dist);
+        fy += pull * (dx / dist - (0.3 * dy) / dist);
+      }
+      const mag = Math.hypot(fx, fy) || 1;
+      x += (fx / mag) * step;
+      y += (fy / mag) * step;
+    }
+  }
+  return canvas;
 }
 
 /** The sun seen from space: a granulated fiery sphere with sunspots, a corona and flares. */
@@ -186,25 +257,9 @@ export function drawSky(
 
   if (sky.starAlpha > 0) {
     const sec0 = now.getTime() / 1000;
-    // Rolling waves: taller bands sliding across, each with a light crest line
-    for (const [i, sw] of SWIRLS.entries()) {
-      const step = 2 * px;
-      const dir = i % 2 === 0 ? 1 : -1;
-      for (let x = 0; x < w; x += step) {
-        const u = x / w;
-        const y =
-          (sw.y +
-            Math.sin(u * sw.freq * Math.PI * 2 + sw.phase + dir * sec0 * 0.7) * sw.amp * 1.6) *
-          h;
-        const yy = Math.round(y / px) * px;
-        ctx.fillStyle = SKY_SWIRL_COLORS[i % SKY_SWIRL_COLORS.length];
-        ctx.globalAlpha = sky.starAlpha * 0.6;
-        ctx.fillRect(x, yy, step, sw.thick * px);
-        ctx.fillStyle = SKY_SWIRL_COLORS[(i + 2) % SKY_SWIRL_COLORS.length];
-        ctx.globalAlpha = sky.starAlpha * 0.9;
-        ctx.fillRect(x, yy - px, step, px);
-      }
-    }
+    // The painted sky: swirling brushstrokes, cached per canvas size
+    ctx.globalAlpha = sky.starAlpha;
+    ctx.drawImage(nightBackdrop(w, h, px), 0, 0);
     // Starry Night stars: a glowing core wrapped in concentric rings of turning
     // yellow / blue / orange dashes, pulsing softly
     for (const st of BIG_STARS) {
@@ -315,61 +370,35 @@ export function drawSky(
         Math.floor((SKY_MOON_MAX_CANVAS_SHARE * Math.min(w, h)) / px),
       ),
     );
-    const k = mr / SKY_MOON_DESIGN_RADIUS;
-    const sc = (n: number): number => Math.round(n * k);
+    const sc = (n: number): number => Math.round((n * mr) / SKY_MOON_DESIGN_RADIUS);
     const [cx, cy] = arcPosition(sky.moon.p, sky.moon.lift, (mr + 1) * px, w, h, avoid);
     const mx = Math.round(cx / px) * px;
     const my = Math.round(cy / px) * px;
-    const dot = (dx: number, dy: number, sw = 1, sh = 1): void =>
-      ctx.fillRect(mx + dx * px, my + dy * px, sw * px, sh * px);
-    // soft glow
+    // halo: wide concentric rings of pale yellow, like the painting
     ctx.fillStyle = SKY_MOON_GLOW_COLOR;
     for (const [gr, ga] of [
-      [mr + sc(6), 0.07],
-      [mr + sc(4), 0.1],
-      [mr + sc(2), 0.16],
+      [mr + sc(12), 0.1],
+      [mr + sc(9), 0.14],
+      [mr + sc(6), 0.2],
+      [mr + sc(3), 0.3],
+      [mr, 0.45],
     ]) {
       ctx.globalAlpha = ga;
       disc(ctx, mx, my, gr, px);
     }
     ctx.globalAlpha = 1;
-    // sphere: lit face, shadow creeping in from the lower right
-    ctx.fillStyle = SKY_MOON_COLOR;
-    disc(ctx, mx, my, mr, px);
-    ctx.fillStyle = SKY_MOON_MARE_COLOR;
-    for (const [mxo, myo, mrad] of [
-      [-5, -5, 5],
-      [3, -8, 3],
-      [-8, 3, 4],
-      [4, 2, 4],
-    ]) {
-      disc(ctx, mx + sc(mxo) * px, my + sc(myo) * px, sc(mrad), px);
-    }
-    ctx.fillStyle = SKY_MOON_SHADE_COLOR;
-    for (let dy = -mr; dy <= mr; dy++) {
-      for (let dx = -mr; dx <= mr; dx++) {
-        if (dx * dx + dy * dy > mr * mr + mr) continue;
-        const lit = (dx - sc(7)) * (dx - sc(7)) + (dy - sc(7)) * (dy - sc(7));
-        if (lit > (mr + sc(7)) * (mr + sc(7)) - 40 * k * k) dot(dx, dy);
+    // crescent: the disc minus a second disc shifted up and to the right
+    const cr = Math.round(mr * 0.8);
+    const off = Math.round(mr * 0.38);
+    const inner = Math.round(mr * 0.86);
+    for (let dy = -cr; dy <= cr; dy++) {
+      for (let dx = -cr; dx <= cr; dx++) {
+        if (dx * dx + dy * dy > cr * cr) continue;
+        const cut = (dx - off) * (dx - off) + (dy + off / 2) * (dy + off / 2);
+        if (cut <= inner * inner * 0.72) continue;
+        ctx.fillStyle = cut <= inner * inner * 0.86 ? SKY_MOON_CRATER_COLOR : SKY_MOON_COLOR;
+        ctx.fillRect(mx + dx * px, my + dy * px, px, px);
       }
-    }
-    // craters: dark bowl with a bright rim on the lit side
-    for (const [cdx, cdy, cr] of [
-      [-9, -9, 2],
-      [-2, -11, 1],
-      [8, -4, 2],
-      [-12, 0, 1],
-      [-4, 4, 3],
-      [3, 9, 2],
-      [9, 7, 1],
-      [-8, 9, 1],
-      [1, -3, 1],
-      [-1, 12, 1],
-    ]) {
-      ctx.fillStyle = SKY_MOON_CRATER_COLOR;
-      disc(ctx, mx + sc(cdx) * px, my + sc(cdy) * px, sc(cr), px);
-      ctx.fillStyle = SKY_MOON_COLOR;
-      ctx.fillRect(mx + (sc(cdx) - sc(cr)) * px, my + (sc(cdy) - sc(cr)) * px, sc(cr) * px, px);
     }
   }
 }

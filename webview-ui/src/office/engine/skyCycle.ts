@@ -19,7 +19,6 @@ import {
   SKY_SUN_COLOR,
   SKY_SUN_SET_AT,
   SKY_SUN_SETTING_COLOR,
-  SKY_SWIRL_COUNT,
 } from '../../constants.js';
 
 export interface SkyState {
@@ -143,21 +142,11 @@ export const BIRDS = (() => {
     bob: rnd() * Math.PI * 2,
   }));
 })();
-export const SWIRLS = (() => {
-  const rnd = seeded(99);
-  return Array.from({ length: SKY_SWIRL_COUNT }, (_, i) => ({
-    y: 0.08 + (i / SKY_SWIRL_COUNT) * 0.8 + rnd() * 0.05,
-    amp: 0.03 + rnd() * 0.04,
-    freq: 2 + rnd() * 2.5,
-    phase: rnd() * Math.PI * 2,
-    thick: 2 + Math.floor(rnd() * 2),
-  }));
-})();
 export const BIG_STARS = (() => {
   const rnd = seeded(31);
   return Array.from({ length: SKY_BIG_STAR_COUNT }, () => ({
     x: 0.05 + rnd() * 0.9,
-    y: 0.05 + rnd() * 0.6,
+    y: 0.05 + rnd() * 0.5,
     size: 4 + Math.floor(rnd() * 3),
     phase: rnd() * Math.PI * 2,
   }));
