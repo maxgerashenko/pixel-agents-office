@@ -378,6 +378,8 @@ test.describe('Standalone / mobile shell', () => {
     await expect.poll(() => cameraFollowId(page)).not.toBeNull();
     const corner = () =>
       page.evaluate(() => window.__pixelAgentsTestHooks?.getTileCenter?.(0, 0) ?? null);
+    // Let the fit settle after the launch moved the panels.
+    await page.waitForTimeout(800);
     const before = await corner();
     expect(before).not.toBeNull();
 

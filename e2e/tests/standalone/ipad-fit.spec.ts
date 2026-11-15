@@ -20,7 +20,9 @@ interface Box {
 }
 
 /** The drawn office (first..last non-VOID tile) and the panels, in CSS px. */
-async function measure(page: Page): Promise<{ office: Box; topPanel: number; bottomPanel: number }> {
+async function measure(
+  page: Page,
+): Promise<{ office: Box; topPanel: number; bottomPanel: number }> {
   return page.evaluate(() => {
     const hooks = window.__pixelAgentsTestHooks;
     const grid = hooks?.getTiles?.();
@@ -92,10 +94,14 @@ for (const [name, viewport] of [
     test.use({
       hasTouch: true,
       isMobile: true,
+      deviceScaleFactor: 2,
       standaloneOptions: { viewport },
     });
 
-    test(`the office is fitted between the panels and the camera is locked @area:standalone`, async ({ page, standalone }) => {
+    test(`the office is fitted between the panels and the camera is locked @area:standalone`, async ({
+      page,
+      standalone,
+    }) => {
       void standalone;
       await expectFitted(page);
       const before = await measure(page);
@@ -107,6 +113,19 @@ for (const [name, viewport] of [
       await page.keyboard.up('Control');
       await page.waitForTimeout(400);
       expect(await measure(page)).toEqual(before);
+      // Anchored to the bottom: a ~25px gap above the bottom panels.
+      expect(before.bottomPanel - before.office.bottom).toBeLessThan(29);
+      expect(before.bottomPanel - before.office.bottom).toBeGreaterThanOrEqual(21);
+      // Open space above for the sky: at least 10% of the viewport height.
+      expect(before.office.top).toBeGreaterThanOrEqual(viewport.height * 0.1 - 2);
+      // Landscape fills about half the side space the previous fit left: whole zoom 5 (40 CSS px per 16px tile at 2x).
+      if (name === 'landscape') {
+        const tile = await page.evaluate(() => {
+          const h = window.__pixelAgentsTestHooks!;
+          return h.getTileCenter!(1, 0)!.x - h.getTileCenter!(0, 0)!.x;
+        });
+        expect(tile).toBe(40);
+      }
       await page.screenshot({ path: test.info().outputPath(`ipad-${name}.png`) });
     });
   });

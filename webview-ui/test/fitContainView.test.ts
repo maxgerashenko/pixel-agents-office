@@ -47,3 +47,32 @@ test('clamps to the zoom range and tolerates an empty band', () => {
     1,
   );
 });
+
+test('the office sits at the bottom of the band with the margin, centred sideways', () => {
+  // 20x11 at zoom 3 (960x528) in 1400x1000: spare width and height.
+  const canvas = { width: 1400, height: 1000 };
+  const v = fitContainView(canvas, solid(20, 11), 1, 10, { top: 0, bottom: 60, bottomMargin: 16 });
+  assert.equal(v.zoom, 4);
+  const drawnH = 11 * 16 * v.zoom;
+  const bottomEdge = canvas.height / 2 + v.panY + drawnH / 2;
+  assert.equal(bottomEdge, canvas.height - 60 - 16);
+  assert.equal(v.panX, 0);
+});
+
+test('the margin shrinks before the office reaches the top panels', () => {
+  const canvas = { width: 1280, height: 764 };
+  const v = fitContainView(canvas, solid(20, 11), 1, 10, { top: 60, bottom: 0, bottomMargin: 40 });
+  const drawnH = 11 * 16 * v.zoom;
+  const top = canvas.height / 2 + v.panY - drawnH / 2;
+  assert.ok(top >= 60 - 0.5);
+});
+
+test('open space above is kept: zoom steps down until it is left over', () => {
+  const canvas = { width: 2266, height: 1488 };
+  const space = { top: 0, bottom: 100, bottomMargin: 50 };
+  const tall = fitContainView(canvas, solid(20, 11), 1, 10, space);
+  const open = fitContainView(canvas, solid(20, 11), 1, 10, { ...space, minOpenTop: 446 });
+  assert.ok(open.zoom < tall.zoom);
+  const top = canvas.height / 2 + open.panY - (11 * 16 * open.zoom) / 2;
+  assert.ok(top >= 446 - 0.5);
+});

@@ -201,11 +201,20 @@ export function fitWidthView(
 export interface ContainSpace {
   top: number;
   bottom: number;
+  /** Gap kept between the office and the bottom panels (default 0). */
+  bottomMargin?: number;
+  /** Open space kept free above the office (default 0): zoom steps down until
+   *  at least this much is left over. */
+  minOpenTop?: number;
 }
 
 /** The view view mode locks to: the largest whole zoom at which the office's
  *  drawn area fits entirely inside the canvas band between the top and bottom
- *  panels — width AND height — centred in that band, so no panel covers it.
+ *  panels — width AND height — so no panel covers it. Centred horizontally and
+ *  anchored to the bottom of the band (a small margin above the bottom
+ *  panels), leaving the spare height as open space on top; zoom steps down
+ *  before the margin does, and a margin that still can't fit shrinks rather
+ *  than pushing the office under the top panels.
  *  Zoom stays an integer so sprites stay pixel-perfect. Clamped to
  *  [minZoom, maxZoom]; below `minZoom` the office overflows rather than
  *  shrinking further. */
@@ -224,9 +233,15 @@ export function fitContainView(
   };
   const bandHeight = Math.max(0, canvas.height - space.top - space.bottom);
   const byWidth = bounds.w > 0 && canvas.width > 0 ? Math.floor(canvas.width / bounds.w) : minZoom;
-  const byHeight = bounds.h > 0 && bandHeight > 0 ? Math.floor(bandHeight / bounds.h) : minZoom;
+  // The margin and the open top are part of what the office needs, so zoom
+  // steps down before either shrinks.
+  const usableHeight = bandHeight - (space.bottomMargin ?? 0) - (space.minOpenTop ?? 0);
+  const byHeight = bounds.h > 0 && usableHeight > 0 ? Math.floor(usableHeight / bounds.h) : minZoom;
   const zoom = Math.max(minZoom, Math.min(maxZoom, byWidth, byHeight));
-  const cy = space.top + bandHeight / 2;
+  const drawnH = bounds.h * zoom;
+  const bandBottom = canvas.height - space.bottom;
+  const wanted = bandBottom - (space.bottomMargin ?? 0) - drawnH / 2;
+  const cy = Math.max(space.top + drawnH / 2, Math.min(bandBottom - drawnH / 2, wanted));
   // Pan is measured from the grid's centre (pan 0 centres the grid).
   const panX = ((layout.cols * TILE_SIZE) / 2 - (bounds.x + bounds.w / 2)) * zoom;
   const panY =
