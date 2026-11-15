@@ -815,12 +815,13 @@ export const SKY_MOON_CRATER_COLOR = '#b8b8d0';
 export const SKY_STAR_COLOR = '#ffffff';
 /** Twinkle period range in seconds. */
 export const SKY_TWINKLE_SEC = 3;
-/** The moon is a big cartoon character: a larger disc with a face. */
-/** Same size as the sun; capped to a share of the canvas on a very small screen. */
-export const SKY_MOON_RADIUS_SPRITE_PX = 24;
+/** As big as the first ring of rays round the sun at the default view size, and
+ *  in sprite pixels so it grows and shrinks with the zoom; capped to a share of
+ *  the canvas on a very small screen. */
+export const SKY_MOON_RADIUS_SPRITE_PX = 45;
 /** The moon's arc is laid out as if it had this radius, whatever size it is drawn. */
 export const SKY_MOON_TRACK_RADIUS_SPRITE_PX = 16;
-export const SKY_MOON_MAX_CANVAS_SHARE = 0.22;
+export const SKY_MOON_MAX_CANVAS_SHARE = 0.3;
 /** The radius the moon's craters and patches were drawn for. */
 export const SKY_MOON_DESIGN_RADIUS = 16;
 /** Daytime fun: drifting clouds and flapping birds. */
