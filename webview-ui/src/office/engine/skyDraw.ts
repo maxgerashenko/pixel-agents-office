@@ -13,16 +13,18 @@ import {
   SKY_CLOUD_SHADE_COLOR,
   SKY_MOON_COLOR,
   SKY_MOON_CRATER_COLOR,
+  SKY_MOON_DESIGN_RADIUS,
   SKY_MOON_GLOW_COLOR,
   SKY_MOON_MARE_COLOR,
+  SKY_MOON_MAX_CANVAS_SHARE,
   SKY_MOON_RADIUS_SPRITE_PX,
   SKY_MOON_SHADE_COLOR,
   SKY_STAR_COLOR,
+  SKY_SUN_FLARE_COLOR,
+  SKY_SUN_FLARE_COUNT,
   SKY_SUN_HIGHLIGHT_COLOR,
-  SKY_SUN_RAY_COLOR,
-  SKY_SUN_RAY_COUNT,
-  SKY_SUN_RAY_SPIN,
   SKY_SUN_RIM_COLOR,
+  SKY_SUN_SPOT_COLOR,
   SKY_SWIRL_COLORS,
   SKY_TWINKLE_SEC,
 } from '../../constants.js';
@@ -56,7 +58,7 @@ function disc(
   }
 }
 
-/** The sun: soft glow, slowly turning rays, a shaded body with a highlight, and a friendly face. */
+/** The sun seen from space: a granulated fiery sphere with sunspots, a corona and flares. */
 function drawSun(
   ctx: CanvasRenderingContext2D,
   ox: number,
@@ -67,43 +69,80 @@ function drawSun(
   sec: number,
 ): void {
   const base = parseHex(color);
-  // Glow: three soft stepped rings
+  // Corona: wide, soft, stepped glow
   ctx.fillStyle = color;
   for (const [rad, a] of [
-    [r + 7, 0.1],
-    [r + 5, 0.16],
-    [r + 3, 0.26],
+    [r + 9, 0.06],
+    [r + 7, 0.09],
+    [r + 5, 0.14],
+    [r + 3, 0.22],
+    [r + 1, 0.35],
   ]) {
     ctx.globalAlpha = a;
     disc(ctx, ox, oy, rad, px);
   }
   ctx.globalAlpha = 1;
-  // Rays: alternating long and short, turning slowly
-  ctx.fillStyle = SKY_SUN_RAY_COLOR;
-  for (let i = 0; i < SKY_SUN_RAY_COUNT; i++) {
-    const ang = (i / SKY_SUN_RAY_COUNT) * Math.PI * 2 + sec * SKY_SUN_RAY_SPIN;
-    const len = i % 2 === 0 ? 6 : 3;
-    for (let s = r + 2; s < r + 2 + len; s++) {
-      const rx = Math.round((ox + Math.cos(ang) * s * px) / px) * px;
-      const ry = Math.round((oy + Math.sin(ang) * s * px) / px) * px;
-      ctx.fillRect(rx, ry, px, px);
-      if (i % 2 === 0 && s < r + 2 + len - 2) ctx.fillRect(rx + px, ry, px, px);
+  // Flares: curved prominences licking off the limb, wavering over time
+  ctx.fillStyle = SKY_SUN_FLARE_COLOR;
+  for (let i = 0; i < SKY_SUN_FLARE_COUNT; i++) {
+    const baseAng = (i / SKY_SUN_FLARE_COUNT) * Math.PI * 2 + 0.4;
+    const reach = 3 + 2 * (0.5 + 0.5 * Math.sin(sec * 0.8 + i * 2.1));
+    for (let s = 0; s < reach * 3; s++) {
+      const t = s / 3;
+      const ang = baseAng + Math.sin(t * 0.9 + sec * 0.5 + i) * 0.12;
+      const rad = r + t;
+      ctx.globalAlpha = 0.9 - (t / reach) * 0.6;
+      ctx.fillRect(
+        Math.round((ox + Math.cos(ang) * rad * px) / px) * px,
+        Math.round((oy + Math.sin(ang) * rad * px) / px) * px,
+        px,
+        px,
+      );
     }
   }
-  // Body: warm rim, body colour, bright highlight top-left
+  ctx.globalAlpha = 1;
+  // Limb: deep orange edge, hot yellow-white towards the middle (limb brightening)
   ctx.fillStyle = SKY_SUN_RIM_COLOR;
   disc(ctx, ox, oy, r, px);
-  ctx.fillStyle = toCss(mix(base, parseHex(SKY_SUN_RIM_COLOR), 0.25));
+  ctx.fillStyle = toCss(mix(base, parseHex(SKY_SUN_RIM_COLOR), 0.5));
   disc(ctx, ox, oy, r - 1, px);
   ctx.fillStyle = color;
-  disc(ctx, ox - px, oy - px, r - 2, px);
+  disc(ctx, ox, oy, Math.round(r * 0.78), px);
   ctx.fillStyle = SKY_SUN_HIGHLIGHT_COLOR;
-  for (let dy = -r; dy <= 0; dy++) {
-    for (let dx = -r; dx <= 0; dx++) {
-      const d2 = (dx + 5) * (dx + 5) + (dy + 5) * (dy + 5);
-      if (d2 <= 5) ctx.fillRect(ox + dx * px, oy + dy * px, px, px);
-    }
+  disc(ctx, ox, oy, Math.round(r * 0.45), px);
+  // Granulation: a boiling mottle of lighter and darker cells across the surface
+  const cells = Math.round(r * 3.2);
+  for (let i = 0; i < cells; i++) {
+    const a1 = Math.sin(i * 12.9898) * 43758.5453;
+    const a2 = Math.sin(i * 78.233) * 12543.123;
+    const fx = a1 - Math.floor(a1);
+    const fy = a2 - Math.floor(a2);
+    const cx = Math.round((fx * 2 - 1) * (r - 1));
+    const cy = Math.round((fy * 2 - 1) * (r - 1));
+    if (cx * cx + cy * cy > (r - 2) * (r - 2)) continue;
+    const boil = 0.5 + 0.5 * Math.sin(sec * 1.3 + i);
+    ctx.globalAlpha = 0.25 + 0.3 * boil;
+    ctx.fillStyle = i % 2 === 0 ? SKY_SUN_HIGHLIGHT_COLOR : SKY_SUN_RIM_COLOR;
+    ctx.fillRect(ox + cx * px, oy + cy * px, 2 * px, px);
   }
+  ctx.globalAlpha = 1;
+  // Sunspots: a few dark cores with a lighter penumbra
+  for (const [sx, sy, sr] of [
+    [-0.35, -0.25, 0.14],
+    [0.3, 0.2, 0.1],
+    [0.05, 0.45, 0.08],
+  ]) {
+    const spx = ox + Math.round(sx * r) * px;
+    const spy = oy + Math.round(sy * r) * px;
+    const rad = Math.max(1, Math.round(sr * r));
+    ctx.fillStyle = SKY_SUN_RIM_COLOR;
+    ctx.globalAlpha = 0.8;
+    disc(ctx, spx, spy, rad + 1, px);
+    ctx.fillStyle = SKY_SUN_SPOT_COLOR;
+    ctx.globalAlpha = 0.9;
+    disc(ctx, spx, spy, rad, px);
+  }
+  ctx.globalAlpha = 1;
 }
 
 /**
@@ -172,12 +211,14 @@ export function drawSky(
       const pulse = 0.8 + 0.2 * Math.sin(sec0 * 1.2 + st.phase);
       const sx = Math.round((st.x * w) / px) * px;
       const sy = Math.round((st.y * h) / px) * px;
-      ctx.fillStyle = SKY_BIG_STAR_HALO_COLORS[0];
-      ctx.globalAlpha = sky.starAlpha * pulse * 0.18;
+      ctx.fillStyle = SKY_BIG_STAR_HALO_COLORS[4];
+      ctx.globalAlpha = sky.starAlpha * pulse * 0.2;
+      disc(ctx, sx, sy, st.size * 4, px);
+      ctx.globalAlpha = sky.starAlpha * pulse * 0.2;
       disc(ctx, sx, sy, st.size * 3, px);
       SKY_BIG_STAR_HALO_COLORS.forEach((col, k) => {
-        const rad = st.size + 2 + k * 2;
-        const dashes = 10 + k * 6;
+        const rad = st.size + 3 + k * 3;
+        const dashes = 16 + k * 8;
         const spin = sec0 * (k % 2 === 0 ? 0.5 : -0.5) + st.phase;
         ctx.fillStyle = col;
         for (let j = 0; j < dashes; j++) {
@@ -188,8 +229,8 @@ export function drawSky(
             ctx.fillRect(
               Math.round((sx + Math.cos(ang) * rad * px) / px) * px,
               Math.round((sy + Math.sin(ang) * rad * px) / px) * px,
-              px,
-              px,
+              2 * px,
+              2 * px,
             );
           }
         }
@@ -267,7 +308,15 @@ export function drawSky(
     );
   }
   if (sky.moon) {
-    const mr = SKY_MOON_RADIUS_SPRITE_PX;
+    const mr = Math.max(
+      6,
+      Math.min(
+        SKY_MOON_RADIUS_SPRITE_PX,
+        Math.floor((SKY_MOON_MAX_CANVAS_SHARE * Math.min(w, h)) / px),
+      ),
+    );
+    const k = mr / SKY_MOON_DESIGN_RADIUS;
+    const sc = (n: number): number => Math.round(n * k);
     const [cx, cy] = arcPosition(sky.moon.p, sky.moon.lift, (mr + 1) * px, w, h, avoid);
     const mx = Math.round(cx / px) * px;
     const my = Math.round(cy / px) * px;
@@ -276,9 +325,9 @@ export function drawSky(
     // soft glow
     ctx.fillStyle = SKY_MOON_GLOW_COLOR;
     for (const [gr, ga] of [
-      [mr + 6, 0.07],
-      [mr + 4, 0.1],
-      [mr + 2, 0.16],
+      [mr + sc(6), 0.07],
+      [mr + sc(4), 0.1],
+      [mr + sc(2), 0.16],
     ]) {
       ctx.globalAlpha = ga;
       disc(ctx, mx, my, gr, px);
@@ -294,14 +343,14 @@ export function drawSky(
       [-8, 3, 4],
       [4, 2, 4],
     ]) {
-      disc(ctx, mx + mxo * px, my + myo * px, mrad, px);
+      disc(ctx, mx + sc(mxo) * px, my + sc(myo) * px, sc(mrad), px);
     }
     ctx.fillStyle = SKY_MOON_SHADE_COLOR;
     for (let dy = -mr; dy <= mr; dy++) {
       for (let dx = -mr; dx <= mr; dx++) {
         if (dx * dx + dy * dy > mr * mr + mr) continue;
-        const lit = (dx - 7) * (dx - 7) + (dy - 7) * (dy - 7);
-        if (lit > (mr + 7) * (mr + 7) - 40) dot(dx, dy);
+        const lit = (dx - sc(7)) * (dx - sc(7)) + (dy - sc(7)) * (dy - sc(7));
+        if (lit > (mr + sc(7)) * (mr + sc(7)) - 40 * k * k) dot(dx, dy);
       }
     }
     // craters: dark bowl with a bright rim on the lit side
@@ -318,9 +367,9 @@ export function drawSky(
       [-1, 12, 1],
     ]) {
       ctx.fillStyle = SKY_MOON_CRATER_COLOR;
-      disc(ctx, mx + cdx * px, my + cdy * px, cr, px);
+      disc(ctx, mx + sc(cdx) * px, my + sc(cdy) * px, sc(cr), px);
       ctx.fillStyle = SKY_MOON_COLOR;
-      ctx.fillRect(mx + (cdx - cr) * px, my + (cdy - cr) * px, px, px);
+      ctx.fillRect(mx + (sc(cdx) - sc(cr)) * px, my + (sc(cdy) - sc(cr)) * px, sc(cr) * px, px);
     }
   }
 }

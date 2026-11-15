@@ -158,7 +158,7 @@ export const BIG_STARS = (() => {
   return Array.from({ length: SKY_BIG_STAR_COUNT }, () => ({
     x: 0.05 + rnd() * 0.9,
     y: 0.05 + rnd() * 0.6,
-    size: 2 + Math.floor(rnd() * 2),
+    size: 4 + Math.floor(rnd() * 3),
     phase: rnd() * Math.PI * 2,
   }));
 })();

@@ -782,7 +782,7 @@ export const SKY_STAR_COUNT = 48;
 /** Height of one gradient band, in sprite pixels (gives the sky a stepped, pixel look). */
 export const SKY_BAND_SPRITE_PX = 4;
 /** Sun/moon radius in sprite pixels. */
-export const SKY_BODY_RADIUS_SPRITE_PX = 10;
+export const SKY_BODY_RADIUS_SPRITE_PX = 14;
 export const SKY_SUN_COLOR = '#ffe066';
 export const SKY_SUN_SETTING_COLOR = '#ff8a3d';
 export const SKY_MOON_COLOR = '#e8e8f4';
@@ -791,7 +791,11 @@ export const SKY_STAR_COLOR = '#ffffff';
 /** Twinkle period range in seconds. */
 export const SKY_TWINKLE_SEC = 3;
 /** The moon is a big cartoon character: a larger disc with a face. */
-export const SKY_MOON_RADIUS_SPRITE_PX = 16;
+/** 4x the original; capped to a share of the canvas so it never swamps a small screen. */
+export const SKY_MOON_RADIUS_SPRITE_PX = 64;
+export const SKY_MOON_MAX_CANVAS_SHARE = 0.22;
+/** The radius the moon's craters and patches were drawn for. */
+export const SKY_MOON_DESIGN_RADIUS = 16;
 /** Daytime fun: drifting clouds and flapping birds. */
 export const SKY_CLOUD_COLOR = '#ffffff';
 export const SKY_CLOUD_SHADE_COLOR = '#d4e8f6';
@@ -806,16 +810,15 @@ export const SKY_BIRD_FLAP_SEC = 0.3;
 /** Starry-Night night sky: swirling bands and big glowing stars with halos. */
 export const SKY_SWIRL_COLORS = ['#1c2a6b', '#2c4a9a', '#4a78c8'] as const;
 export const SKY_SWIRL_COUNT = 5;
-export const SKY_BIG_STAR_COUNT = 6;
+export const SKY_BIG_STAR_COUNT = 11;
 export const SKY_BIG_STAR_CORE_COLOR = '#fff3a0';
-export const SKY_BIG_STAR_HALO_COLORS = ['#ffd84a', '#f0a030', '#9ec4f0'] as const;
+export const SKY_BIG_STAR_HALO_COLORS = ['#fff3a0', '#ffd84a', '#ffffff', '#f0a030', '#9ec4f0'] as const;
 /** Sun polish: glow, rotating rays, shading highlight, face. */
-export const SKY_SUN_RIM_COLOR = '#ffa726';
-export const SKY_SUN_HIGHLIGHT_COLOR = '#fff9c4';
-export const SKY_SUN_RAY_COLOR = '#ffd54f';
-export const SKY_SUN_RAY_COUNT = 12;
-/** Radians per second the rays turn. */
-export const SKY_SUN_RAY_SPIN = 0.12;
+export const SKY_SUN_RIM_COLOR = '#ff8a1f';
+export const SKY_SUN_HIGHLIGHT_COLOR = '#fff4b0';
+export const SKY_SUN_FLARE_COLOR = '#ff7a1a';
+export const SKY_SUN_SPOT_COLOR = '#8a2a0a';
+export const SKY_SUN_FLARE_COUNT = 7;
 /** Realistic moon: shaded sphere with maria (dark patches) and craters. */
 export const SKY_MOON_SHADE_COLOR = '#a9aac4';
 export const SKY_MOON_MARE_COLOR = '#c4c5da';
