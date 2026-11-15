@@ -209,8 +209,9 @@ export interface ContainSpace {
  *  drawn area fits entirely inside the canvas band between the top and bottom
  *  panels — width AND height — so no panel covers it. Centred horizontally and
  *  anchored to the bottom of the band (a small margin above the bottom
- *  panels), leaving the spare height as open space on top; when the margin
- *  doesn't fit it shrinks, never pushing the office under the top panels.
+ *  panels), leaving the spare height as open space on top; zoom steps down
+ *  before the margin does, and a margin that still can't fit shrinks rather
+ *  than pushing the office under the top panels.
  *  Zoom stays an integer so sprites stay pixel-perfect. Clamped to
  *  [minZoom, maxZoom]; below `minZoom` the office overflows rather than
  *  shrinking further. */
@@ -229,7 +230,10 @@ export function fitContainView(
   };
   const bandHeight = Math.max(0, canvas.height - space.top - space.bottom);
   const byWidth = bounds.w > 0 && canvas.width > 0 ? Math.floor(canvas.width / bounds.w) : minZoom;
-  const byHeight = bounds.h > 0 && bandHeight > 0 ? Math.floor(bandHeight / bounds.h) : minZoom;
+  // The margin is part of what the office needs, so zoom steps down before the
+  // gap does.
+  const usableHeight = bandHeight - (space.bottomMargin ?? 0);
+  const byHeight = bounds.h > 0 && usableHeight > 0 ? Math.floor(usableHeight / bounds.h) : minZoom;
   const zoom = Math.max(minZoom, Math.min(maxZoom, byWidth, byHeight));
   const drawnH = bounds.h * zoom;
   const bandBottom = canvas.height - space.bottom;
