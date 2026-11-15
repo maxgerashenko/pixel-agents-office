@@ -1,11 +1,11 @@
 """Draws webview-ui/src/assets/cabin.png: the log cabin behind the bottom-left
 controls (slate roof, brick chimney with smoke, balcony, window boxes, porch
-with lantern, firewood, cobblestone, pines and bushes). Native 80x92, shown
+with lantern, firewood, cobblestone, pines and bushes). Native 70x92, shown
 at 2x; colours follow the office scene (maroon ground, near-black pines). Run: python3 scripts/draw-cabin.py"""
 from PIL import Image, ImageDraw
 import random
 
-W, H = 80, 92
+W, H = 70, 92
 im = Image.new('RGBA', (W, H), (0, 0, 0, 0))
 px = im.load()
 
@@ -57,9 +57,9 @@ for (x, y) in [(16, 4), (17, 3), (18, 1), (17, 0)]:
     rect(x, y, x + 1, y + 1, SMOKE)
 
 # --- roof gable: slate band along both slopes, wood gable inside
-APX, TOP, EAVE = 34, 8, 26
+APX, TOP, EAVE = 29, 8, 26
 for y in range(TOP, EAVE + 1):
-    half = int((y - TOP) * 1.55)
+    half = int((y - TOP) * 1.5)
     for x in range(APX - half, APX + half + 1):
         d = half - abs(x - APX)
         if d < 5:  # slate band
@@ -69,13 +69,13 @@ for y in range(TOP, EAVE + 1):
             put(x, y, shade)
         else:  # gable wall
             put(x, y, WD if (x % 4) else WD_LINE)
-rect(2, EAVE, 65, EAVE + 1, SL_D)
+rect(2, EAVE, 56, EAVE + 1, SL_D)
 # gable window
-rect(30, 15, 38, 23, TRIM)
-rect(31, 16, 37, 22, GLASS)
-rect(34, 16, 34, 22, TRIM)
-rect(31, 19, 37, 19, TRIM)
-rect(29, 24, 39, 24, TRIM)
+rect(25, 15, 33, 23, TRIM)
+rect(26, 16, 32, 22, GLASS)
+rect(29, 16, 29, 22, TRIM)
+rect(26, 19, 32, 19, TRIM)
+rect(24, 24, 34, 24, TRIM)
 
 def planks(x0, y0, x1, y1):
     rect(x0, y0, x1, y1, WD)
@@ -100,54 +100,48 @@ def window(x0, y0, box=False):
 
 # --- 3/4 view: shaded right side wall and the roof plane receding behind it
 d = ImageDraw.Draw(im)
-d.polygon([(36, 8), (47, 6), (71, 25), (62, 26)], fill=SL_D)
-for k in range(0, 24, 3):  # shingle courses along the receding roof
-    d.line([(36 + k * 1.0, 9 + k * 0.75), (47 + k * 1.0, 7 + k * 0.78)], fill=SL_M)
+d.polygon([(31, 8), (41, 6), (61, 25), (54, 26)], fill=SL_D)
+for k in range(0, 20, 3):  # shingle courses along the receding roof
+    d.line([(31 + k * 1.0, 9 + k * 0.8), (41 + k * 1.0, 7 + k * 0.9)], fill=SL_M)
 # one continuous wall from the roof to the ground; its foot rises a little as
 # it recedes, and the corner post closes it at the far end
-for x in range(58, 70):
-    bot = 84 - int((x - 58) * 0.3)
+for x in range(48, 60):
+    bot = 84 - int((x - 48) * 0.3)
     for y in range(26, bot + 1):
         put(x, y, SIDE_L if y % 4 == 0 else (SIDE_LINE if y % 4 == 3 else SIDE))
     put(x, bot + 1, EDGE)
-rect(69, 26, 70, 81, TRIM)
-for y0 in (31, 54):
-    rect(62, y0, 66, y0 + 6, TRIM)
-    rect(63, y0 + 1, 65, y0 + 5, c('#c99a3c'))
-    rect(64, y0 + 1, 64, y0 + 5, TRIM)
-rect(58, 49, 70, 50, EDGE)
+rect(59, 26, 60, 81, TRIM)
+rect(48, 49, 60, 50, EDGE)
 for y in range(65, 70):
-    for x in range(58, 71):
+    for x in range(48, 62):
         put(x, y, SL_D if ((x // 2 + y) % 2 == 0) else c('#232530'))
-rect(58, 69, 70, 69, EDGE)
+rect(48, 69, 61, 69, EDGE)
 
 # --- top floor
-planks(10, EAVE + 2, 57, 42)
-window(14, 30)
-window(47, 30)
+planks(10, EAVE + 2, 47, 42)
+window(13, 30)
 # --- balcony railing + deck
-rect(6, 43, 61, 43, TRIM)
-for x in range(7, 61, 4):
+rect(6, 43, 51, 43, TRIM)
+for x in range(7, 51, 4):
     rect(x, 44, x + 1, 48, TRIM)
-rect(5, 49, 62, 50, EDGE)
-rect(5, 49, 62, 49, TRIM)
+rect(5, 49, 52, 50, EDGE)
+rect(5, 49, 52, 49, TRIM)
 # --- middle floor
-planks(10, 51, 57, 64)
-window(14, 54, box=True)
-window(47, 54, box=True)
+planks(10, 51, 47, 64)
+window(13, 54, box=True)
 # --- porch roof (wide slate eave)
 for y in range(65, 70):
-    for x in range(3, 65):
+    for x in range(3, 55):
         rect(x, y, x, y, SL_M if ((x // 2 + y) % 2 == 0) else SL_D)
-rect(3, 69, 64, 69, EDGE)
+rect(3, 69, 54, 69, EDGE)
 # --- ground floor + porch
-planks(12, 70, 55, 84)
+planks(12, 70, 45, 84)
 rect(10, 70, 12, 86, TRIM)   # porch posts
-rect(55, 70, 57, 86, TRIM)
-rect(8, 79, 59, 80, TRIM)    # porch rail top
-for x in range(9, 59, 4):
+rect(45, 70, 47, 86, TRIM)
+rect(8, 79, 49, 80, TRIM)    # porch rail top
+for x in range(9, 49, 4):
     rect(x, 81, x + 1, 85, TRIM)
-rect(8, 86, 59, 87, EDGE)
+rect(8, 86, 49, 87, EDGE)
 # lantern
 rect(53, 70, 53, 71, EDGE)
 rect(52, 72, 54, 75, GLOW)
@@ -156,7 +150,7 @@ for (dx, dy) in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
     pass
 for y in range(70, 78):
     for x in range(49, 58):
-        if px[x, y][3] and px[x, y] in (WD, WD_L):
+        if px[x, y][3] and px[x, y] in (SIDE, SIDE_L):
             px[x, y] = c('#e0a050')
 
 # --- ground: grass, firewood, cobble path, bushes, rock
@@ -173,7 +167,7 @@ for x in range(W):
     if random.random() < .25:
         put(x, 88, G3)
 for y in range(86, 91):
-    for x in range(8 + (y - 86), 72 - (y - 86)):
+    for x in range(8 + (y - 86), 62 - (y - 86)):
         if px[x, y][3] and px[x, y] in (DIRT, DIRT_L, G1, G2, G3):
             r, g, b, a = px[x, y]
             put(x, y, (r * 6 // 10, g * 6 // 10, b * 6 // 10, 255))
@@ -186,7 +180,7 @@ for r in range(3):
 # cobble path bottom-right
 for r in range(3):
     for k in range(5):
-        x0 = 40 + k * 5 + (r % 2) * 2
+        x0 = 30 + k * 5 + (r % 2) * 2
         y0 = 87 + r * 2
         if y0 + 1 < H and x0 + 3 < W:
             rect(x0, y0, x0 + 3, min(y0 + 1, H - 1), STONE if (k + r) % 2 else STONE_D)
@@ -200,8 +194,8 @@ def bush(cx, cy, r, flowers=True):
         for (dx, dy) in [(-2, -1), (1, -2), (2, 0)]:
             put(cx + dx, cy + dy, PINK)
 bush(5, 88, 4)
-bush(68, 88, 4)
-bush(46, 88, 3, False)
+bush(63, 88, 4)
+bush(52, 88, 3, False)
 # rock
 rect(24, 87, 28, 88, STONE)
 rect(25, 86, 27, 86, STONE)
