@@ -790,8 +790,8 @@ export const SKY_STAR_COLOR = '#ffffff';
 /** Twinkle period range in seconds. */
 export const SKY_TWINKLE_SEC = 3;
 /** The moon is a big cartoon character: a larger disc with a face. */
-/** 4x the original; capped to a share of the canvas so it never swamps a small screen. */
-export const SKY_MOON_RADIUS_SPRITE_PX = 64;
+/** Same size as the sun; capped to a share of the canvas on a very small screen. */
+export const SKY_MOON_RADIUS_SPRITE_PX = 16;
 export const SKY_MOON_MAX_CANVAS_SHARE = 0.22;
 /** The radius the moon's craters and patches were drawn for. */
 export const SKY_MOON_DESIGN_RADIUS = 16;
