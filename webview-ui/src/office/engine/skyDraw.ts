@@ -15,8 +15,17 @@ import {
   SKY_MOON_COLOR,
   SKY_MOON_CRATER_COLOR,
   SKY_MOON_FACE_COLOR,
+  SKY_MOON_GLOW_COLOR,
+  SKY_MOON_MARE_COLOR,
   SKY_MOON_RADIUS_SPRITE_PX,
+  SKY_MOON_SHADE_COLOR,
   SKY_STAR_COLOR,
+  SKY_SUN_EYE_HIGHLIGHT_COLOR,
+  SKY_SUN_HIGHLIGHT_COLOR,
+  SKY_SUN_RAY_COLOR,
+  SKY_SUN_RAY_COUNT,
+  SKY_SUN_RAY_SPIN,
+  SKY_SUN_RIM_COLOR,
   SKY_SWIRL_COLORS,
   SKY_TWINKLE_SEC,
 } from '../../constants.js';
@@ -48,6 +57,72 @@ function disc(
       }
     }
   }
+}
+
+/** The sun: soft glow, slowly turning rays, a shaded body with a highlight, and a friendly face. */
+function drawSun(
+  ctx: CanvasRenderingContext2D,
+  ox: number,
+  oy: number,
+  r: number,
+  px: number,
+  color: string,
+  sec: number,
+): void {
+  const base = parseHex(color);
+  // Glow: three soft stepped rings
+  ctx.fillStyle = color;
+  for (const [rad, a] of [
+    [r + 7, 0.1],
+    [r + 5, 0.16],
+    [r + 3, 0.26],
+  ]) {
+    ctx.globalAlpha = a;
+    disc(ctx, ox, oy, rad, px);
+  }
+  ctx.globalAlpha = 1;
+  // Rays: alternating long and short, turning slowly
+  ctx.fillStyle = SKY_SUN_RAY_COLOR;
+  for (let i = 0; i < SKY_SUN_RAY_COUNT; i++) {
+    const ang = (i / SKY_SUN_RAY_COUNT) * Math.PI * 2 + sec * SKY_SUN_RAY_SPIN;
+    const len = i % 2 === 0 ? 6 : 3;
+    for (let s = r + 2; s < r + 2 + len; s++) {
+      const rx = Math.round((ox + Math.cos(ang) * s * px) / px) * px;
+      const ry = Math.round((oy + Math.sin(ang) * s * px) / px) * px;
+      ctx.fillRect(rx, ry, px, px);
+      if (i % 2 === 0 && s < r + 2 + len - 2) ctx.fillRect(rx + px, ry, px, px);
+    }
+  }
+  // Body: warm rim, body colour, bright highlight top-left
+  ctx.fillStyle = SKY_SUN_RIM_COLOR;
+  disc(ctx, ox, oy, r, px);
+  ctx.fillStyle = toCss(mix(base, parseHex(SKY_SUN_RIM_COLOR), 0.25));
+  disc(ctx, ox, oy, r - 1, px);
+  ctx.fillStyle = color;
+  disc(ctx, ox - px, oy - px, r - 2, px);
+  ctx.fillStyle = SKY_SUN_HIGHLIGHT_COLOR;
+  for (let dy = -r; dy <= 0; dy++) {
+    for (let dx = -r; dx <= 0; dx++) {
+      const d2 = (dx + 5) * (dx + 5) + (dy + 5) * (dy + 5);
+      if (d2 <= 5) ctx.fillRect(ox + dx * px, oy + dy * px, px, px);
+    }
+  }
+  // Face: tall eyes with a sparkle, rosy cheeks, a happy smile
+  ctx.fillStyle = SKY_MOON_FACE_COLOR;
+  ctx.fillRect(ox - 4 * px, oy - 2 * px, 2 * px, 3 * px);
+  ctx.fillRect(ox + 2 * px, oy - 2 * px, 2 * px, 3 * px);
+  ctx.fillStyle = SKY_SUN_EYE_HIGHLIGHT_COLOR;
+  ctx.fillRect(ox - 4 * px, oy - 2 * px, px, px);
+  ctx.fillRect(ox + 2 * px, oy - 2 * px, px, px);
+  ctx.fillStyle = SKY_MOON_CHEEK_COLOR;
+  ctx.globalAlpha = 0.85;
+  ctx.fillRect(ox - 7 * px, oy + px, 2 * px, 2 * px);
+  ctx.fillRect(ox + 5 * px, oy + px, 2 * px, 2 * px);
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = SKY_MOON_FACE_COLOR;
+  ctx.fillRect(ox - 3 * px, oy + 3 * px, px, px);
+  ctx.fillRect(ox - 2 * px, oy + 4 * px, 5 * px, px);
+  ctx.fillRect(ox + 3 * px, oy + 3 * px, px, px);
 }
 
 /**
@@ -91,32 +166,56 @@ export function drawSky(
 
   if (sky.starAlpha > 0) {
     const sec0 = now.getTime() / 1000;
-    // Van Gogh swirls: slowly rolling wavy bands of lighter blue
+    // Rolling waves: taller bands sliding across, each with a light crest line
     for (const [i, sw] of SWIRLS.entries()) {
-      ctx.fillStyle = SKY_SWIRL_COLORS[i % SKY_SWIRL_COLORS.length];
-      ctx.globalAlpha = sky.starAlpha * 0.55;
       const step = 2 * px;
+      const dir = i % 2 === 0 ? 1 : -1;
       for (let x = 0; x < w; x += step) {
         const u = x / w;
         const y =
-          (sw.y + Math.sin(u * sw.freq * Math.PI * 2 + sw.phase + sec0 * 0.15) * sw.amp) * h;
-        ctx.fillRect(x, Math.round(y / px) * px, step, sw.thick * px);
+          (sw.y +
+            Math.sin(u * sw.freq * Math.PI * 2 + sw.phase + dir * sec0 * 0.7) * sw.amp * 1.6) *
+          h;
+        const yy = Math.round(y / px) * px;
+        ctx.fillStyle = SKY_SWIRL_COLORS[i % SKY_SWIRL_COLORS.length];
+        ctx.globalAlpha = sky.starAlpha * 0.6;
+        ctx.fillRect(x, yy, step, sw.thick * px);
+        ctx.fillStyle = SKY_SWIRL_COLORS[(i + 2) % SKY_SWIRL_COLORS.length];
+        ctx.globalAlpha = sky.starAlpha * 0.9;
+        ctx.fillRect(x, yy - px, step, px);
       }
     }
-    // Big glowing stars: bright core, stepped halo rings, a slow pulse
+    // Starry Night stars: a glowing core wrapped in concentric rings of turning
+    // yellow / blue / orange dashes, pulsing softly
     for (const st of BIG_STARS) {
-      const pulse = 0.75 + 0.25 * Math.sin(sec0 * 1.2 + st.phase);
+      const pulse = 0.8 + 0.2 * Math.sin(sec0 * 1.2 + st.phase);
       const sx = Math.round((st.x * w) / px) * px;
       const sy = Math.round((st.y * h) / px) * px;
-      for (let ring = SKY_BIG_STAR_HALO_COLORS.length; ring >= 1; ring--) {
-        ctx.fillStyle = SKY_BIG_STAR_HALO_COLORS[ring - 1];
-        ctx.globalAlpha = sky.starAlpha * pulse * (0.7 - ring * 0.15);
-        const rr = (st.size + ring * 2) * px;
-        ctx.fillRect(sx - rr, sy - px, 2 * rr + px, 2 * px);
-        ctx.fillRect(sx - px, sy - rr, 2 * px, 2 * rr + px);
-        disc(ctx, sx, sy, st.size + ring, px);
-      }
+      ctx.fillStyle = SKY_BIG_STAR_HALO_COLORS[0];
+      ctx.globalAlpha = sky.starAlpha * pulse * 0.18;
+      disc(ctx, sx, sy, st.size * 3, px);
+      SKY_BIG_STAR_HALO_COLORS.forEach((col, k) => {
+        const rad = st.size + 2 + k * 2;
+        const dashes = 10 + k * 6;
+        const spin = sec0 * (k % 2 === 0 ? 0.5 : -0.5) + st.phase;
+        ctx.fillStyle = col;
+        for (let j = 0; j < dashes; j++) {
+          if (j % 2 === 1) continue;
+          for (const sub of [0, 0.5]) {
+            const ang = ((j + sub) / dashes) * Math.PI * 2 + spin;
+            ctx.globalAlpha = sky.starAlpha * pulse * 0.9;
+            ctx.fillRect(
+              Math.round((sx + Math.cos(ang) * rad * px) / px) * px,
+              Math.round((sy + Math.sin(ang) * rad * px) / px) * px,
+              px,
+              px,
+            );
+          }
+        }
+      });
       ctx.globalAlpha = sky.starAlpha;
+      ctx.fillStyle = SKY_BIG_STAR_HALO_COLORS[0];
+      disc(ctx, sx, sy, st.size, px);
       ctx.fillStyle = SKY_BIG_STAR_CORE_COLOR;
       disc(ctx, sx, sy, st.size - 1, px);
     }
@@ -175,21 +274,16 @@ export function drawSky(
 
   const r = SKY_BODY_RADIUS_SPRITE_PX;
   if (sky.sun) {
-    ctx.fillStyle = sky.sun.color;
     const [sx, sy] = arcPosition(sky.sun.p, sky.sun.lift, (r + 1) * px, w, h, avoid);
-    const ox = Math.round(sx / px) * px;
-    const oy = Math.round(sy / px) * px;
-    disc(ctx, ox, oy, r, px);
-    // cartoon face to match the moon
-    ctx.fillStyle = SKY_MOON_FACE_COLOR;
-    ctx.fillRect(ox - 3 * px, oy - 2 * px, px, 2 * px);
-    ctx.fillRect(ox + 2 * px, oy - 2 * px, px, 2 * px);
-    ctx.fillRect(ox - 2 * px, oy + 2 * px, px, px);
-    ctx.fillRect(ox - px, oy + 3 * px, 3 * px, px);
-    ctx.fillRect(ox + 2 * px, oy + 2 * px, px, px);
-    ctx.fillStyle = SKY_MOON_CHEEK_COLOR;
-    ctx.fillRect(ox - 6 * px, oy + px, 2 * px, px);
-    ctx.fillRect(ox + 4 * px, oy + px, 2 * px, px);
+    drawSun(
+      ctx,
+      Math.round(sx / px) * px,
+      Math.round(sy / px) * px,
+      r,
+      px,
+      sky.sun.color,
+      now.getTime() / 1000,
+    );
   }
   if (sky.moon) {
     const mr = SKY_MOON_RADIUS_SPRITE_PX;
@@ -198,22 +292,54 @@ export function drawSky(
     const my = Math.round(cy / px) * px;
     const dot = (dx: number, dy: number, sw = 1, sh = 1): void =>
       ctx.fillRect(mx + dx * px, my + dy * px, sw * px, sh * px);
+    // soft glow
+    ctx.fillStyle = SKY_MOON_GLOW_COLOR;
+    for (const [gr, ga] of [
+      [mr + 6, 0.07],
+      [mr + 4, 0.1],
+      [mr + 2, 0.16],
+    ]) {
+      ctx.globalAlpha = ga;
+      disc(ctx, mx, my, gr, px);
+    }
+    ctx.globalAlpha = 1;
+    // sphere: lit face, shadow creeping in from the lower right
     ctx.fillStyle = SKY_MOON_COLOR;
     disc(ctx, mx, my, mr, px);
-    // craters
-    ctx.fillStyle = SKY_MOON_CRATER_COLOR;
-    dot(-8, -6, 3, 3);
-    dot(5, 5, 3, 2);
-    dot(6, -7, 2, 2);
-    // face: eyes, smile, rosy cheeks
-    ctx.fillStyle = SKY_MOON_FACE_COLOR;
-    dot(-5, -3, 2, 3);
-    dot(3, -3, 2, 3);
-    dot(-3, 3);
-    dot(-2, 4, 5, 1);
-    dot(3, 3);
-    ctx.fillStyle = SKY_MOON_CHEEK_COLOR;
-    dot(-7, 1, 2, 2);
-    dot(5, 1, 2, 2);
+    ctx.fillStyle = SKY_MOON_MARE_COLOR;
+    for (const [mxo, myo, mrad] of [
+      [-5, -5, 5],
+      [3, -8, 3],
+      [-8, 3, 4],
+      [4, 2, 4],
+    ]) {
+      disc(ctx, mx + mxo * px, my + myo * px, mrad, px);
+    }
+    ctx.fillStyle = SKY_MOON_SHADE_COLOR;
+    for (let dy = -mr; dy <= mr; dy++) {
+      for (let dx = -mr; dx <= mr; dx++) {
+        if (dx * dx + dy * dy > mr * mr + mr) continue;
+        const lit = (dx - 7) * (dx - 7) + (dy - 7) * (dy - 7);
+        if (lit > (mr + 7) * (mr + 7) - 40) dot(dx, dy);
+      }
+    }
+    // craters: dark bowl with a bright rim on the lit side
+    for (const [cdx, cdy, cr] of [
+      [-9, -9, 2],
+      [-2, -11, 1],
+      [8, -4, 2],
+      [-12, 0, 1],
+      [-4, 4, 3],
+      [3, 9, 2],
+      [9, 7, 1],
+      [-8, 9, 1],
+      [1, -3, 1],
+      [-1, 12, 1],
+    ]) {
+      ctx.fillStyle = SKY_MOON_CRATER_COLOR;
+      disc(ctx, mx + cdx * px, my + cdy * px, cr, px);
+      ctx.fillStyle = SKY_MOON_COLOR;
+      ctx.fillRect(mx + (cdx - cr) * px, my + (cdy - cr) * px, px, px);
+    }
   }
 }
