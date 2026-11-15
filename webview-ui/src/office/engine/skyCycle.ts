@@ -11,6 +11,7 @@
 import {
   SKY_BIRD_COUNT,
   SKY_CLOUD_COUNT,
+  SKY_DAY_LIFE_FADE,
   SKY_KEYFRAMES,
   SKY_MOON_RISE_AT,
   SKY_STAR_COUNT,
@@ -71,8 +72,12 @@ export function skyAt(t: number): SkyState {
   const bottom = mix(parseHex(a.bottom), parseHex(b.bottom), k);
 
   let sun: SkyState['sun'] = null;
-  if (f < SKY_SUN_SET_AT || f >= SKY_SUN_RISE_AT) {
-    const p = ((f - SKY_SUN_RISE_AT + 1) % 1) / (SKY_SUN_SET_AT + 1 - SKY_SUN_RISE_AT);
+  const sunUp =
+    SKY_SUN_RISE_AT < SKY_SUN_SET_AT
+      ? f >= SKY_SUN_RISE_AT && f < SKY_SUN_SET_AT
+      : f < SKY_SUN_SET_AT || f >= SKY_SUN_RISE_AT;
+  if (sunUp) {
+    const p = ((f - SKY_SUN_RISE_AT + 1) % 1) / ((SKY_SUN_SET_AT - SKY_SUN_RISE_AT + 1) % 1);
     const warm = clamp01((p - 0.8) / 0.2);
     sun = {
       p,
@@ -86,8 +91,11 @@ export function skyAt(t: number): SkyState {
     moon = { p: q, lift: Math.sin(Math.PI * q) };
   }
   const { in0, in1, out0, out1 } = SKY_STAR_FADE;
-  const starAlpha = clamp01((f - in0) / (in1 - in0)) * clamp01((out1 - f) / (out1 - out0));
-  const dayAlpha = f < 0.7 ? clamp01((0.7 - f) / 0.15) : clamp01((f - 0.9) / 0.1);
+  // nightness: full from the end of dusk through the end of the hour, then
+  // opening over dawn at the start of the next
+  const starAlpha =
+    f < out1 ? 1 - clamp01((f - out0) / (out1 - out0)) : clamp01((f - in0) / (in1 - in0));
+  const dayAlpha = f < out1 ? 1 - starAlpha : clamp01((in0 - f) / SKY_DAY_LIFE_FADE);
   return { top: toCss(top), bottom: toCss(bottom), sun, moon, starAlpha, dayAlpha };
 }
 

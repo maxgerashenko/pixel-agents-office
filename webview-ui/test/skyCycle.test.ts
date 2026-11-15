@@ -1,6 +1,6 @@
 /**
- * Day/night sky: the cycle follows the real clock hour — day at :00, sunset
- * mid-hour, night by the end, then day again.
+ * Day/night sky: the cycle follows the real clock hour — dawn over :00–:03, day
+ * until :30, dusk over :30–:33, night until the hour turns.
  *
  * Run with: npm test
  */
@@ -17,39 +17,50 @@ test('hourFraction is 0 at the top of the hour and rises through it', () => {
   assert.ok(hourFraction(new Date(2026, 0, 1, 5, 59, 59, 999)) < 1);
 });
 
-test('the hour starts in daylight: sun up, no moon, no stars', () => {
-  const s = skyAt(0);
+test('dawn opens the hour: night at :00, full day by :03', () => {
+  const start = skyAt(0);
+  assert.ok(start.sun);
+  assert.equal(start.starAlpha, 1);
+  const mid = skyAt(0.025);
+  assert.ok(mid.starAlpha > 0 && mid.starAlpha < 1);
+  const day = skyAt(0.05);
+  assert.ok(day.sun);
+  assert.equal(day.moon, null);
+  assert.equal(day.starAlpha, 0);
+  assert.equal(day.dayAlpha, 1);
+});
+
+test('the day holds until :30', () => {
+  const s = skyAt(0.49);
   assert.ok(s.sun);
   assert.equal(s.moon, null);
   assert.equal(s.starAlpha, 0);
 });
 
-test('late in the day the sun is lower than at its peak', () => {
-  const day = skyAt(0.3);
-  const set = skyAt(0.62);
-  assert.ok(set.sun && day.sun);
-  assert.ok(set.sun.lift < day.sun.lift);
-});
-
-test('the hour ends in night: sun gone, moon and stars out', () => {
-  const s = skyAt(0.85);
-  assert.equal(s.sun, null);
-  assert.ok(s.moon);
-  assert.equal(s.starAlpha, 1);
+test('night starts at :30 and is full by :33', () => {
+  assert.equal(skyAt(0.5).starAlpha, 0);
+  const dusk = skyAt(0.525);
+  assert.ok(dusk.sun && dusk.moon);
+  assert.ok(dusk.starAlpha > 0 && dusk.starAlpha < 1);
+  const night = skyAt(0.56);
+  assert.equal(night.sun, null);
+  assert.ok(night.moon);
+  assert.equal(night.starAlpha, 1);
+  assert.equal(night.dayAlpha, 0);
 });
 
 test('the cycle loops: the end of the hour blends into the start', () => {
-  const end = skyAt(1);
+  const end = skyAt(0.9999);
   const start = skyAt(0);
   assert.equal(end.top, start.top);
   assert.equal(end.bottom, start.bottom);
-  assert.equal(skyAt(0.9999).starAlpha < 0.01, true);
+  assert.equal(end.starAlpha, start.starAlpha);
 });
 
 test('the sun crosses the sky left to right over an arc, peaking mid-way', () => {
   const early = skyAt(0.05).sun;
-  const mid = skyAt(0.31).sun;
-  const late = skyAt(0.65).sun;
+  const mid = skyAt(0.275).sun;
+  const late = skyAt(0.5).sun;
   assert.ok(early && mid && late);
   assert.ok(early.p < mid.p && mid.p < late.p);
   assert.ok(mid.lift > early.lift && mid.lift > late.lift);
@@ -57,17 +68,8 @@ test('the sun crosses the sky left to right over an arc, peaking mid-way', () =>
 });
 
 test('the moon crosses left to right during the night phase', () => {
-  const a = skyAt(0.7).moon;
+  const a = skyAt(0.6).moon;
   const b = skyAt(0.9).moon;
   assert.ok(a && b);
   assert.ok(a.p < b.p);
-});
-
-test('the sun starts rising as dawn begins, so its first rays lead the day in', () => {
-  assert.equal(skyAt(0.89).sun, null);
-  const rising = skyAt(0.92).sun;
-  const turned = skyAt(0).sun;
-  assert.ok(rising && turned);
-  assert.ok(rising.p < turned.p);
-  assert.ok(rising.lift < turned.lift);
 });
