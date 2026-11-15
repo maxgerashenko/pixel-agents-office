@@ -863,26 +863,20 @@ function App() {
         />
       )}
 
-      {/* Sky fast-forward: top-right, level with the controls on the left. */}
+      {/* Sky fast-forward (top-right, level with the controls on the left) and
+          the music button beside it. One row, so the gap between them stays
+          the same whichever sprite (balloon or ISS) the sky button shows. */}
       {!isDebugMode && (
-        <SkyFastForwardButton
-          className={
+        <div
+          className={`flex items-center ${
             isMobile
               ? 'absolute mobile-safe-top mt-12 right-20 z-20'
               : 'absolute right-24 top-24 z-44'
-          }
-        />
-      )}
-
-      {/* Music: left of the sky button, same row. */}
-      {!isDebugMode && (
-        <MusicButton
-          className={
-            isMobile
-              ? 'absolute mobile-safe-top mt-12 right-120 z-20'
-              : 'absolute right-136 top-24 z-44'
-          }
-        />
+          }`}
+        >
+          <MusicButton className="mr-26" />
+          <SkyFastForwardButton />
+        </div>
       )}
 
       {/* Mobile: Settings floats top-left (the layout editor stays desktop-

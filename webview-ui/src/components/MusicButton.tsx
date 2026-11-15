@@ -45,6 +45,7 @@ export function MusicButton({ className = '' }: { className?: string }) {
           viewBox={`0 0 ${cols} ${MUSIC_BUTTON_NOTE.length}`}
           shapeRendering="crispEdges"
           aria-hidden="true"
+          className="music-note"
         >
           {MUSIC_BUTTON_NOTE.flatMap((row, y) =>
             [...row].map((ch, x) =>
