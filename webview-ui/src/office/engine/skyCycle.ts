@@ -22,8 +22,9 @@ export interface SkyState {
   top: string;
   bottom: string;
   /** Sun position as fractions of the canvas, or null when below the horizon. */
-  sun: { x: number; y: number; color: string } | null;
-  moon: { x: number; y: number } | null;
+  /** `p` = 0..1 left to right across the sky; `lift` = 0 at the horizon, 1 at the top of the arc. */
+  sun: { p: number; lift: number; color: string } | null;
+  moon: { p: number; lift: number } | null;
   /** 0..1 */
   starAlpha: number;
 }
@@ -69,15 +70,15 @@ export function skyAt(t: number): SkyState {
     const p = f / SKY_SUN_SET_AT;
     const warm = clamp01((p - 0.8) / 0.2);
     sun = {
-      x: 0.1 + 0.8 * p,
-      y: 0.15 + 0.75 * p * p * p,
+      p,
+      lift: Math.sin(Math.PI * p),
       color: toCss(mix(parseHex(SKY_SUN_COLOR), parseHex(SKY_SUN_SETTING_COLOR), warm)),
     };
   }
   let moon: SkyState['moon'] = null;
   if (f > SKY_MOON_RISE_AT) {
     const q = (f - SKY_MOON_RISE_AT) / (1 - SKY_MOON_RISE_AT);
-    moon = { x: 0.15 + 0.7 * q, y: 0.95 - 0.8 * Math.sin(Math.PI * q) };
+    moon = { p: q, lift: Math.sin(Math.PI * q) };
   }
   const { in0, in1, out0, out1 } = SKY_STAR_FADE;
   const starAlpha = clamp01((f - in0) / (in1 - in0)) * clamp01((out1 - f) / (out1 - out0));

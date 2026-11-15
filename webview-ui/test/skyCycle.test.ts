@@ -28,7 +28,7 @@ test('sunset: the sun is low and warm-coloured, sky is between day and night', (
   const day = skyAt(0.3);
   const set = skyAt(0.62);
   assert.ok(set.sun && day.sun);
-  assert.ok(set.sun.y > day.sun.y);
+  assert.ok(set.sun.lift < day.sun.lift);
   assert.notEqual(set.top, day.top);
 });
 
@@ -45,4 +45,21 @@ test('the cycle loops: the end of the hour blends into the start', () => {
   assert.equal(end.top, start.top);
   assert.equal(end.bottom, start.bottom);
   assert.equal(skyAt(0.9999).starAlpha < 0.01, true);
+});
+
+test('the sun crosses the sky left to right over an arc, peaking mid-way', () => {
+  const early = skyAt(0.05).sun;
+  const mid = skyAt(0.36).sun;
+  const late = skyAt(0.65).sun;
+  assert.ok(early && mid && late);
+  assert.ok(early.p < mid.p && mid.p < late.p);
+  assert.ok(mid.lift > early.lift && mid.lift > late.lift);
+  assert.ok(Math.abs(mid.lift - 1) < 0.01);
+});
+
+test('the moon crosses left to right during the night phase', () => {
+  const a = skyAt(0.7).moon;
+  const b = skyAt(0.9).moon;
+  assert.ok(a && b);
+  assert.ok(a.p < b.p);
 });

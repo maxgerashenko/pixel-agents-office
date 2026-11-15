@@ -26,29 +26,22 @@ function disc(
   }
 }
 
-/** Nudge a body's centre out of the layout rect into the nearest free margin that fits it. */
-function clearOfLayout(
-  x: number,
-  y: number,
+/**
+ * Where a body is on its rainbow arc: left to right across the canvas, rising
+ * from the horizon (just inside the layout's top edge, so it ducks behind the
+ * office) to a peak in the sky above it. Returns canvas pixels.
+ */
+function arcPosition(
+  p: number,
+  lift: number,
   r: number,
   w: number,
   h: number,
   rect?: { x: number; y: number; w: number; h: number },
 ): [number, number] {
-  if (!rect) return [x, y];
-  const inside =
-    x > rect.x - r && x < rect.x + rect.w + r && y > rect.y - r && y < rect.y + rect.h + r;
-  if (!inside) return [x, y];
-  const opts: Array<{ d: number; pos: [number, number] }> = [];
-  if (rect.y >= 2 * r) opts.push({ d: y - (rect.y - r), pos: [x, rect.y / 2] });
-  if (h - (rect.y + rect.h) >= 2 * r)
-    opts.push({ d: rect.y + rect.h + r - y, pos: [x, (h + rect.y + rect.h) / 2] });
-  if (rect.x >= 2 * r) opts.push({ d: x - (rect.x - r), pos: [rect.x / 2, y] });
-  if (w - (rect.x + rect.w) >= 2 * r)
-    opts.push({ d: rect.x + rect.w + r - x, pos: [(w + rect.x + rect.w) / 2, y] });
-  if (opts.length === 0) return [x, y];
-  opts.sort((a, b) => Math.abs(a.d) - Math.abs(b.d));
-  return opts[0].pos;
+  const horizon = rect ? rect.y + 2 * r : h * 0.9;
+  const peak = Math.max(0, horizon - 3 * r);
+  return [-r + p * (w + 2 * r), Math.max(r, horizon - lift * peak)];
 }
 
 /** Paint the sky over the whole canvas. `zoom` = device pixels per sprite pixel. */
@@ -86,11 +79,11 @@ export function drawSky(
   const r = SKY_BODY_RADIUS_SPRITE_PX;
   if (sky.sun) {
     ctx.fillStyle = sky.sun.color;
-    const [sx, sy] = clearOfLayout(sky.sun.x * w, sky.sun.y * h, (r + 1) * px, w, h, avoid);
+    const [sx, sy] = arcPosition(sky.sun.p, sky.sun.lift, (r + 1) * px, w, h, avoid);
     disc(ctx, Math.round(sx / px) * px, Math.round(sy / px) * px, r, px);
   }
   if (sky.moon) {
-    const [cx, cy] = clearOfLayout(sky.moon.x * w, sky.moon.y * h, (r + 1) * px, w, h, avoid);
+    const [cx, cy] = arcPosition(sky.moon.p, sky.moon.lift, (r + 1) * px, w, h, avoid);
     const mx = Math.round(cx / px) * px;
     const my = Math.round(cy / px) * px;
     ctx.fillStyle = SKY_MOON_COLOR;
