@@ -797,8 +797,8 @@ export const SKY_MOON_MAX_CANVAS_SHARE = 0.22;
 /** The radius the moon's craters and patches were drawn for. */
 export const SKY_MOON_DESIGN_RADIUS = 16;
 /** Daytime fun: drifting clouds and flapping birds. */
-export const SKY_CLOUD_COLOR = '#ffffff';
-export const SKY_CLOUD_SHADE_COLOR = '#d4e8f6';
+export const SKY_CLOUD_COLOR = '#fff6e0';
+export const SKY_CLOUD_SHADE_COLOR = '#f3d9ae';
 export const SKY_BIRD_COLOR = '#3a3a5c';
 export const SKY_CLOUD_COUNT = 7;
 /** Seconds a cloud / bird takes to cross the canvas (clouds vary per cloud, around this). */
@@ -847,3 +847,25 @@ export const SKY_SUN_FLARE_COUNT = 7;
 export const SKY_MOON_SHADE_COLOR = '#a9aac4';
 export const SKY_MOON_MARE_COLOR = '#c4c5da';
 export const SKY_MOON_GLOW_COLOR = '#b8c4ff';
+/** Palette-knife day sky: chunky dabs of blue, with warm dabs glowing around the sun. */
+export const SKY_DAY_DAB_COLORS = [
+  '#2f66a8',
+  '#3f7fc4',
+  '#5b9bd5',
+  '#7fb4e0',
+  '#8fc0e8',
+  '#a9cfee',
+] as const;
+export const SKY_WARM_DAB_COLORS = [
+  '#ee8a3c',
+  '#f29a4a',
+  '#f4b26a',
+  '#f6c544',
+  '#f9dc7a',
+  '#fbe9a8',
+] as const;
+/** Canvas area per dab, in sprite pixels squared (lower = denser). */
+export const SKY_DAB_AREA_SPRITE_PX = 26;
+/** Warm glow radius around the sun as a share of the canvas's smaller side: at midday, and added by sunset. */
+export const SKY_WARM_GLOW_SHARE = 0.26;
+export const SKY_WARM_GLOW_SUNSET_SHARE = 0.75;

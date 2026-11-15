@@ -11,6 +11,8 @@ import {
   SKY_CLOUD_COLOR,
   SKY_CLOUD_CROSS_SEC,
   SKY_CLOUD_SHADE_COLOR,
+  SKY_DAB_AREA_SPRITE_PX,
+  SKY_DAY_DAB_COLORS,
   SKY_MOON_COLOR,
   SKY_MOON_CRATER_COLOR,
   SKY_MOON_DESIGN_RADIUS,
@@ -32,6 +34,9 @@ import {
   SKY_SWIRL_COLORS,
   SKY_TWINKLE_SEC,
   SKY_VORTICES,
+  SKY_WARM_DAB_COLORS,
+  SKY_WARM_GLOW_SHARE,
+  SKY_WARM_GLOW_SUNSET_SHARE,
 } from '../../constants.js';
 import {
   BIG_STARS,
@@ -60,6 +65,49 @@ function disc(
       }
     }
   }
+}
+
+const dabCache = new Map<string, { key: string; canvas: HTMLCanvasElement }>();
+
+/**
+ * A palette-knife layer: the canvas covered in chunky slanted dabs of the given
+ * colours. Painted once per canvas size per palette, then blitted.
+ */
+function dabLayer(
+  name: string,
+  colors: readonly string[],
+  w: number,
+  h: number,
+  px: number,
+): HTMLCanvasElement {
+  const key = `${w}x${h}x${px}`;
+  const hit = dabCache.get(name);
+  if (hit?.key === key) return hit.canvas;
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  dabCache.set(name, { key, canvas });
+  const c = canvas.getContext('2d');
+  if (!c) return canvas;
+  c.fillStyle = colors[Math.floor(colors.length / 2)];
+  c.fillRect(0, 0, w, h);
+  let seed = name.length * 7919 + 17;
+  const rnd = (): number => {
+    seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+    return seed / 0x7fffffff;
+  };
+  const count = Math.floor((w * h) / (SKY_DAB_AREA_SPRITE_PX * px * px));
+  for (let n = 0; n < count; n++) {
+    const x = Math.round((rnd() * w) / px) * px;
+    const y = Math.round((rnd() * h) / px) * px;
+    const dw = (4 + Math.floor(rnd() * 7)) * px;
+    const rows = 2 + Math.floor(rnd() * 4);
+    const slant = rnd() < 0.5 ? px : -px;
+    c.fillStyle = colors[Math.floor(rnd() * colors.length)];
+    // a slanted slab: each row shifted sideways, like a knife stroke
+    for (let rI = 0; rI < rows; rI++) c.fillRect(x + rI * slant, y + rI * px, dw, px);
+  }
+  return canvas;
 }
 
 let nightCache: { key: string; canvas: HTMLCanvasElement } | null = null;
@@ -257,6 +305,37 @@ export function drawSky(
     ctx.fillRect(0, n * band, w, band);
   }
 
+  const r = SKY_BODY_RADIUS_SPRITE_PX;
+  const sunPos = sky.sun ? arcPosition(sky.sun.p, sky.sun.lift, (r + 1) * px, w, h, avoid) : null;
+  // Painted day: blue knife dabs, fading out through sunset
+  if (sky.dayAlpha > 0) {
+    ctx.globalAlpha = sky.dayAlpha;
+    ctx.drawImage(dabLayer('day', SKY_DAY_DAB_COLORS, w, h, px), 0, 0);
+    ctx.globalAlpha = 1;
+  }
+  // Warm dabs glow around the sun in stepped rings, spreading across the sky at sunset
+  if (sunPos && sky.sun) {
+    const warmth = Math.max(0, Math.min(1, (sky.sun.p - 0.6) / 0.3));
+    const fade = Math.min(1, (1 - sky.sun.p) / 0.06);
+    const reach = Math.min(w, h) * (SKY_WARM_GLOW_SHARE + SKY_WARM_GLOW_SUNSET_SHARE * warmth);
+    const warm = dabLayer('warm', SKY_WARM_DAB_COLORS, w, h, px);
+    for (const [share, alpha] of [
+      [1, 0.3],
+      [0.72, 0.4],
+      [0.48, 0.55],
+      [0.28, 0.8],
+    ]) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(sunPos[0], sunPos[1], reach * share, 0, Math.PI * 2);
+      ctx.clip();
+      ctx.globalAlpha = alpha * fade;
+      ctx.drawImage(warm, 0, 0);
+      ctx.restore();
+    }
+    ctx.globalAlpha = 1;
+  }
+
   if (sky.starAlpha > 0) {
     const sec0 = now.getTime() / 1000;
     // The painted sky: swirling brushstrokes, cached per canvas size
@@ -336,24 +415,24 @@ export function drawSky(
       const x =
         Math.round((((b.phase + sec / SKY_BIRD_CROSS_SEC) % 1) * (w + 12 * px) - 6 * px) / px) * px;
       const y = Math.round((b.y * h + Math.sin(sec * 1.5 + b.bob) * 3 * px) / px) * px;
+      const bu = 2 * px;
       if (flapUp) {
-        ctx.fillRect(x, y, px, px);
-        ctx.fillRect(x + px, y + px, px, px);
-        ctx.fillRect(x + 2 * px, y + 2 * px, px, px);
-        ctx.fillRect(x + 3 * px, y + px, px, px);
-        ctx.fillRect(x + 4 * px, y, px, px);
+        ctx.fillRect(x, y, bu, bu);
+        ctx.fillRect(x + bu, y + bu, bu, bu);
+        ctx.fillRect(x + 2 * bu, y + 2 * bu, 2 * bu, bu);
+        ctx.fillRect(x + 4 * bu, y + bu, bu, bu);
+        ctx.fillRect(x + 5 * bu, y, bu, bu);
       } else {
-        ctx.fillRect(x, y + px, 2 * px, px);
-        ctx.fillRect(x + 2 * px, y + 2 * px, px, px);
-        ctx.fillRect(x + 3 * px, y + px, 2 * px, px);
+        ctx.fillRect(x, y + bu, 2 * bu, bu);
+        ctx.fillRect(x + 2 * bu, y + 2 * bu, 2 * bu, bu);
+        ctx.fillRect(x + 4 * bu, y + bu, 2 * bu, bu);
       }
     }
     ctx.globalAlpha = 1;
   }
 
-  const r = SKY_BODY_RADIUS_SPRITE_PX;
-  if (sky.sun) {
-    const [sx, sy] = arcPosition(sky.sun.p, sky.sun.lift, (r + 1) * px, w, h, avoid);
+  if (sky.sun && sunPos) {
+    const [sx, sy] = sunPos;
     drawSun(
       ctx,
       Math.round(sx / px) * px,
