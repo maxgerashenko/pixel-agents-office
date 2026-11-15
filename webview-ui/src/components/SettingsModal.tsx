@@ -1,5 +1,7 @@
 import { useRef, useState } from 'react';
 
+import { MUSIC_URL_CHANGED_EVENT, MUSIC_URL_STORAGE_KEY } from '../constants.js';
+import { readMusicUrl } from '../music/useHourlyMusic.js';
 import { isSoundEnabled, setSoundEnabled } from '../notificationSound.js';
 import { isBrowserRuntime } from '../runtime.js';
 import { transport } from '../transport/index.js';
@@ -42,6 +44,36 @@ interface SettingsModalProps {
   onExportLayout: () => void;
   /** Browser-native layout import from a chosen file (standalone only). */
   onImportLayout: (file: File) => void;
+}
+
+/** YouTube link for the hourly music; saved on this device when the field loses focus. */
+function MusicLinkField() {
+  const [value, setValue] = useState(readMusicUrl);
+  const save = () => {
+    try {
+      localStorage.setItem(MUSIC_URL_STORAGE_KEY, value.trim());
+    } catch {
+      /* private mode: the link just won't survive a reload */
+    }
+    window.dispatchEvent(new Event(MUSIC_URL_CHANGED_EVENT));
+  };
+  return (
+    <label className="flex flex-col gap-2 py-4 px-10 text-sm text-text-muted">
+      Music (YouTube link, synced to the hour)
+      <input
+        data-testid="music-url"
+        type="url"
+        value={value}
+        placeholder="https://youtu.be/..."
+        onChange={(e) => setValue(e.target.value)}
+        onBlur={save}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') e.currentTarget.blur();
+        }}
+        className="bg-bg text-text border-2 border-border rounded-none py-2 px-6"
+      />
+    </label>
+  );
 }
 
 export function SettingsModal({
@@ -199,6 +231,7 @@ export function SettingsModal({
         checked={hooksInstalled}
         onChange={onToggleHooksEnabled}
       />
+      <MusicLinkField />
       <Checkbox
         label="Always Show Labels"
         checked={alwaysShowOverlay}

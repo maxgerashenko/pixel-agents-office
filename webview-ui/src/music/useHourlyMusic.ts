@@ -1,0 +1,177 @@
+import { useCallback, useEffect, useRef, useState } from 'react';
+
+import {
+  MUSIC_DRIFT_TOLERANCE_SEC,
+  MUSIC_RESYNC_CHECK_MS,
+  MUSIC_SEEK_LEAD_SEC,
+  MUSIC_URL_CHANGED_EVENT,
+  MUSIC_URL_STORAGE_KEY,
+  YOUTUBE_IFRAME_API_SRC,
+} from '../constants.js';
+import { needsResync, parseYouTubeId, syncedPosition } from './musicSync.js';
+
+/** Just the slice of the YouTube IFrame API this uses. */
+interface YtPlayer {
+  playVideo(): void;
+  pauseVideo(): void;
+  seekTo(seconds: number, allowSeekAhead: boolean): void;
+  getCurrentTime(): number;
+  getDuration(): number;
+  getPlayerState(): number;
+  destroy(): void;
+}
+interface YtApi {
+  Player: new (
+    el: HTMLElement,
+    opts: {
+      videoId: string;
+      playerVars?: Record<string, number | string>;
+      events: { onReady?: () => void; onStateChange?: (e: { data: number }) => void };
+    },
+  ) => YtPlayer;
+}
+const YT_ENDED = 0;
+const YT_PLAYING = 1;
+
+let apiPromise: Promise<YtApi> | null = null;
+function loadYouTubeApi(): Promise<YtApi> {
+  const w = window as unknown as {
+    YT?: YtApi & { loaded?: number };
+    onYouTubeIframeAPIReady?: () => void;
+  };
+  if (w.YT?.Player) return Promise.resolve(w.YT);
+  apiPromise ??= new Promise<YtApi>((resolve) => {
+    const prev = w.onYouTubeIframeAPIReady;
+    w.onYouTubeIframeAPIReady = () => {
+      prev?.();
+      resolve(w.YT as YtApi);
+    };
+    const s = document.createElement('script');
+    s.src = YOUTUBE_IFRAME_API_SRC;
+    document.head.appendChild(s);
+  });
+  return apiPromise;
+}
+
+export function readMusicUrl(): string {
+  try {
+    return localStorage.getItem(MUSIC_URL_STORAGE_KEY) ?? '';
+  } catch {
+    return '';
+  }
+}
+
+/**
+ * Plays the configured YouTube track in step with the real hourly clock.
+ * `host` is the element the (hidden) player mounts into. Sound needs one tap
+ * on iOS, so playback only starts from `toggle` (a user gesture), never on load.
+ */
+export function useHourlyMusic(host: React.RefObject<HTMLDivElement | null>) {
+  const [url, setUrl] = useState(readMusicUrl);
+  const [on, setOn] = useState(false);
+  const player = useRef<YtPlayer | null>(null);
+  const ready = useRef(false);
+  const wantOn = useRef(false);
+  const videoId = parseYouTubeId(url);
+
+  useEffect(() => {
+    const onChange = () => setUrl(readMusicUrl());
+    window.addEventListener(MUSIC_URL_CHANGED_EVENT, onChange);
+    return () => window.removeEventListener(MUSIC_URL_CHANGED_EVENT, onChange);
+  }, []);
+
+  const sync = useCallback(() => {
+    const p = player.current;
+    if (!p || !ready.current) return;
+    const dur = p.getDuration();
+    const target = syncedPosition(new Date(), dur);
+    p.seekTo(target + MUSIC_SEEK_LEAD_SEC, true);
+  }, []);
+
+  // (Re)build the player when the track changes; keep it ready for the first tap.
+  useEffect(() => {
+    wantOn.current = false;
+    setOn(false);
+    ready.current = false;
+    if (!videoId || !host.current) return;
+    let cancelled = false;
+    const mount = document.createElement('div');
+    host.current.appendChild(mount);
+    void loadYouTubeApi().then((YT) => {
+      if (cancelled) return;
+      player.current = new YT.Player(mount, {
+        videoId,
+        playerVars: { playsinline: 1, controls: 0, disablekb: 1, rel: 0 },
+        events: {
+          onReady: () => {
+            ready.current = true;
+          },
+          onStateChange: (e) => {
+            if (e.data === YT_PLAYING && wantOn.current) {
+              const p = player.current!;
+              const dur = p.getDuration();
+              if (
+                needsResync(
+                  p.getCurrentTime(),
+                  syncedPosition(new Date(), dur),
+                  dur,
+                  MUSIC_DRIFT_TOLERANCE_SEC,
+                )
+              ) {
+                sync();
+              }
+            } else if (e.data === YT_ENDED && wantOn.current) {
+              sync();
+              player.current?.playVideo();
+            }
+          },
+        },
+      });
+    });
+    return () => {
+      cancelled = true;
+      player.current?.destroy();
+      player.current = null;
+      mount.remove();
+    };
+  }, [videoId, host, sync]);
+
+  // Periodic re-sync against the real clock while playing.
+  useEffect(() => {
+    if (!on) return;
+    const id = setInterval(() => {
+      const p = player.current;
+      if (!p || !ready.current || p.getPlayerState() !== YT_PLAYING) return;
+      const dur = p.getDuration();
+      if (
+        needsResync(
+          p.getCurrentTime(),
+          syncedPosition(new Date(), dur),
+          dur,
+          MUSIC_DRIFT_TOLERANCE_SEC,
+        )
+      ) {
+        sync();
+      }
+    }, MUSIC_RESYNC_CHECK_MS);
+    return () => clearInterval(id);
+  }, [on, sync]);
+
+  /** Must run inside the tap handler so iOS allows sound. */
+  const toggle = useCallback(() => {
+    const p = player.current;
+    if (!p || !ready.current) return;
+    if (wantOn.current) {
+      wantOn.current = false;
+      p.pauseVideo();
+      setOn(false);
+    } else {
+      wantOn.current = true;
+      p.playVideo();
+      sync();
+      setOn(true);
+    }
+  }, [sync]);
+
+  return { configured: videoId !== null, on, toggle };
+}
