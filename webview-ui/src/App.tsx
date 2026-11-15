@@ -706,7 +706,7 @@ function App() {
           )}
 
           {/* View mode: the only way to change the office's size there. */}
-          {!isMobile && viewLocked && (
+          {viewLocked && (
             <ViewZoomMenu
               step={viewStep}
               maxSteps={viewMaxSteps}
