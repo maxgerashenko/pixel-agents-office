@@ -240,7 +240,7 @@ export function EditorToolbar({
   };
 
   return (
-    <div className="absolute bottom-10 left-110 z-44 pixel-panel p-4 flex flex-col-reverse gap-4 max-w-[calc(100vw-230px)]">
+    <div className="absolute bottom-10 left-150 z-44 pixel-panel p-4 flex flex-col-reverse gap-4 max-w-[calc(100vw-270px)]">
       {/* Tool row — at the bottom */}
       <div className="flex gap-4 flex-wrap">
         <Button

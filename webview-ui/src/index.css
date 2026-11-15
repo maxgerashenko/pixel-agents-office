@@ -145,166 +145,73 @@
 }
 
 @layer components {
-  /* The layout controls as a small log cabin, after the reference: slate roof
-     with a brick chimney and a curl of smoke, a railed balcony, flower boxes,
-     a porch with a hanging lantern, stacked firewood and a cobblestone path.
-     Each floor is one button. */
+  /* The layout controls as a small log cabin (assets/cabin.png, drawn by
+     scripts/draw-cabin.py after the reference): slate roof, brick chimney,
+     balcony, window boxes, porch with a lantern, firewood, cobblestone, pines.
+     One floor per control; each control is a wooden sign on its floor. The
+     sprite is 68x92 shown at 2x. */
   .cabin {
-    @apply flex flex-col items-stretch;
-    width: 96px;
-  }
-  .cabin-roof {
     position: relative;
-    height: 30px;
-    margin: 0 4px -2px;
-    background: repeating-linear-gradient(
-      0deg,
-      var(--cabin-slate-dark) 0 2px,
-      var(--cabin-slate) 2px 6px
-    );
-    clip-path: polygon(50% 0, 100% 100%, 0 100%);
+    width: 136px;
+    height: 184px;
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+    image-rendering: pixelated;
+    pointer-events: none; /* only the signs take presses, the forest stays click-through */
   }
-  /* Gable window, centred under the ridge. */
-  .cabin-gable {
+  .cabin-slot {
     position: absolute;
-    left: 50%;
-    top: 12px;
-    width: 8px;
-    height: 8px;
-    margin-left: -4px;
-    background:
-      linear-gradient(var(--cabin-trim), var(--cabin-trim)) center / 2px 100% no-repeat,
-      linear-gradient(var(--cabin-trim), var(--cabin-trim)) center / 100% 2px no-repeat,
-      var(--cabin-glow);
-    border: 2px solid var(--cabin-trim);
-    z-index: 1;
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: center;
+    pointer-events: none;
   }
-  .cabin-chimney {
-    position: absolute;
-    left: 24px;
-    top: -8px;
-    width: 10px;
-    height: 28px;
-    background:
-      repeating-linear-gradient(0deg, var(--cabin-mortar) 0 1px, transparent 1px 4px),
-      var(--cabin-brick);
-    border: 2px solid var(--cabin-edge);
-    border-bottom: 0;
+  .cabin-slot > * {
+    pointer-events: auto;
   }
-  .cabin-smoke {
-    position: absolute;
-    left: 26px;
-    top: -24px;
-    width: 4px;
-    height: 4px;
-    background: var(--cabin-smoke);
-    box-shadow:
-      3px -5px 0 var(--cabin-smoke),
-      -1px -10px 0 var(--cabin-smoke);
+  .cabin-slot[data-floor='top'] {
+    top: 58px;
   }
-  .cabin-walls {
-    @apply flex flex-col;
-    border: 2px solid var(--cabin-edge);
-    box-shadow: 2px 2px 0 var(--cabin-edge);
-    background: var(--cabin-log);
+  .cabin-slot[data-floor='mid'] {
+    top: 108px;
+  }
+  .cabin-slot[data-floor='porch'] {
+    top: 142px;
   }
   .cabin-plank {
-    @apply cursor-pointer rounded-none text-sm;
+    @apply cursor-pointer rounded-none;
     position: relative;
-    padding: 7px 4px;
+    pointer-events: auto;
+    min-width: 56px;
+    height: 28px;
+    padding: 0 4px;
+    font-size: 12px;
     color: var(--cabin-text);
-    border: 0;
-    background:
-      repeating-linear-gradient(180deg, transparent 0 7px, var(--cabin-log-line) 7px 9px),
-      var(--cabin-log);
+    background: var(--cabin-trim);
+    border: 2px solid var(--cabin-edge);
+    box-shadow:
+      inset 0 2px 0 var(--cabin-log-hover),
+      1px 2px 0 var(--cabin-edge);
+  }
+  /* Taller hit area than the sign itself, for a finger. */
+  .cabin-plank::before {
+    content: '';
+    position: absolute;
+    inset: -6px -10px;
   }
   .cabin-plank:hover:not(:disabled) {
-    background-color: var(--cabin-log-hover);
+    background: var(--cabin-log-line);
   }
   .cabin-plank[data-on='true'] {
-    box-shadow: inset 0 0 0 2px var(--cabin-glow);
     color: var(--cabin-glow);
+    box-shadow:
+      0 0 0 2px var(--cabin-glow),
+      1px 2px 0 2px var(--cabin-edge);
   }
   .cabin-plank:disabled {
     @apply cursor-default;
     opacity: var(--btn-disabled-opacity);
-  }
-  /* Window box under the middle floor: pink flowers over green leaves. */
-  .cabin-plank[data-floor='mid']::after {
-    content: '';
-    position: absolute;
-    left: 10px;
-    right: 10px;
-    bottom: -3px;
-    height: 5px;
-    background:
-      repeating-linear-gradient(90deg, var(--cabin-flower) 0 2px, transparent 2px 6px) 0 0 / 100%
-        2px no-repeat,
-      var(--cabin-leaf);
-    border: 1px solid var(--cabin-trim);
-    pointer-events: none;
-  }
-  /* Balcony railing between the top two floors. */
-  .cabin-rail {
-    height: 8px;
-    border-top: 2px solid var(--cabin-trim);
-    background: repeating-linear-gradient(90deg, var(--cabin-trim) 0 2px, transparent 2px 6px);
-    background-color: var(--cabin-log);
-  }
-  /* Porch roof: a wider slate eave over the ground floor. */
-  .cabin-eave {
-    height: 8px;
-    margin: 0 -6px;
-    border: 2px solid var(--cabin-edge);
-    background:
-      repeating-linear-gradient(90deg, var(--cabin-slate-dark) 0 2px, transparent 2px 8px),
-      var(--cabin-slate);
-    position: relative;
-    z-index: 1;
-  }
-  /* Hanging lantern, lit, at the porch's right post. */
-  .cabin-lantern {
-    position: absolute;
-    right: 10px;
-    top: 100%;
-    width: 5px;
-    height: 7px;
-    background: var(--cabin-glow);
-    border: 1px solid var(--cabin-edge);
-    box-shadow: 0 0 6px 2px var(--cabin-glow);
-  }
-  .cabin-base {
-    position: relative;
-    height: 12px;
-    margin: 0 -2px;
-    background: var(--cabin-stone-dark);
-    border: 2px solid var(--cabin-edge);
-    border-top: 0;
-  }
-  /* Stacked firewood (log ends) at the left, cobblestone path at the right. */
-  .cabin-firewood {
-    position: absolute;
-    left: 4px;
-    bottom: 0;
-    width: 22px;
-    height: 10px;
-    background: radial-gradient(
-        circle,
-        var(--cabin-wood-end) 0 1px,
-        var(--cabin-trim) 1.5px 3px,
-        transparent 3px
-      )
-      0 0 / 7px 5px;
-  }
-  .cabin-path {
-    position: absolute;
-    right: 4px;
-    bottom: 0;
-    width: 28px;
-    height: 10px;
-    background:
-      repeating-linear-gradient(90deg, transparent 0 5px, var(--cabin-stone-dark) 5px 6px),
-      var(--cabin-stone);
   }
 
   /* Horizontal carousel for editor items */

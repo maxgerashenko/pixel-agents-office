@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { useEffect, useRef, useState } from 'react';
 
+import cabinUrl from '../assets/cabin.png';
 import { READ_ONLY_CONTROL_HINT } from '../constants.js';
 import type { Directory } from '../hooks/useExtensionMessages.js';
 import { isBrowserRuntime } from '../runtime.js';
@@ -72,28 +73,20 @@ export function BottomToolbar({
   const showUnavailable = isBrowserRuntime && !terminalAvailable;
 
   // The three controls are a small log cabin in the bottom-left corner (over
-  // the side forest): one floor per control, the roof, chimney, balcony,
-  // porch and firewood just decoration. The layout editor's toolbar sits to
-  // its right in edit mode.
+  // the side forest): the sprite is the scenery, and each control is a wooden
+  // sign on one floor. The layout editor's toolbar sits to its right in edit
+  // mode.
   const cabin = (agent: ReactNode, layout: ReactNode, settings: ReactNode) => (
-    <div className="absolute bottom-10 left-10 z-44 cabin">
-      <div className="cabin-chimney" aria-hidden />
-      <div className="cabin-smoke" aria-hidden />
-      <div className="cabin-roof" aria-hidden>
-        <div className="cabin-gable" />
-      </div>
-      <div className="cabin-walls">
-        {agent}
-        <div className="cabin-rail" aria-hidden />
+    <div
+      className="absolute bottom-6 left-6 z-44 cabin"
+      style={{ backgroundImage: `url(${cabinUrl})` }}
+    >
+      {agent}
+      <div className="cabin-slot" data-floor="mid">
         {layout}
-        <div className="cabin-eave" aria-hidden>
-          <div className="cabin-lantern" />
-        </div>
-        {settings}
       </div>
-      <div className="cabin-base" aria-hidden>
-        <div className="cabin-firewood" />
-        <div className="cabin-path" />
+      <div className="cabin-slot" data-floor="porch">
+        {settings}
       </div>
     </div>
   );
@@ -102,51 +95,44 @@ export function BottomToolbar({
   // to get them back. Nothing here could do anything — the server refuses every
   // change from an untokened page.
   if (readOnly) {
-    const disabled = (label: string, floor: string) => (
-      <button
-        key={label}
-        className="cabin-plank"
-        data-floor={floor}
-        disabled
-        title={READ_ONLY_CONTROL_HINT}
-      >
+    const disabled = (label: string) => (
+      <button className="cabin-plank" disabled title={READ_ONLY_CONTROL_HINT}>
         {label}
       </button>
     );
     return cabin(
-      disabled('+ Agent', 'top'),
-      disabled('Layout', 'mid'),
-      disabled('Settings', 'porch'),
+      <div className="cabin-slot" data-floor="top">
+        {disabled('+ Agent')}
+      </div>,
+      disabled('Layout'),
+      disabled('Settings'),
     );
   }
 
   const agentFloor = (
     <>
       {showUnavailable && (
-        <button
-          className="cabin-plank"
-          data-floor="top"
-          disabled
-          title={terminalUnavailableReason ?? 'Terminal unavailable on this server.'}
-        >
-          + Agent
-        </button>
+        <div className="cabin-slot" data-floor="top">
+          <button
+            className="cabin-plank"
+            disabled
+            title={terminalUnavailableReason ?? 'Terminal unavailable on this server.'}
+          >
+            + Agent
+          </button>
+        </div>
       )}
       {canLaunch && (
         <div
           ref={launchRef}
-          className="relative flex flex-col"
+          className="cabin-slot"
+          data-floor="top"
           // Hover is the desktop secondary gesture (long-press is the mobile
           // one): it opens the drawer without committing to a launch.
           onMouseEnter={() => setIsDrawerOpen(true)}
           onMouseLeave={() => setIsDrawerOpen(false)}
         >
-          <button
-            className="cabin-plank"
-            data-floor="top"
-            data-on={isDrawerOpen}
-            onClick={handleAgentClick}
-          >
+          <button className="cabin-plank" data-on={isDrawerOpen} onClick={handleAgentClick}>
             + Agent
           </button>
           <LaunchDrawer
@@ -172,7 +158,6 @@ export function BottomToolbar({
     agentFloor,
     <button
       className="cabin-plank"
-      data-floor="mid"
       data-on={isEditMode}
       onClick={onToggleEditMode}
       title="Edit office layout"
@@ -181,7 +166,6 @@ export function BottomToolbar({
     </button>,
     <button
       className="cabin-plank"
-      data-floor="porch"
       data-on={isSettingsOpen}
       onClick={onToggleSettings}
       title="Settings"
