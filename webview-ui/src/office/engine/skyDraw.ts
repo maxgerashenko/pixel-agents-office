@@ -568,7 +568,7 @@ export function drawSky(
   if (sky.starAlpha > 0) {
     const sec0 = now.getTime() / 1000;
     const backdrop = nightBackdrop(w, h, px, sec0);
-    const dawn = t > SKY_STAR_FADE.out0;
+    const dawn = t < SKY_STAR_FADE.out1;
     const anchor = sunPos ?? arcPosition(dawn ? 0 : 1, 0, (r + 1) * px, w, h, avoid);
     const cx = Math.round(anchor[0] / px) * px;
     const cy = Math.round(anchor[1] / px) * px;
