@@ -206,6 +206,29 @@ export interface ContainSpace {
   /** Open space kept free above the office (default 0): zoom steps down until
    *  at least this much is left over. */
   minOpenTop?: number;
+  /** Whole zoom steps from the fitted zoom (default 0; negative = smaller).
+   *  Clamped to what is on offer: up to `maxExtraSteps` bigger while the
+   *  office still fits the width and `extraMinOpenTop` of sky, and down to
+   *  `maxLessSteps` smaller (never below `minZoom`). */
+  extraSteps?: number;
+  /** Most steps above the fitted zoom on offer (default 0 = none). */
+  maxExtraSteps?: number;
+  /** Most steps below the fitted zoom on offer (default 0 = none). */
+  maxLessSteps?: number;
+  /** Open space kept above the office at the larger zooms (default `minOpenTop`). */
+  extraMinOpenTop?: number;
+}
+
+/** What {@link fitContainView} chose. `steps` is the clamped step taken and
+ *  `maxSteps` how many exist, so a caller can disable its + and − at the ends. */
+export interface ContainView {
+  zoom: number;
+  panX: number;
+  panY: number;
+  steps: number;
+  maxSteps: number;
+  /** Steps below the fitted size on offer, as a positive count. */
+  minSteps: number;
 }
 
 /** The view view mode locks to: the largest whole zoom at which the office's
@@ -224,7 +247,7 @@ export function fitContainView(
   minZoom: number,
   maxZoom: number,
   space: ContainSpace = { top: 0, bottom: 0 },
-): { zoom: number; panX: number; panY: number } {
+): ContainView {
   const bounds = layoutContentBounds(layout) ?? {
     x: 0,
     y: 0,
@@ -237,7 +260,18 @@ export function fitContainView(
   // steps down before either shrinks.
   const usableHeight = bandHeight - (space.bottomMargin ?? 0) - (space.minOpenTop ?? 0);
   const byHeight = bounds.h > 0 && usableHeight > 0 ? Math.floor(usableHeight / bounds.h) : minZoom;
-  const zoom = Math.max(minZoom, Math.min(maxZoom, byWidth, byHeight));
+  const baseZoom = Math.max(minZoom, Math.min(maxZoom, byWidth, byHeight));
+  // Larger zooms: whole steps up from the fit, as far as the office still fits
+  // the width and leaves the sky its room.
+  const extraUsable =
+    bandHeight - (space.bottomMargin ?? 0) - (space.extraMinOpenTop ?? space.minOpenTop ?? 0);
+  const byHeightExtra =
+    bounds.h > 0 && extraUsable > 0 ? Math.floor(extraUsable / bounds.h) : minZoom;
+  const topZoom = Math.max(baseZoom, Math.min(maxZoom, byWidth, byHeightExtra));
+  const maxSteps = Math.min(Math.max(0, space.maxExtraSteps ?? 0), topZoom - baseZoom);
+  const minSteps = Math.min(Math.max(0, space.maxLessSteps ?? 0), baseZoom - minZoom);
+  const steps = Math.max(-minSteps, Math.min(maxSteps, Math.round(space.extraSteps ?? 0)));
+  const zoom = baseZoom + steps;
   const drawnH = bounds.h * zoom;
   const bandBottom = canvas.height - space.bottom;
   const wanted = bandBottom - (space.bottomMargin ?? 0) - drawnH / 2;
@@ -246,5 +280,5 @@ export function fitContainView(
   const panX = ((layout.cols * TILE_SIZE) / 2 - (bounds.x + bounds.w / 2)) * zoom;
   const panY =
     ((layout.rows * TILE_SIZE) / 2 - (bounds.y + bounds.h / 2)) * zoom + (cy - canvas.height / 2);
-  return { zoom, panX, panY };
+  return { zoom, panX, panY, steps, maxSteps, minSteps };
 }

@@ -40,7 +40,7 @@ import {
 import type { EditorState } from '../office/editor/editorState.js';
 import type { OfficeState } from '../office/engine/officeState.js';
 import { getRotatedType, getToggledType } from '../office/layout/furnitureCatalog.js';
-import type { ContainSpace, FitSpace } from '../office/projection.js';
+import type { ContainSpace, ContainView, FitSpace } from '../office/projection.js';
 import { fitContainView, fitWidthView } from '../office/projection.js';
 import type {
   EditTool as EditToolType,
@@ -83,7 +83,7 @@ interface EditorActions extends Omit<FurnitureColorActions, 'pickColorAt'> {
    *  the office, and center the camera on it. */
   handleFitWidth: (canvas: { width: number; height: number }, space?: FitSpace) => void;
   /** View mode: fit the whole office between the top and bottom panels. */
-  handleFitContain: (canvas: { width: number; height: number }, space: ContainSpace) => void;
+  handleFitContain: (canvas: { width: number; height: number }, space: ContainSpace) => ContainView;
   handleEditorTileAction: (col: number, row: number) => void;
   handleEditorEraseAction: (col: number, row: number) => void;
   handleEditorSelectionChange: () => void;
@@ -581,6 +581,7 @@ export function useEditorActions(
       setZoom(view.zoom);
       os.breakCameraFollow();
       panRef.current = { x: view.panX, y: view.panY };
+      return view;
     },
     [getOfficeState],
   );

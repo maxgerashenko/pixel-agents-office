@@ -128,6 +128,16 @@ export const VIEW_BOTTOM_MARGIN_CSS_PX = 25;
 /** View mode keeps at least this fraction of the canvas height open above the
  *  office (room for the sky); landscape gives up a zoom step for it when needed. */
 export const VIEW_OPEN_TOP_FRACTION = 0.1;
+/** View mode's size menu: whole zoom steps it offers bigger than the fitted
+ *  size (the office's width and the sky cap it sooner on a narrow screen). */
+export const VIEW_ZOOM_MAX_EXTRA_STEPS = 1;
+/** ...and smaller than it (wider gaps left and right; zoom never goes below 1). */
+export const VIEW_ZOOM_MAX_LESS_STEPS = 5;
+/** Open space kept above the office at the larger sizes, as a fraction of the
+ *  canvas height (the sky and the agent cards). */
+export const VIEW_ZOOM_OPEN_TOP_FRACTION = 0.05;
+/** localStorage key for the chosen size level (a per-viewer convenience). */
+export const VIEW_ZOOM_STORAGE_KEY = 'pixel-agents.viewZoomStep';
 /** Ghost-border hover tile when the border isn't shown — off any reachable tile. */
 export const GHOST_BORDER_NO_HOVER_TILE = -999;
 

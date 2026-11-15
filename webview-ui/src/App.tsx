@@ -19,6 +19,7 @@ import { Button } from './components/ui/Button.js';
 import { Modal } from './components/ui/Modal.js';
 import { UsageMeter } from './components/UsageMeter.js';
 import { VersionIndicator } from './components/VersionIndicator.js';
+import { ViewZoomMenu } from './components/ViewZoomMenu.js';
 import { ZoomControls } from './components/ZoomControls.js';
 import {
   FIT_OBSTACLE_ATTR,
@@ -27,6 +28,10 @@ import {
   VIEW_BOTTOM_MARGIN_CSS_PX,
   VIEW_FIT_CHECK_MS,
   VIEW_OPEN_TOP_FRACTION,
+  VIEW_ZOOM_MAX_EXTRA_STEPS,
+  VIEW_ZOOM_MAX_LESS_STEPS,
+  VIEW_ZOOM_OPEN_TOP_FRACTION,
+  VIEW_ZOOM_STORAGE_KEY,
 } from './constants.js';
 import { useDirectoryEditor } from './hooks/useDirectoryEditor.js';
 import { useEditorActions } from './hooks/useEditorActions.js';
@@ -422,6 +427,28 @@ function App() {
   const viewLocked = !editor.isEditMode;
   const handleFitContainRef = useRef(editor.handleFitContain);
   handleFitContainRef.current = editor.handleFitContain;
+  // The size menu's level: whole zoom steps above the fitted size. Only the
+  // fit decides how many exist (`viewMaxSteps`), so the chosen step is clamped.
+  const [viewStep, setViewStep] = useState(() => {
+    try {
+      const n = Number(localStorage.getItem(VIEW_ZOOM_STORAGE_KEY));
+      return Number.isInteger(n) ? n : 0;
+    } catch {
+      return 0;
+    }
+  });
+  const [viewMaxSteps, setViewMaxSteps] = useState(0);
+  const [viewMinSteps, setViewMinSteps] = useState(0);
+  const viewStepRef = useRef(viewStep);
+  viewStepRef.current = viewStep;
+  const changeViewStep = useCallback((step: number) => {
+    setViewStep(step);
+    try {
+      localStorage.setItem(VIEW_ZOOM_STORAGE_KEY, String(step));
+    } catch {
+      /* storage unavailable: the level just isn't remembered */
+    }
+  }, []);
   useEffect(() => {
     if (!viewLocked || !layoutReady) return;
     let lastSignature = '';
@@ -430,16 +457,23 @@ function App() {
       const m = measureFitSpace();
       if (!m || m.canvas.width === 0 || m.canvas.height === 0) return;
       const layout = getOfficeState().getLayout();
-      const signature = `${m.canvas.width}x${m.canvas.height}|${m.top}|${m.bottom}`;
+      const signature = `${m.canvas.width}x${m.canvas.height}|${m.top}|${m.bottom}|${viewStepRef.current}`;
       if (signature === lastSignature && layout === lastLayout) return;
       lastSignature = signature;
       lastLayout = layout;
-      handleFitContainRef.current(m.canvas, {
+      const view = handleFitContainRef.current(m.canvas, {
         top: m.top,
         bottom: m.bottom,
         bottomMargin: VIEW_BOTTOM_MARGIN_CSS_PX * (window.devicePixelRatio || 1),
         minOpenTop: VIEW_OPEN_TOP_FRACTION * m.canvas.height,
+        extraSteps: viewStepRef.current,
+        maxExtraSteps: VIEW_ZOOM_MAX_EXTRA_STEPS,
+        maxLessSteps: VIEW_ZOOM_MAX_LESS_STEPS,
+        extraMinOpenTop: VIEW_ZOOM_OPEN_TOP_FRACTION * m.canvas.height,
       });
+      setViewMaxSteps(view.maxSteps);
+      setViewMinSteps(view.minSteps);
+      if (view.steps !== viewStepRef.current) setViewStep(view.steps);
     };
     const frame = requestAnimationFrame(refit);
     const interval = setInterval(refit, VIEW_FIT_CHECK_MS);
@@ -449,7 +483,7 @@ function App() {
       clearInterval(interval);
       window.removeEventListener('resize', refit);
     };
-  }, [viewLocked, layoutReady, measureFitSpace]);
+  }, [viewLocked, layoutReady, measureFitSpace, viewStep]);
 
   // Frame the office the way the fit button does: once when the layout first
   // arrives, then again whenever the cards/agents change or the window resizes
@@ -667,6 +701,16 @@ function App() {
               zoom={editor.zoom}
               onZoomChange={editor.handleZoomChange}
               onFitWidth={handleFitWidth}
+            />
+          )}
+
+          {/* View mode: the only way to change the office's size there. */}
+          {!isMobile && viewLocked && (
+            <ViewZoomMenu
+              step={viewStep}
+              maxSteps={viewMaxSteps}
+              minSteps={viewMinSteps}
+              onStepChange={changeViewStep}
             />
           )}
 
