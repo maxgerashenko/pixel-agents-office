@@ -763,20 +763,22 @@ export const TABLE_TENNIS_PADDLE_HANDLE_COLOR = '#9a6a35';
  *  (0 = :00, 1 = the next :00); colours blend linearly between neighbours and
  *  the last keyframe equals the first so the cycle loops with no jump. The
  *  day is one long golden hour (:00–:43) as the sun crosses; night sweeps in
- *  by :43 and back out from :56. */
+ *  by :43 and opens again from :54 as the sun rises. */
 export const SKY_KEYFRAMES: ReadonlyArray<{ at: number; top: string; bottom: string }> = [
   { at: 0, top: '#e2683c', bottom: '#f7b65a' },
   { at: 0.62, top: '#e2683c', bottom: '#f7b65a' },
   { at: 0.72, top: '#c2543e', bottom: '#f2a050' },
-  { at: 0.94, top: '#c2543e', bottom: '#f2a050' },
+  { at: 0.9, top: '#c2543e', bottom: '#f2a050' },
   { at: 1, top: '#e2683c', bottom: '#f7b65a' },
 ];
 /** The sun is up from the top of the hour until this fraction, then below the horizon. */
 export const SKY_SUN_SET_AT = 0.72;
+/** The sun starts rising at this fraction, as dawn begins, and is already up when the hour turns. */
+export const SKY_SUN_RISE_AT = 0.9;
 /** The moon rises at this fraction and sets at the end of the hour. */
 export const SKY_MOON_RISE_AT = 0.62;
 /** Stars fade in over [in0, in1] and out over [out0, out1]. */
-export const SKY_STAR_FADE = { in0: 0.64, in1: 0.74, out0: 0.94, out1: 1 } as const;
+export const SKY_STAR_FADE = { in0: 0.64, in1: 0.74, out0: 0.9, out1: 1 } as const;
 export const SKY_STAR_COUNT = 48;
 /** Height of one gradient band, in sprite pixels (gives the sky a stepped, pixel look). */
 export const SKY_BAND_SPRITE_PX = 4;

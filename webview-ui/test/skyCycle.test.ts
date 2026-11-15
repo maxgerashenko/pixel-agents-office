@@ -48,7 +48,7 @@ test('the cycle loops: the end of the hour blends into the start', () => {
 
 test('the sun crosses the sky left to right over an arc, peaking mid-way', () => {
   const early = skyAt(0.05).sun;
-  const mid = skyAt(0.36).sun;
+  const mid = skyAt(0.31).sun;
   const late = skyAt(0.65).sun;
   assert.ok(early && mid && late);
   assert.ok(early.p < mid.p && mid.p < late.p);
@@ -61,4 +61,13 @@ test('the moon crosses left to right during the night phase', () => {
   const b = skyAt(0.9).moon;
   assert.ok(a && b);
   assert.ok(a.p < b.p);
+});
+
+test('the sun starts rising as dawn begins, so its first rays lead the day in', () => {
+  assert.equal(skyAt(0.89).sun, null);
+  const rising = skyAt(0.92).sun;
+  const turned = skyAt(0).sun;
+  assert.ok(rising && turned);
+  assert.ok(rising.p < turned.p);
+  assert.ok(rising.lift < turned.lift);
 });

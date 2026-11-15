@@ -16,6 +16,7 @@ import {
   SKY_STAR_COUNT,
   SKY_STAR_FADE,
   SKY_SUN_COLOR,
+  SKY_SUN_RISE_AT,
   SKY_SUN_SET_AT,
   SKY_SUN_SETTING_COLOR,
 } from '../../constants.js';
@@ -70,8 +71,8 @@ export function skyAt(t: number): SkyState {
   const bottom = mix(parseHex(a.bottom), parseHex(b.bottom), k);
 
   let sun: SkyState['sun'] = null;
-  if (f < SKY_SUN_SET_AT) {
-    const p = f / SKY_SUN_SET_AT;
+  if (f < SKY_SUN_SET_AT || f >= SKY_SUN_RISE_AT) {
+    const p = ((f - SKY_SUN_RISE_AT + 1) % 1) / (SKY_SUN_SET_AT + 1 - SKY_SUN_RISE_AT);
     const warm = clamp01((p - 0.8) / 0.2);
     sun = {
       p,
@@ -86,7 +87,7 @@ export function skyAt(t: number): SkyState {
   }
   const { in0, in1, out0, out1 } = SKY_STAR_FADE;
   const starAlpha = clamp01((f - in0) / (in1 - in0)) * clamp01((out1 - f) / (out1 - out0));
-  const dayAlpha = f < 0.7 ? clamp01((0.7 - f) / 0.15) : clamp01((f - 0.96) / 0.04);
+  const dayAlpha = f < 0.7 ? clamp01((0.7 - f) / 0.15) : clamp01((f - 0.9) / 0.1);
   return { top: toCss(top), bottom: toCss(bottom), sun, moon, starAlpha, dayAlpha };
 }
 
