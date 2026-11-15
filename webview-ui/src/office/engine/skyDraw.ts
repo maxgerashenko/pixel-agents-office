@@ -30,6 +30,7 @@ import {
   SKY_MOON_MAX_CANVAS_SHARE,
   SKY_MOON_RADIUS_SPRITE_PX,
   SKY_MOON_SHADE_COLOR,
+  SKY_MOON_TRACK_RADIUS_SPRITE_PX,
   SKY_NIGHT_BAND_COLOR,
   SKY_NIGHT_BASE_COLOR,
   SKY_NIGHT_FRAMES,
@@ -399,44 +400,52 @@ function drawGround(
 let nightCache: {
   key: string;
   canvas: HTMLCanvasElement;
-  frame: number;
+  tick: string;
   frames: (HTMLCanvasElement | undefined)[];
 } | null = null;
 
 /**
- * One frame of the Starry Night sky at sprite resolution: thousands of short
- * brushstrokes following a flow field that curls around two spirals and rolls
- * in gentle waves elsewhere. Each stroke is a window travelling along its own
- * looping streamline, so over `SKY_NIGHT_FRAMES` frames the paint flows round
- * the spirals and the loop closes seamlessly.
+ * One frame of the Starry Night sky at sprite resolution, as the plane
+ * (`pw` x `ph`, wider and taller than the canvas) the whole sky travels on: thousands of short brushstrokes
+ * following a flow field that curls around spirals and rolls in gentle waves
+ * elsewhere. Each stroke is a window travelling along its own looping
+ * streamline, so over `SKY_NIGHT_FRAMES` frames the paint flows round the
+ * spirals and the loop closes seamlessly.
  */
-function paintNightFrame(sw: number, sh: number, frame: number): HTMLCanvasElement {
+function paintNightFrame(
+  pw: number,
+  ph: number,
+  frame: number,
+  vortices: ReadonlyArray<{ x: number; y: number; r: number }>,
+  /** The canvas the plane is seen through at rest: how big it is, and where the plane's corner sits in it. */
+  view: { sw: number; sh: number; ox: number; oy: number },
+): HTMLCanvasElement {
+  const { sw, sh, ox, oy } = view;
   const canvas = document.createElement('canvas');
-  canvas.width = sw;
-  canvas.height = sh;
+  canvas.width = pw;
+  canvas.height = ph;
   const c = canvas.getContext('2d');
   if (!c) return canvas;
   c.fillStyle = SKY_NIGHT_BASE_COLOR;
-  c.fillRect(0, 0, sw, sh);
+  c.fillRect(0, 0, pw, ph);
   let seed = 2024;
   const rnd = (): number => {
     seed = (seed * 1103515245 + 12345) & 0x7fffffff;
     return seed / 0x7fffffff;
   };
-  const side = Math.min(sw, sh);
-  const count = Math.min(SKY_STROKE_MAX, Math.floor((sw * sh) / SKY_STROKE_AREA_SPRITE_PX));
+  const count = Math.min(SKY_STROKE_MAX, Math.floor((pw * ph) / SKY_STROKE_AREA_SPRITE_PX));
   const last = SKY_SWIRL_COLORS.length - 1;
   for (let n = 0; n < count; n++) {
-    let x = rnd() * sw;
-    let y = rnd() * sh;
+    let x = rnd() * pw;
+    let y = rnd() * ph;
     // how close this stroke starts to a spiral core (paler there)
     let near = 0;
-    for (const v of SKY_VORTICES) {
-      const d = Math.hypot(x - v.x * sw, y - v.y * sh) / (v.r * side);
+    for (const v of vortices) {
+      const d = Math.hypot(x - v.x, y - v.y) / v.r;
       near = Math.max(near, Math.exp(-d * d));
     }
-    const band = 0.66 + 0.07 * Math.sin((x / sw) * 5 + 0.6);
-    const inBand = Math.abs(y / sh - band) < 0.05 && rnd() < 0.55;
+    const band = 0.66 + 0.07 * Math.sin(((x + ox) / sw) * 5 + 0.6);
+    const inBand = Math.abs((y + oy) / sh - band) < 0.05 && rnd() < 0.55;
     c.fillStyle = inBand
       ? SKY_NIGHT_BAND_COLOR
       : SKY_SWIRL_COLORS[Math.min(last, Math.floor(rnd() * 3.4 + near * 2.4))];
@@ -448,14 +457,14 @@ function paintNightFrame(sw: number, sh: number, frame: number): HTMLCanvasEleme
     for (let s = 0; s < loop; s++) {
       if ((s - head + loop) % loop < len) c.fillRect(Math.round(x), Math.round(y), 3, 2);
       // flow: gentle rolling waves, bent into a spiral near each vortex
-      const wave = Math.sin((x / sw) * 7 + (y / sh) * 4) * 0.5;
+      const wave = Math.sin(((x + ox) / sw) * 7 + ((y + oy) / sh) * 4) * 0.5;
       let fx = Math.cos(wave) * 0.5;
       let fy = Math.sin(wave) * 0.5;
-      for (const v of SKY_VORTICES) {
-        const dx = x - v.x * sw;
-        const dy = y - v.y * sh;
+      for (const v of vortices) {
+        const dx = x - v.x;
+        const dy = y - v.y;
         const dist = Math.hypot(dx, dy) || 1;
-        const reach = dist / (v.r * side * 1.7);
+        const reach = dist / (v.r * 1.7);
         const pull = Math.exp(-reach * reach) * 2.2;
         fx += pull * (-dy / dist - (0.3 * dx) / dist);
         fy += pull * (dx / dist - (0.3 * dy) / dist);
@@ -469,31 +478,62 @@ function paintNightFrame(sw: number, sh: number, frame: number): HTMLCanvasEleme
 }
 
 /**
- * The night sky for this moment, at canvas size. Frames are painted small (one
- * canvas pixel per sprite pixel) the first time each is needed and scaled up
- * onto one reused full-size canvas whenever the frame changes.
+ * The night sky for this moment, at canvas size. The sky is one plane, wider
+ * and taller than the canvas, that travels in one piece along the moon's arc —
+ * moon, stars and paint all on the same path, as if the ground were turning
+ * under them. `travel` and `rise` (canvas px) are how far the plane must reach
+ * beyond the canvas sideways and upwards; (shiftX, shiftY) is where its
+ * top-left corner is now. Frames are painted small (one canvas pixel per
+ * sprite pixel) the first time each is needed and scaled up onto one reused
+ * full-size canvas once per animation tick.
  */
-function nightBackdrop(w: number, h: number, px: number, sec: number): HTMLCanvasElement {
-  const key = `${w}x${h}x${px}`;
+function nightBackdrop(
+  w: number,
+  h: number,
+  px: number,
+  sec: number,
+  plane: { travel: number; rise: number; shiftX: number; shiftY: number },
+): HTMLCanvasElement {
+  const sw = Math.ceil(w / px);
+  const sh = Math.ceil(h / px);
+  const travel = Math.ceil(plane.travel / px);
+  const rise = Math.ceil(plane.rise / px);
+  const key = `${w}x${h}x${px}x${travel}x${rise}`;
   if (nightCache?.key !== key) {
     const canvas = document.createElement('canvas');
     canvas.width = w;
     canvas.height = h;
-    nightCache = { key, canvas, frame: -1, frames: [] };
+    nightCache = { key, canvas, tick: '', frames: [] };
   }
   const cache = nightCache;
   const frame =
     Math.floor(((sec % SKY_NIGHT_LOOP_SEC) / SKY_NIGHT_LOOP_SEC) * SKY_NIGHT_FRAMES) %
     SKY_NIGHT_FRAMES;
-  if (cache.frame === frame) return cache.canvas;
-  const sw = Math.ceil(w / px);
-  const sh = Math.ceil(h / px);
-  const small = (cache.frames[frame] ??= paintNightFrame(sw, sh, frame));
+  const ox = Math.round(plane.shiftX / px);
+  const oy = Math.round(plane.shiftY / px);
+  const tick = `${frame}:${ox}:${oy}`;
+  if (cache.tick === tick) return cache.canvas;
+  const side = Math.min(sw, sh);
+  const frameCanvas = (cache.frames[frame] ??= paintNightFrame(
+    sw + travel,
+    sh + rise,
+    frame,
+    // the spirals where they sit at mid-night, and again further along the
+    // plane each way, so some are in view all night
+    [-0.8, 0, 0.8].flatMap((along) =>
+      SKY_VORTICES.map((v) => ({
+        x: v.x * sw + travel / 2 + along * sw,
+        y: v.y * sh + rise,
+        r: v.r * side,
+      })),
+    ),
+    { sw, sh, ox: -travel / 2, oy: -rise },
+  ));
   const c = cache.canvas.getContext('2d');
   if (c) {
     c.imageSmoothingEnabled = false;
-    c.drawImage(small, 0, 0, sw * px, sh * px);
-    cache.frame = frame;
+    c.drawImage(frameCanvas, ox * px, oy * px, (sw + travel) * px, (sh + rise) * px);
+    cache.tick = tick;
   }
   return cache.canvas;
 }
@@ -540,6 +580,15 @@ export function drawSky(
   // the skyline stands a wall's height above the top row of tiles, where the office's roofline is
   const horizonY = avoid ? avoid.y - SKY_HORIZON_LIFT_SPRITE_PX * px : Math.round(h * 0.9);
   const r = SKY_BODY_RADIUS_SPRITE_PX;
+  const moonR = Math.max(
+    6,
+    Math.min(
+      SKY_MOON_RADIUS_SPRITE_PX,
+      Math.floor((SKY_MOON_MAX_CANVAS_SHARE * Math.min(w, h)) / px),
+    ),
+  );
+  // the moon's path was laid out for a smaller moon; it keeps that path at any size
+  const moonTrack = Math.min(moonR, SKY_MOON_TRACK_RADIUS_SPRITE_PX);
   const sunPos = sky.sun ? arcPosition(sky.sun.p, sky.sun.lift, (r + 1) * px, w, h, avoid) : null;
   // Pixel-art glow: flat stepped rings of colour around the sun, small and pale at
   // midday, growing into a full orange-to-mauve sunset; then the cream sun itself
@@ -567,7 +616,30 @@ export function drawSky(
   const bandW = SKY_WIPE_BAND_SPRITE_PX * px;
   if (sky.starAlpha > 0) {
     const sec0 = now.getTime() / 1000;
-    const backdrop = nightBackdrop(w, h, px, sec0);
+    // The whole night rides the moon's arc in one piece: the plane's corner is
+    // where the moon is now, measured from where it sets. Before the moon is
+    // up (dawn) the sky rests where the night left it.
+    const moonAt = (q: number): [number, number] =>
+      arcPosition(q, Math.sin(Math.PI * q), (moonTrack + 1) * px, w, h, avoid);
+    const [setX, setY] = moonAt(1);
+    const [riseX] = moonAt(0);
+    const [, topY] = moonAt(0.5);
+    const [nowX, nowY] = moonAt(sky.moon?.p ?? 1);
+    const plane = {
+      travel: setX - riseX,
+      rise: setY - topY,
+      shiftX: Math.round((nowX - setX) / px) * px,
+      shiftY: Math.round((nowY - setY) / px) * px,
+    };
+    const backdrop = nightBackdrop(w, h, px, sec0, plane);
+    const tiles = Math.ceil((w + plane.travel) / w);
+    /** Where a star laid out on the canvas sits now, once per canvas-width of plane. */
+    const placed = (x: number, y: number): [number, number][] =>
+      Array.from({ length: tiles }, (_, k): [number, number] => [
+        x + k * w + plane.shiftX,
+        // every other width uses the strip above the canvas, seen when the sky dips
+        y + (k % 2 === 0 ? plane.rise : plane.rise * 0.35) + plane.shiftY,
+      ]);
     const dawn = t < SKY_STAR_FADE.out1;
     const anchor = sunPos ?? arcPosition(dawn ? 0 : 1, 0, (r + 1) * px, w, h, avoid);
     const cx = Math.round(anchor[0] / px) * px;
@@ -592,9 +664,14 @@ export function drawSky(
     ctx.clip('evenodd');
     // Starry Night stars: a soft glow, a yellow body and a bright four-point sparkle
     for (const [n, st] of SKY_BIG_STARS.entries()) {
-      const sx = Math.round((st.x * w) / px) * px;
-      const sy = Math.round((st.y * horizonY * 0.8) / px) * px;
       const outer = st.size * 2 + 2;
+      const edge = outer * 2 * px;
+      const up = placed(st.x * w, st.y * horizonY * 0.8).find(
+        ([x, y]) => x >= -edge && x <= w + edge && y >= -edge && y <= horizonY + edge,
+      );
+      if (!up) continue;
+      const sx = Math.round(up[0] / px) * px;
+      const sy = Math.round(up[1] / px) * px;
       // rings of short curved dashes, each ring turning slowly the other way
       SKY_BIG_STAR_DASH_COLORS.forEach((color, k) => {
         const rad = outer * (0.66 + k * 0.17);
@@ -630,23 +707,20 @@ export function drawSky(
     for (const star of STARS) {
       const tw = 0.6 + 0.4 * Math.sin((sec0 / SKY_TWINKLE_SEC + star.phase) * Math.PI * 2);
       ctx.globalAlpha = tw;
-      ctx.fillRect(Math.round((star.x * w) / px) * px, Math.round((star.y * h) / px) * px, px, px);
+      for (const [x, y] of placed(star.x * w, (star.y / 0.85) * horizonY)) {
+        if (y > horizonY || y < 0 || x < 0 || x > w) continue;
+        ctx.fillRect(Math.round(x / px) * px, Math.round(y / px) * px, px, px);
+      }
     }
     ctx.globalAlpha = 1;
     ctx.restore();
   }
 
   if (sky.moon) {
-    const mr = Math.max(
-      6,
-      Math.min(
-        SKY_MOON_RADIUS_SPRITE_PX,
-        Math.floor((SKY_MOON_MAX_CANVAS_SHARE * Math.min(w, h)) / px),
-      ),
-    );
+    const mr = moonR;
     const k = mr / SKY_MOON_DESIGN_RADIUS;
     const sc = (n: number): number => Math.round(n * k);
-    const [cx, cy] = arcPosition(sky.moon.p, sky.moon.lift, (mr + 1) * px, w, h, avoid);
+    const [cx, cy] = arcPosition(sky.moon.p, sky.moon.lift, (moonTrack + 1) * px, w, h, avoid);
     const mx = Math.round(cx / px) * px;
     const my = Math.round(cy / px) * px;
     const dot = (dx: number, dy: number, sw = 1, sh = 1): void =>

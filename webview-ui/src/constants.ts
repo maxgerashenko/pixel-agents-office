@@ -807,7 +807,9 @@ export const SKY_STAR_COLOR = '#ffffff';
 export const SKY_TWINKLE_SEC = 3;
 /** The moon is a big cartoon character: a larger disc with a face. */
 /** Same size as the sun; capped to a share of the canvas on a very small screen. */
-export const SKY_MOON_RADIUS_SPRITE_PX = 16;
+export const SKY_MOON_RADIUS_SPRITE_PX = 24;
+/** The moon's arc is laid out as if it had this radius, whatever size it is drawn. */
+export const SKY_MOON_TRACK_RADIUS_SPRITE_PX = 16;
 export const SKY_MOON_MAX_CANVAS_SHARE = 0.22;
 /** The radius the moon's craters and patches were drawn for. */
 export const SKY_MOON_DESIGN_RADIUS = 16;
@@ -905,5 +907,5 @@ export const SKY_TREE_NIGHT_COLORS = { dark: '#080c1c', lit: '#24407e', trunk: '
 export const SKY_TREE_SPACING_SPRITE_PX = 26;
 export const SKY_TREE_MIN_GAP_SPRITE_PX = 16;
 /** The night sky's brushstrokes flow: this many frames, looping in this many seconds. */
-export const SKY_NIGHT_FRAMES = 16;
-export const SKY_NIGHT_LOOP_SEC = 4;
+export const SKY_NIGHT_FRAMES = 12;
+export const SKY_NIGHT_LOOP_SEC = 3;
