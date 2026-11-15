@@ -71,13 +71,30 @@ export function BottomToolbar({
   const canLaunch = !isBrowserRuntime || terminalAvailable;
   const showUnavailable = isBrowserRuntime && !terminalAvailable;
 
-  // The three controls are a small wooden cabin in the bottom-left corner
-  // (over the side forest): a shingled roof, then one plank per control. The
-  // layout editor's toolbar sits to its right in edit mode.
-  const cabin = (walls: ReactNode) => (
+  // The three controls are a small log cabin in the bottom-left corner (over
+  // the side forest): one floor per control, the roof, chimney, balcony,
+  // porch and firewood just decoration. The layout editor's toolbar sits to
+  // its right in edit mode.
+  const cabin = (agent: ReactNode, layout: ReactNode, settings: ReactNode) => (
     <div className="absolute bottom-10 left-10 z-44 cabin">
-      <div className="cabin-roof" aria-hidden />
-      <div className="cabin-walls">{walls}</div>
+      <div className="cabin-chimney" aria-hidden />
+      <div className="cabin-smoke" aria-hidden />
+      <div className="cabin-roof" aria-hidden>
+        <div className="cabin-gable" />
+      </div>
+      <div className="cabin-walls">
+        {agent}
+        <div className="cabin-rail" aria-hidden />
+        {layout}
+        <div className="cabin-eave" aria-hidden>
+          <div className="cabin-lantern" />
+        </div>
+        {settings}
+      </div>
+      <div className="cabin-base" aria-hidden>
+        <div className="cabin-firewood" />
+        <div className="cabin-path" />
+      </div>
     </div>
   );
 
@@ -85,20 +102,30 @@ export function BottomToolbar({
   // to get them back. Nothing here could do anything — the server refuses every
   // change from an untokened page.
   if (readOnly) {
+    const disabled = (label: string, floor: string) => (
+      <button
+        key={label}
+        className="cabin-plank"
+        data-floor={floor}
+        disabled
+        title={READ_ONLY_CONTROL_HINT}
+      >
+        {label}
+      </button>
+    );
     return cabin(
-      ['+ Agent', 'Layout', 'Settings'].map((label) => (
-        <button key={label} className="cabin-plank" disabled title={READ_ONLY_CONTROL_HINT}>
-          {label}
-        </button>
-      )),
+      disabled('+ Agent', 'top'),
+      disabled('Layout', 'mid'),
+      disabled('Settings', 'porch'),
     );
   }
 
-  return cabin(
+  const agentFloor = (
     <>
       {showUnavailable && (
         <button
           className="cabin-plank"
+          data-floor="top"
           disabled
           title={terminalUnavailableReason ?? 'Terminal unavailable on this server.'}
         >
@@ -114,7 +141,12 @@ export function BottomToolbar({
           onMouseEnter={() => setIsDrawerOpen(true)}
           onMouseLeave={() => setIsDrawerOpen(false)}
         >
-          <button className="cabin-plank" data-on={isDrawerOpen} onClick={handleAgentClick}>
+          <button
+            className="cabin-plank"
+            data-floor="top"
+            data-on={isDrawerOpen}
+            onClick={handleAgentClick}
+          >
             + Agent
           </button>
           <LaunchDrawer
@@ -133,22 +165,28 @@ export function BottomToolbar({
           />
         </div>
       )}
-      <button
-        className="cabin-plank"
-        data-on={isEditMode}
-        onClick={onToggleEditMode}
-        title="Edit office layout"
-      >
-        Layout
-      </button>
-      <button
-        className="cabin-plank"
-        data-on={isSettingsOpen}
-        onClick={onToggleSettings}
-        title="Settings"
-      >
-        Settings
-      </button>
-    </>,
+    </>
+  );
+
+  return cabin(
+    agentFloor,
+    <button
+      className="cabin-plank"
+      data-floor="mid"
+      data-on={isEditMode}
+      onClick={onToggleEditMode}
+      title="Edit office layout"
+    >
+      Layout
+    </button>,
+    <button
+      className="cabin-plank"
+      data-floor="porch"
+      data-on={isSettingsOpen}
+      onClick={onToggleSettings}
+      title="Settings"
+    >
+      Settings
+    </button>,
   );
 }

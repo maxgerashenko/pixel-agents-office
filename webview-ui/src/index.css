@@ -31,15 +31,25 @@
   --color-btn-hover: rgb(78, 75, 104);
   --color-active-bg: rgb(44, 43, 109);
 
-  /* Wooden cabin (the bottom-left controls) */
-  --cabin-roof: #3a2418;
-  --cabin-roof-line: #24150d;
-  --cabin-log: #7a4e2d;
-  --cabin-log-line: #5e3a20;
-  --cabin-log-hover: #93613a;
-  --cabin-edge: #2b1a10;
-  --cabin-text: #f6e7c8;
-  --cabin-glow: #f2b84b;
+  /* Wooden log cabin (the bottom-left controls) */
+  --cabin-slate: #4a4e5c;
+  --cabin-slate-dark: #2c2f3a;
+  --cabin-slate-light: #62677a;
+  --cabin-log: #b6763b;
+  --cabin-log-line: #8a5528;
+  --cabin-log-hover: #cd8a4a;
+  --cabin-trim: #6b3f1d;
+  --cabin-edge: #3a2210;
+  --cabin-text: #fff1d6;
+  --cabin-glow: #ffd36b;
+  --cabin-brick: #a05a44;
+  --cabin-mortar: #d39a80;
+  --cabin-smoke: rgba(235, 240, 245, 0.55);
+  --cabin-flower: #f0a0be;
+  --cabin-leaf: #5aa03c;
+  --cabin-stone: #9a9a96;
+  --cabin-stone-dark: #6c6c6a;
+  --cabin-wood-end: #e0ad6c;
 
   /* Semantic */
   --color-reset-text: #ecc;
@@ -135,21 +145,62 @@
 }
 
 @layer components {
-  /* The layout controls as a small wooden cabin: a shingled roof over a stack
-     of plank-and-log buttons, to sit in the forest at the left edge. */
+  /* The layout controls as a small log cabin, after the reference: slate roof
+     with a brick chimney and a curl of smoke, a railed balcony, flower boxes,
+     a porch with a hanging lantern, stacked firewood and a cobblestone path.
+     Each floor is one button. */
   .cabin {
     @apply flex flex-col items-stretch;
-    width: 84px;
+    width: 96px;
   }
   .cabin-roof {
-    height: 22px;
-    margin-bottom: -2px;
+    position: relative;
+    height: 30px;
+    margin: 0 4px -2px;
     background: repeating-linear-gradient(
       0deg,
-      var(--cabin-roof-line) 0 2px,
-      var(--cabin-roof) 2px 6px
+      var(--cabin-slate-dark) 0 2px,
+      var(--cabin-slate) 2px 6px
     );
     clip-path: polygon(50% 0, 100% 100%, 0 100%);
+  }
+  /* Gable window, centred under the ridge. */
+  .cabin-gable {
+    position: absolute;
+    left: 50%;
+    top: 12px;
+    width: 8px;
+    height: 8px;
+    margin-left: -4px;
+    background:
+      linear-gradient(var(--cabin-trim), var(--cabin-trim)) center / 2px 100% no-repeat,
+      linear-gradient(var(--cabin-trim), var(--cabin-trim)) center / 100% 2px no-repeat,
+      var(--cabin-glow);
+    border: 2px solid var(--cabin-trim);
+    z-index: 1;
+  }
+  .cabin-chimney {
+    position: absolute;
+    left: 24px;
+    top: -8px;
+    width: 10px;
+    height: 28px;
+    background:
+      repeating-linear-gradient(0deg, var(--cabin-mortar) 0 1px, transparent 1px 4px),
+      var(--cabin-brick);
+    border: 2px solid var(--cabin-edge);
+    border-bottom: 0;
+  }
+  .cabin-smoke {
+    position: absolute;
+    left: 26px;
+    top: -24px;
+    width: 4px;
+    height: 4px;
+    background: var(--cabin-smoke);
+    box-shadow:
+      3px -5px 0 var(--cabin-smoke),
+      -1px -10px 0 var(--cabin-smoke);
   }
   .cabin-walls {
     @apply flex flex-col;
@@ -159,16 +210,13 @@
   }
   .cabin-plank {
     @apply cursor-pointer rounded-none text-sm;
-    padding: 6px 4px;
+    position: relative;
+    padding: 7px 4px;
     color: var(--cabin-text);
     border: 0;
-    border-bottom: 2px solid var(--cabin-edge);
     background:
       repeating-linear-gradient(180deg, transparent 0 7px, var(--cabin-log-line) 7px 9px),
       var(--cabin-log);
-  }
-  .cabin-plank:last-child {
-    border-bottom: 0;
   }
   .cabin-plank:hover:not(:disabled) {
     background-color: var(--cabin-log-hover);
@@ -181,10 +229,82 @@
     @apply cursor-default;
     opacity: var(--btn-disabled-opacity);
   }
-
-  /* Panel with standard pixel-art border + shadow */
-  .pixel-panel {
-    @apply bg-bg border-2 border-border rounded-none shadow-pixel;
+  /* Window box under the middle floor: pink flowers over green leaves. */
+  .cabin-plank[data-floor='mid']::after {
+    content: '';
+    position: absolute;
+    left: 10px;
+    right: 10px;
+    bottom: -3px;
+    height: 5px;
+    background:
+      repeating-linear-gradient(90deg, var(--cabin-flower) 0 2px, transparent 2px 6px) 0 0 / 100%
+        2px no-repeat,
+      var(--cabin-leaf);
+    border: 1px solid var(--cabin-trim);
+    pointer-events: none;
+  }
+  /* Balcony railing between the top two floors. */
+  .cabin-rail {
+    height: 8px;
+    border-top: 2px solid var(--cabin-trim);
+    background: repeating-linear-gradient(90deg, var(--cabin-trim) 0 2px, transparent 2px 6px);
+    background-color: var(--cabin-log);
+  }
+  /* Porch roof: a wider slate eave over the ground floor. */
+  .cabin-eave {
+    height: 8px;
+    margin: 0 -6px;
+    border: 2px solid var(--cabin-edge);
+    background:
+      repeating-linear-gradient(90deg, var(--cabin-slate-dark) 0 2px, transparent 2px 8px),
+      var(--cabin-slate);
+    position: relative;
+    z-index: 1;
+  }
+  /* Hanging lantern, lit, at the porch's right post. */
+  .cabin-lantern {
+    position: absolute;
+    right: 10px;
+    top: 100%;
+    width: 5px;
+    height: 7px;
+    background: var(--cabin-glow);
+    border: 1px solid var(--cabin-edge);
+    box-shadow: 0 0 6px 2px var(--cabin-glow);
+  }
+  .cabin-base {
+    position: relative;
+    height: 12px;
+    margin: 0 -2px;
+    background: var(--cabin-stone-dark);
+    border: 2px solid var(--cabin-edge);
+    border-top: 0;
+  }
+  /* Stacked firewood (log ends) at the left, cobblestone path at the right. */
+  .cabin-firewood {
+    position: absolute;
+    left: 4px;
+    bottom: 0;
+    width: 22px;
+    height: 10px;
+    background: radial-gradient(
+        circle,
+        var(--cabin-wood-end) 0 1px,
+        var(--cabin-trim) 1.5px 3px,
+        transparent 3px
+      )
+      0 0 / 7px 5px;
+  }
+  .cabin-path {
+    position: absolute;
+    right: 4px;
+    bottom: 0;
+    width: 28px;
+    height: 10px;
+    background:
+      repeating-linear-gradient(90deg, transparent 0 5px, var(--cabin-stone-dark) 5px 6px),
+      var(--cabin-stone);
   }
 
   /* Horizontal carousel for editor items */
