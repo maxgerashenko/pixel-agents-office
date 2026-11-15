@@ -36,6 +36,7 @@ import {
   SKY_SKYLINE_DAY_COLOR,
   SKY_SKYLINE_NIGHT_COLOR,
   SKY_STAR_COLOR,
+  SKY_STAR_FADE,
   SKY_STROKE_AREA_SPRITE_PX,
   SKY_STROKE_MAX,
   SKY_SUN_CORE_COLOR,
@@ -113,6 +114,7 @@ function ditherStrip(
   bandW: number,
   h: number,
   px: number,
+  solidOnLeft: boolean,
 ): HTMLCanvasElement | null {
   const key = `${bandW}x${h}x${px}`;
   if (ditherMask?.key !== key) {
@@ -140,7 +142,15 @@ function ditherStrip(
   tc.clearRect(0, 0, bandW, h);
   tc.drawImage(source, edge, 0, bandW, h, 0, 0, bandW, h);
   tc.globalCompositeOperation = 'destination-in';
-  tc.drawImage(ditherMask.canvas, 0, 0);
+  if (solidOnLeft) {
+    tc.save();
+    tc.translate(bandW, 0);
+    tc.scale(-1, 1);
+    tc.drawImage(ditherMask.canvas, 0, 0);
+    tc.restore();
+  } else {
+    tc.drawImage(ditherMask.canvas, 0, 0);
+  }
   return temp;
 }
 
@@ -401,22 +411,40 @@ export function drawSky(
     ctx.globalAlpha = 1;
   }
 
-  // Night sweeps in from the right behind a dithered edge (and back out at dawn)
+  // Everything moves left to right. At dusk night sweeps in from the left behind a
+  // dithered edge; at dawn the day does the same, pushing night off to the right.
   const bandW = SKY_WIPE_BAND_SPRITE_PX * px;
-  const edge = Math.round((w - sky.starAlpha * (w + bandW)) / px) * px;
+  const dawn = t > SKY_STAR_FADE.out0;
+  const edge = dawn
+    ? Math.round((w - sky.starAlpha * (w + bandW)) / px) * px
+    : Math.round((sky.starAlpha * (w + bandW) - bandW) / px) * px;
   if (sky.starAlpha > 0) {
     const sec0 = now.getTime() / 1000;
     const backdrop = nightBackdrop(w, h, px);
-    const solidFrom = Math.max(0, edge + bandW);
-    if (solidFrom < w)
-      ctx.drawImage(backdrop, solidFrom, 0, w - solidFrom, h, solidFrom, 0, w - solidFrom, h);
+    // night is solid on one side of the dithered band [edge, edge + bandW]
+    const nightFrom = dawn ? Math.max(0, edge + bandW) : 0;
+    const nightTo = dawn ? w : Math.min(w, edge);
+    if (nightTo > nightFrom) {
+      ctx.drawImage(
+        backdrop,
+        nightFrom,
+        0,
+        nightTo - nightFrom,
+        h,
+        nightFrom,
+        0,
+        nightTo - nightFrom,
+        h,
+      );
+    }
     if (edge + bandW > 0 && edge < w) {
-      const strip = ditherStrip(backdrop, edge, bandW, h, px);
+      const strip = ditherStrip(backdrop, edge, bandW, h, px, !dawn);
       if (strip) ctx.drawImage(strip, edge, 0);
     }
     ctx.save();
     ctx.beginPath();
-    ctx.rect(edge + bandW / 2, 0, w + bandW, h);
+    if (dawn) ctx.rect(edge + bandW / 2, 0, w + bandW, h);
+    else ctx.rect(-bandW, 0, edge + bandW * 1.5, h);
     ctx.clip();
     // Starry Night stars: a soft glow, a yellow body and a bright four-point sparkle
     for (const [n, st] of SKY_BIG_STARS.entries()) {
