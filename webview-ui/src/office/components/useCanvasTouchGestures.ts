@@ -11,6 +11,9 @@ interface CanvasTouchOptions {
    *  mousedown/mouseup and drives select/paint through the mouse handlers.
    *  (Touch *drags* don't paint — mobile hides the editor.) */
   enabled: boolean;
+  /** Off while the camera is locked (view mode): a touch can still tap, but
+   *  dragging and pinching move nothing. */
+  panZoom: boolean;
   zoom: number;
   onZoomChange: (zoom: number) => void;
   panRef: { current: { x: number; y: number } };
@@ -102,6 +105,8 @@ export function useCanvasTouchGestures(options: CanvasTouchOptions): void {
         mode = 'pending-tap';
         startTime = performance.now();
         anchorPan(e.touches[0]);
+      } else if (e.touches.length === 2 && !latest.current.panZoom) {
+        mode = 'none';
       } else if (e.touches.length === 2) {
         // Second finger down: any pending tap/pan becomes a pinch.
         mode = 'pinch';
@@ -113,6 +118,14 @@ export function useCanvasTouchGestures(options: CanvasTouchOptions): void {
 
     const onTouchMove = (e: TouchEvent) => {
       e.preventDefault();
+      if (!latest.current.panZoom) {
+        // A drag is not a tap, but nothing moves.
+        const t = e.touches[0];
+        if (t && mode === 'pending-tap' && !withinTapSlop(t.clientX - startX, t.clientY - startY)) {
+          mode = 'none';
+        }
+        return;
+      }
       if (mode === 'pinch' && e.touches.length >= 2) {
         const { zoom, onZoomChange } = latest.current;
         const proposed = Math.round(

@@ -366,18 +366,23 @@ test.describe('Standalone / mobile shell', () => {
     await expect(title).toHaveCount(0);
   });
 
-  test('a two-finger pan stops the camera following a character; a pure pinch does not @area:mobile', async ({
+  test('view mode locks the camera: a pinch and a two-finger pan move nothing @area:mobile', async ({
     page,
     standalone,
   }) => {
-    await launchTerminal(page, standalone, 'mobile camera follow');
+    await launchTerminal(page, standalone, 'mobile camera lock');
     await page.getByTitle('Show office', { exact: true }).tap();
-    // A card tap in the office focuses the character and follows it.
+    // A card tap in the office focuses the character — it must not drag the
+    // camera off the fitted office.
     await page.getByTitle('Agent 1', { exact: true }).tap();
     await expect.poll(() => cameraFollowId(page)).not.toBeNull();
+    const corner = () =>
+      page.evaluate(() => window.__pixelAgentsTestHooks?.getTileCenter?.(0, 0) ?? null);
+    const before = await corner();
+    expect(before).not.toBeNull();
 
-    // Pinch in place: the midpoint stays put, so the follow survives.
     const mid = { x: PHONE.width / 2, y: PHONE.height / 2 };
+    // Pinch in place.
     await twoFingerGesture(
       page,
       [
@@ -389,9 +394,7 @@ test.describe('Standalone / mobile shell', () => {
         { x: mid.x + 80, y: mid.y },
       ],
     );
-    expect(await cameraFollowId(page)).not.toBeNull();
-
-    // Two fingers dragged together: a manual pan, the camera is the user's.
+    // Two fingers dragged together.
     await twoFingerGesture(
       page,
       [
@@ -403,7 +406,8 @@ test.describe('Standalone / mobile shell', () => {
         { x: mid.x + 40, y: mid.y + 100 },
       ],
     );
-    expect(await cameraFollowId(page)).toBeNull();
+    await page.waitForTimeout(500);
+    expect(await corner()).toEqual(before);
   });
 
   test('the trackpad key follows the finger that pressed it, not touches[0] @area:mobile', async ({

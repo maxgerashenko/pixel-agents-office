@@ -194,3 +194,42 @@ export function fitWidthView(
     ((layout.rows * TILE_SIZE) / 2 - (bounds.y + bounds.h / 2)) * zoom + (cy - canvas.height / 2);
   return { zoom, panX, panY };
 }
+
+/** The band the office may occupy in view mode, in canvas device pixels: the
+ *  space between the top panels (`top` from the canvas's top edge) and the
+ *  bottom panels (`bottom` from the canvas's bottom edge). */
+export interface ContainSpace {
+  top: number;
+  bottom: number;
+}
+
+/** The view view mode locks to: the largest whole zoom at which the office's
+ *  drawn area fits entirely inside the canvas band between the top and bottom
+ *  panels — width AND height — centred in that band, so no panel covers it.
+ *  Zoom stays an integer so sprites stay pixel-perfect. Clamped to
+ *  [minZoom, maxZoom]; below `minZoom` the office overflows rather than
+ *  shrinking further. */
+export function fitContainView(
+  canvas: { width: number; height: number },
+  layout: { cols: number; rows: number; tiles: readonly number[] },
+  minZoom: number,
+  maxZoom: number,
+  space: ContainSpace = { top: 0, bottom: 0 },
+): { zoom: number; panX: number; panY: number } {
+  const bounds = layoutContentBounds(layout) ?? {
+    x: 0,
+    y: 0,
+    w: layout.cols * TILE_SIZE,
+    h: layout.rows * TILE_SIZE,
+  };
+  const bandHeight = Math.max(0, canvas.height - space.top - space.bottom);
+  const byWidth = bounds.w > 0 && canvas.width > 0 ? Math.floor(canvas.width / bounds.w) : minZoom;
+  const byHeight = bounds.h > 0 && bandHeight > 0 ? Math.floor(bandHeight / bounds.h) : minZoom;
+  const zoom = Math.max(minZoom, Math.min(maxZoom, byWidth, byHeight));
+  const cy = space.top + bandHeight / 2;
+  // Pan is measured from the grid's centre (pan 0 centres the grid).
+  const panX = ((layout.cols * TILE_SIZE) / 2 - (bounds.x + bounds.w / 2)) * zoom;
+  const panY =
+    ((layout.rows * TILE_SIZE) / 2 - (bounds.y + bounds.h / 2)) * zoom + (cy - canvas.height / 2);
+  return { zoom, panX, panY };
+}
