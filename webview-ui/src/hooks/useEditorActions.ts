@@ -40,8 +40,8 @@ import {
 import type { EditorState } from '../office/editor/editorState.js';
 import type { OfficeState } from '../office/engine/officeState.js';
 import { getRotatedType, getToggledType } from '../office/layout/furnitureCatalog.js';
-import type { FitSpace } from '../office/projection.js';
-import { fitWidthView } from '../office/projection.js';
+import type { ContainSpace, FitSpace } from '../office/projection.js';
+import { fitContainView, fitWidthView } from '../office/projection.js';
 import type {
   EditTool as EditToolType,
   OfficeLayout,
@@ -82,6 +82,8 @@ interface EditorActions extends Omit<FurnitureColorActions, 'pickColorAt'> {
   /** Zoom as wide as the canvas (device px) allows without a panel covering
    *  the office, and center the camera on it. */
   handleFitWidth: (canvas: { width: number; height: number }, space?: FitSpace) => void;
+  /** View mode: fit the whole office between the top and bottom panels. */
+  handleFitContain: (canvas: { width: number; height: number }, space: ContainSpace) => void;
   handleEditorTileAction: (col: number, row: number) => void;
   handleEditorEraseAction: (col: number, row: number) => void;
   handleEditorSelectionChange: () => void;
@@ -572,6 +574,17 @@ export function useEditorActions(
     [getOfficeState],
   );
 
+  const handleFitContain = useCallback(
+    (canvas: { width: number; height: number }, space: ContainSpace) => {
+      const os = getOfficeState();
+      const view = fitContainView(canvas, os.getLayout(), ZOOM_MIN, ZOOM_MAX, space);
+      setZoom(view.zoom);
+      os.breakCameraFollow();
+      panRef.current = { x: view.panX, y: view.panY };
+    },
+    [getOfficeState],
+  );
+
   /**
    * A furniture drag released at (col,row): validate, commit, and settle the
    * selection in one place — a copy is left selected so R / T / the colour
@@ -846,6 +859,7 @@ export function useEditorActions(
     handleSave,
     handleZoomChange,
     handleFitWidth,
+    handleFitContain,
     handleEditorTileAction,
     handleEditorEraseAction,
     handleEditorSelectionChange,

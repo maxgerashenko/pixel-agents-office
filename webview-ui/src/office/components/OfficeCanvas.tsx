@@ -41,6 +41,9 @@ interface OfficeCanvasProps {
   officeState: OfficeState;
   onClick: (agentId: number) => void;
   isEditMode: boolean;
+  /** View mode: the camera is locked to the fitted view — no zoom, no pan,
+   *  no follow-the-agent. Editing frees it. */
+  cameraLocked: boolean;
   editorState: EditorState;
   onEditorTileAction: (col: number, row: number) => void;
   onEditorEraseAction: (col: number, row: number) => void;
@@ -69,6 +72,7 @@ export function OfficeCanvas({
   officeState,
   onClick,
   isEditMode,
+  cameraLocked,
   editorState,
   onEditorTileAction,
   onEditorEraseAction,
@@ -163,7 +167,7 @@ export function OfficeCanvas({
           officeState.cameraFollowId !== null
             ? officeState.characters.get(officeState.cameraFollowId)
             : undefined;
-        const cameraFocus = followCh ?? officeState.greeterCameraTarget;
+        const cameraFocus = cameraLocked ? null : (followCh ?? officeState.greeterCameraTarget);
         if (cameraFocus) {
           const layout = officeState.getLayout();
           const mapW = layout.cols * TILE_SIZE * zoom;
@@ -235,6 +239,7 @@ export function OfficeCanvas({
     officeState,
     resizeCanvas,
     isEditMode,
+    cameraLocked,
     editorState,
     _editorTick,
     zoom,
@@ -456,6 +461,7 @@ export function OfficeCanvas({
       // Middle mouse button (button 1) starts panning
       if (e.button === 1) {
         e.preventDefault();
+        if (cameraLocked) return;
         // Break camera follow + greeter centering on manual pan
         officeState.breakCameraFollow();
         isPanningRef.current = true;
@@ -539,6 +545,7 @@ export function OfficeCanvas({
     [
       officeState,
       isEditMode,
+      cameraLocked,
       editorState,
       screenToTile,
       screenToWorld,
@@ -756,6 +763,7 @@ export function OfficeCanvas({
   const handleWheel = useCallback(
     (e: WheelEvent) => {
       e.preventDefault();
+      if (cameraLocked) return;
       if (e.ctrlKey || e.metaKey) {
         // Accumulate scroll delta, step zoom when threshold crossed
         zoomAccumulatorRef.current += e.deltaY;
@@ -777,7 +785,7 @@ export function OfficeCanvas({
         );
       }
     },
-    [zoom, onZoomChange, officeState, panRef, clampPan],
+    [zoom, onZoomChange, officeState, panRef, clampPan, cameraLocked],
   );
 
   // Attach wheel listener with { passive: false } so preventDefault() works.
@@ -793,6 +801,7 @@ export function OfficeCanvas({
   useCanvasTouchGestures({
     canvasRef,
     enabled: !isEditMode,
+    panZoom: !cameraLocked,
     zoom,
     onZoomChange,
     panRef,

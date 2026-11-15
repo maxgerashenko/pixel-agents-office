@@ -19,7 +19,12 @@ import { Modal } from './components/ui/Modal.js';
 import { UsageMeter } from './components/UsageMeter.js';
 import { VersionIndicator } from './components/VersionIndicator.js';
 import { ZoomControls } from './components/ZoomControls.js';
-import { FIT_OBSTACLE_ATTR, OFFICE_CANVAS_TEST_ID, READ_ONLY_CONTROL_HINT } from './constants.js';
+import {
+  FIT_OBSTACLE_ATTR,
+  OFFICE_CANVAS_TEST_ID,
+  READ_ONLY_CONTROL_HINT,
+  VIEW_FIT_CHECK_MS,
+} from './constants.js';
 import { useDirectoryEditor } from './hooks/useDirectoryEditor.js';
 import { useEditorActions } from './hooks/useEditorActions.js';
 import { useEditorKeyboard } from './hooks/useEditorKeyboard.js';
@@ -369,14 +374,16 @@ function App() {
   // zoom at which no panel covers it: it stays below every `top` obstacle and
   // clear of every `bottom` one (the toolbar and zoom buttons float over the
   // canvas). Notifications are not obstacles — they may cover the office.
-  const handleFitWidth = useCallback(() => {
+  // What the panels around the canvas leave free, in canvas device pixels.
+  const measureFitSpace = useCallback(() => {
     const canvas = document.querySelector<HTMLCanvasElement>(
       `[data-testid="${OFFICE_CANVAS_TEST_ID}"]`,
     );
-    if (!canvas) return;
+    if (!canvas) return null;
     const rect = canvas.getBoundingClientRect();
     const dpr = window.devicePixelRatio || 1;
     let top = 0;
+    let bottom = 0;
     const obstacles: CanvasRect[] = [];
     document.querySelectorAll(`[${FIT_OBSTACLE_ATTR}]`).forEach((el) => {
       const r = el.getBoundingClientRect();
@@ -384,6 +391,7 @@ function App() {
       if (el.getAttribute(FIT_OBSTACLE_ATTR) === 'top') {
         top = Math.max(top, (r.bottom - rect.top) * dpr);
       } else {
+        bottom = Math.max(bottom, (rect.bottom - r.top) * dpr);
         obstacles.push({
           x: (r.left - rect.left) * dpr,
           y: (r.top - rect.top) * dpr,
@@ -392,8 +400,48 @@ function App() {
         });
       }
     });
-    editor.handleFitWidth({ width: canvas.width, height: canvas.height }, { top, obstacles });
-  }, [editor]);
+    return { canvas: { width: canvas.width, height: canvas.height }, top, bottom, obstacles };
+  }, []);
+
+  // Edit mode's fit button (and auto-fit): the largest zoom whose width fits;
+  // floating panels may still cover the office there.
+  const handleFitWidth = useCallback(() => {
+    const m = measureFitSpace();
+    if (!m) return;
+    editor.handleFitWidth(m.canvas, { top: m.top, obstacles: m.obstacles });
+  }, [editor, measureFitSpace]);
+
+  // View mode: the camera is locked to the whole office, fitted to the band
+  // between the top and bottom panels — nothing to zoom or pan, and no panel
+  // covers it. Refits when the window, a panel (usage strip, cards, terminal
+  // drawer, toolbar) or the layout changes, and on leaving edit mode. Editing
+  // frees the camera and panels may overlap the office again.
+  const viewLocked = !editor.isEditMode;
+  const handleFitContainRef = useRef(editor.handleFitContain);
+  handleFitContainRef.current = editor.handleFitContain;
+  useEffect(() => {
+    if (!viewLocked || !layoutReady) return;
+    let lastSignature = '';
+    let lastLayout: unknown = null;
+    const refit = () => {
+      const m = measureFitSpace();
+      if (!m || m.canvas.width === 0 || m.canvas.height === 0) return;
+      const layout = getOfficeState().getLayout();
+      const signature = `${m.canvas.width}x${m.canvas.height}|${m.top}|${m.bottom}`;
+      if (signature === lastSignature && layout === lastLayout) return;
+      lastSignature = signature;
+      lastLayout = layout;
+      handleFitContainRef.current(m.canvas, { top: m.top, bottom: m.bottom });
+    };
+    const frame = requestAnimationFrame(refit);
+    const interval = setInterval(refit, VIEW_FIT_CHECK_MS);
+    window.addEventListener('resize', refit);
+    return () => {
+      cancelAnimationFrame(frame);
+      clearInterval(interval);
+      window.removeEventListener('resize', refit);
+    };
+  }, [viewLocked, layoutReady, measureFitSpace]);
 
   // Frame the office the way the fit button does: once when the layout first
   // arrives, then again whenever the cards/agents change or the window resizes
@@ -404,13 +452,15 @@ function App() {
   // if the intro greeter already holds the camera, which fitting would cancel.
   // The latest callback rides in a ref so re-renders (a new `editor` object
   // each time) don't cancel the pending frame.
+  const viewLockedRef = useRef(viewLocked);
+  viewLockedRef.current = viewLocked;
   const handleFitWidthRef = useRef(handleFitWidth);
   handleFitWidthRef.current = handleFitWidth;
   const zoomRef = useRef(editor.zoom);
   zoomRef.current = editor.zoom;
   const autoFitRef = useRef<{ zoom: number; x: number; y: number } | null>(null);
   const autoFit = useCallback(() => {
-    if (getOfficeState().greeterCameraTarget) return;
+    if (viewLockedRef.current || getOfficeState().greeterCameraTarget) return;
     const last = autoFitRef.current;
     const pan = editor.panRef.current;
     if (last && (zoomRef.current !== last.zoom || pan.x !== last.x || pan.y !== last.y)) return;
@@ -583,6 +633,7 @@ function App() {
         officeState={officeState}
         onClick={handleClick}
         isEditMode={editor.isEditMode}
+        cameraLocked={viewLocked}
         editorState={editorState}
         onEditorTileAction={editor.handleEditorTileAction}
         onEditorEraseAction={editor.handleEditorEraseAction}
@@ -603,7 +654,7 @@ function App() {
         <>
           {/* Mobile: pinch replaces the zoom buttons, and the toolbar's
                 jobs move to the card bar (+) and the floating Settings button. */}
-          {!isMobile && (
+          {!isMobile && editor.isEditMode && (
             <ZoomControls
               zoom={editor.zoom}
               onZoomChange={editor.handleZoomChange}
@@ -762,7 +813,7 @@ function App() {
       {/* Mobile: Settings floats top-left (the layout editor stays desktop-
             only — its tools are drag/hover-driven). */}
       {isMobile && !isDebugMode && (
-        <div className="absolute mobile-safe-top left-8 z-20">
+        <div data-fit-obstacle="top" className="absolute mobile-safe-top left-8 z-20">
           <Button
             size="sm"
             variant={officeReadOnly ? 'disabled' : isSettingsOpen ? 'active' : 'default'}
@@ -849,7 +900,16 @@ function App() {
           keyboardOpen={keyboard.keyboardOpen}
         />
       ) : (
-        <div className="flex flex-col flex-1 min-w-0 h-full">
+        <div
+          className="flex flex-col flex-1 min-w-0 h-full bg-bg-dark"
+          // Home-Screen app (viewport-fit=cover): the page runs under the iPad
+          // status bar and home indicator, so the whole column is inset by them.
+          // env() is 0 in browser tabs and on desktop.
+          style={{
+            paddingTop: 'env(safe-area-inset-top, 0px)',
+            paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+          }}
+        >
           <UsageMeter usage={usage} />
           {/* Agent cards: a horizontal row under the usage strip. With a
               terminal, the cards are the terminal panel's tabs (agents with a
