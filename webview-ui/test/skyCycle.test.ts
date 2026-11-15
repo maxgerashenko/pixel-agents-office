@@ -9,7 +9,14 @@ import assert from 'node:assert/strict';
 
 import { test } from 'vitest';
 
-import { hourFraction, skyAt } from '../src/office/engine/skyCycle.js';
+import {
+  hourFraction,
+  pressSkyFastForward,
+  releaseSkyFastForward,
+  SKY_FF_IDLE,
+  skyAt,
+  skyFastForwardOffset,
+} from '../src/office/engine/skyCycle.js';
 
 test('hourFraction is 0 at the top of the hour and rises through it', () => {
   assert.equal(hourFraction(new Date(2026, 0, 1, 5, 0, 0, 0)), 0);
@@ -72,4 +79,34 @@ test('the moon crosses left to right during the night phase', () => {
   const b = skyAt(0.9).moon;
   assert.ok(a && b);
   assert.ok(a.p < b.p);
+});
+
+test('holding fast-forward runs a whole hour of sky every 6 seconds', () => {
+  const held = pressSkyFastForward(SKY_FF_IDLE, 1000);
+  assert.equal(skyFastForwardOffset(held, 1000), 0);
+  assert.equal(skyFastForwardOffset(held, 4000), 0.5);
+  assert.equal(skyFastForwardOffset(held, 16000), 2.5);
+});
+
+test('letting go runs back twice as fast, and only the part of a cycle counts', () => {
+  // held 15 s = 2.5 cycles ahead: the way back is half a cycle, 1.5 s
+  const back = releaseSkyFastForward(pressSkyFastForward(SKY_FF_IDLE, 0), 15000);
+  assert.equal(back.mode, 'rewind');
+  assert.equal(skyFastForwardOffset(back, 15000), 0.5);
+  assert.equal(skyFastForwardOffset(back, 15750), 0.25);
+  assert.equal(skyFastForwardOffset(back, 16500), 0);
+  assert.equal(skyFastForwardOffset(back, 99999), 0);
+});
+
+test('a quick tap plays exactly one full cycle forward', () => {
+  const tap = releaseSkyFastForward(pressSkyFastForward(SKY_FF_IDLE, 0), 100);
+  assert.equal(tap.mode, 'finish');
+  assert.ok(skyFastForwardOffset(tap, 3200) > 0.5);
+  assert.equal(skyFastForwardOffset(tap, 6100), 0);
+});
+
+test('pressing again mid-rewind carries on from where the sky is', () => {
+  const back = releaseSkyFastForward(pressSkyFastForward(SKY_FF_IDLE, 0), 3000);
+  const again = pressSkyFastForward(back, 3750);
+  assert.equal(skyFastForwardOffset(again, 3750), 0.25);
 });
