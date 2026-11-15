@@ -766,10 +766,10 @@ export const TABLE_TENNIS_PADDLE_HANDLE_COLOR = '#9a6a35';
 export const SKY_KEYFRAMES: ReadonlyArray<{ at: number; top: string; bottom: string }> = [
   { at: 0, top: '#4aa8e8', bottom: '#bfe6f7' },
   { at: 0.5, top: '#4aa8e8', bottom: '#bfe6f7' },
-  { at: 0.62, top: '#343a78', bottom: '#75609a' },
-  { at: 0.72, top: '#142a6e', bottom: '#2d5eb5' },
-  { at: 0.94, top: '#142a6e', bottom: '#2d5eb5' },
-  { at: 0.98, top: '#3b3a7a', bottom: '#f2a07a' },
+  { at: 0.62, top: '#e2683c', bottom: '#f7b65a' },
+  { at: 0.72, top: '#c2543e', bottom: '#f2a050' },
+  { at: 0.94, top: '#e88a5a', bottom: '#f9d49a' },
+  { at: 0.98, top: '#f0a878', bottom: '#fbe2b4' },
   { at: 1, top: '#4aa8e8', bottom: '#bfe6f7' },
 ];
 /** The sun is up from the top of the hour until this fraction, then below the horizon. */
@@ -826,7 +826,7 @@ export const SKY_VORTICES = [
   { x: 0.74, y: 0.52, r: 0.13 },
 ] as const;
 /** Canvas device pixels per brushstroke, in sprite-pixel area (lower = denser). */
-export const SKY_STROKE_AREA_SPRITE_PX = 22;
+export const SKY_STROKE_AREA_SPRITE_PX = 30;
 export const SKY_STROKE_MAX = 14000;
 export const SKY_BIG_STAR_COUNT = 11;
 export const SKY_BIG_STAR_CORE_COLOR = '#f6c928';
@@ -844,12 +844,12 @@ export const SKY_MOON_MARE_COLOR = '#c4c5da';
 export const SKY_MOON_GLOW_COLOR = '#b8c4ff';
 /** Pixel-art day and sunset: flat stepped rings of colour around a cream sun (outermost first). */
 export const SKY_RING_COLORS = [
-  '#8f6a92',
-  '#b5757f',
-  '#d3835f',
-  '#e89850',
-  '#f2ae54',
-  '#f8cc68',
+  '#ee8244',
+  '#f2964a',
+  '#f5aa52',
+  '#f8c060',
+  '#fad478',
+  '#fce698',
 ] as const;
 export const SKY_SUN_CORE_COLOR = '#fff8cc';
 /** Outer ring radius as a share of the canvas's smaller side: at midday, and added by sunset. */
@@ -858,5 +858,17 @@ export const SKY_RING_SUNSET_SHARE = 0.7;
 /** How strongly the rings show at midday (they are fully opaque at sunset). */
 export const SKY_RING_DAY_ALPHA = 0.45;
 /** Cloud streaks at sunset: purple body, with a warm lit underside. */
-export const SKY_CLOUD_SUNSET_COLOR = '#6f5c9a';
-export const SKY_CLOUD_SUNSET_LIT_COLOR = '#f0b080';
+export const SKY_CLOUD_SUNSET_COLOR = '#a85a6e';
+export const SKY_CLOUD_SUNSET_LIT_COLOR = '#7a4a78';
+/** Night sweeps in from the right behind a dithered edge this many sprite pixels wide. */
+export const SKY_WIPE_BAND_SPRITE_PX = 48;
+/** Skyline silhouettes standing on the office's top edge, and the ground around the office. */
+export const SKY_SKYLINE_DAY_COLOR = '#24382e';
+export const SKY_SKYLINE_NIGHT_COLOR = '#0d1226';
+export const SKY_HILL_DAY_COLOR = '#3d6b52';
+export const SKY_HILL_NIGHT_COLOR = '#1b2f6e';
+export const SKY_WINDOW_COLOR = '#ffd84a';
+/** Big star glow (drawn translucent) around its yellow body. */
+export const SKY_BIG_STAR_GLOW_COLOR = '#d8d040';
+/** How far above the top row of tiles the skyline stands (the wall face rises this much). */
+export const SKY_HORIZON_LIFT_SPRITE_PX = 14;

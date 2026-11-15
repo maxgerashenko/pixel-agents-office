@@ -3,6 +3,7 @@
 import {
   SKY_BAND_SPRITE_PX,
   SKY_BIG_STAR_CORE_COLOR,
+  SKY_BIG_STAR_GLOW_COLOR,
   SKY_BIG_STAR_HALO_COLORS,
   SKY_BIRD_COLOR,
   SKY_BIRD_CROSS_SEC,
@@ -13,6 +14,9 @@ import {
   SKY_CLOUD_SHADE_COLOR,
   SKY_CLOUD_SUNSET_COLOR,
   SKY_CLOUD_SUNSET_LIT_COLOR,
+  SKY_HILL_DAY_COLOR,
+  SKY_HILL_NIGHT_COLOR,
+  SKY_HORIZON_LIFT_SPRITE_PX,
   SKY_MOON_COLOR,
   SKY_MOON_CRATER_COLOR,
   SKY_MOON_DESIGN_RADIUS,
@@ -27,6 +31,8 @@ import {
   SKY_RING_DAY_ALPHA,
   SKY_RING_SHARE,
   SKY_RING_SUNSET_SHARE,
+  SKY_SKYLINE_DAY_COLOR,
+  SKY_SKYLINE_NIGHT_COLOR,
   SKY_STAR_COLOR,
   SKY_STROKE_AREA_SPRITE_PX,
   SKY_STROKE_MAX,
@@ -34,6 +40,8 @@ import {
   SKY_SWIRL_COLORS,
   SKY_TWINKLE_SEC,
   SKY_VORTICES,
+  SKY_WINDOW_COLOR,
+  SKY_WIPE_BAND_SPRITE_PX,
 } from '../../constants.js';
 import {
   BIG_STARS,
@@ -84,6 +92,181 @@ function spanDisc(
   }
 }
 
+const BAYER4 = [
+  [0, 8, 2, 10],
+  [12, 4, 14, 6],
+  [3, 11, 1, 9],
+  [15, 7, 13, 5],
+];
+let ditherMask: { key: string; canvas: HTMLCanvasElement } | null = null;
+let ditherTemp: HTMLCanvasElement | null = null;
+
+/**
+ * The band of `source` starting at x = `edge`, cut through an ordered-dither
+ * mask that runs from empty on the left to solid on the right: the pixelated
+ * edge night advances behind.
+ */
+function ditherStrip(
+  source: HTMLCanvasElement,
+  edge: number,
+  bandW: number,
+  h: number,
+  px: number,
+): HTMLCanvasElement | null {
+  const key = `${bandW}x${h}x${px}`;
+  if (ditherMask?.key !== key) {
+    const mask = document.createElement('canvas');
+    mask.width = bandW;
+    mask.height = h;
+    const m = mask.getContext('2d');
+    if (!m) return null;
+    const cols = bandW / px;
+    for (let cx = 0; cx < cols; cx++) {
+      const level = ((cx + 0.5) / cols) * 16;
+      for (let cy = 0; cy * px < h; cy++) {
+        if (BAYER4[cy % 4][cx % 4] < level) m.fillRect(cx * px, cy * px, px, px);
+      }
+    }
+    ditherMask = { key, canvas: mask };
+    ditherTemp = document.createElement('canvas');
+    ditherTemp.width = bandW;
+    ditherTemp.height = h;
+  }
+  const temp = ditherTemp;
+  const tc = temp?.getContext('2d');
+  if (!temp || !tc) return null;
+  tc.globalCompositeOperation = 'source-over';
+  tc.clearRect(0, 0, bandW, h);
+  tc.drawImage(source, edge, 0, bandW, h, 0, 0, bandW, h);
+  tc.globalCompositeOperation = 'destination-in';
+  tc.drawImage(ditherMask.canvas, 0, 0);
+  return temp;
+}
+
+/**
+ * The skyline: pines, power lines and a bridge on the left; a cypress, rolling
+ * hills and a village with a spire on the right; and the ground the office sits
+ * on. `dusk` (0 day → 1 night) darkens it from deep green to near-black.
+ */
+function drawSkyline(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  px: number,
+  horizon: number,
+  dusk: number,
+): void {
+  const u = px;
+  const base = Math.round(horizon / px) * px;
+  const at = (f: number): number => Math.round((f * w) / px) * px;
+  const dark = toCss(mix(parseHex(SKY_SKYLINE_DAY_COLOR), parseHex(SKY_SKYLINE_NIGHT_COLOR), dusk));
+  const hill = toCss(mix(parseHex(SKY_HILL_DAY_COLOR), parseHex(SKY_HILL_NIGHT_COLOR), dusk));
+
+  // rolling hills behind everything on the right
+  ctx.fillStyle = hill;
+  for (let x = at(0.62); x < w; x += 2 * u) {
+    const f = (x / w - 0.62) / 0.38;
+    const hgt = Math.round(6 + 5 * Math.sin(f * 9) + 3 * Math.sin(f * 23) + 12 * f);
+    ctx.fillRect(x, base - hgt * u, 2 * u, hgt * u);
+  }
+
+  ctx.fillStyle = dark;
+  ctx.fillRect(0, base, w, h - base);
+
+  const pine = (cx: number, hgt: number): void => {
+    for (let i = 0; i < hgt; i++) {
+      const half = 1 + Math.floor((i % 7) * 0.8 + i * 0.1);
+      ctx.fillRect(cx - half * u, base - (hgt - i) * u, (2 * half + 1) * u, u);
+    }
+  };
+  for (const [f, hgt] of [
+    [0.03, 22],
+    [0.07, 30],
+    [0.45, 24],
+    [0.49, 34],
+    [0.53, 28],
+    [0.56, 40],
+  ]) {
+    pine(at(f), hgt);
+  }
+
+  // power poles and sagging wires
+  const poleH = 30;
+  const poles = [at(0.11), at(0.41)];
+  for (const x of poles) {
+    ctx.fillRect(x, base - poleH * u, u, poleH * u);
+    ctx.fillRect(x - 3 * u, base - (poleH - 2) * u, 7 * u, u);
+  }
+  const wire = (x0: number, y0: number, x1: number, y1: number, sag: number): void => {
+    for (let x = x0; x <= x1; x += u) {
+      const k = (x - x0) / Math.max(u, x1 - x0);
+      const y = y0 + (y1 - y0) * k + sag * 4 * k * (1 - k);
+      ctx.fillRect(x, base - Math.round(y) * u, u, u);
+    }
+  };
+  for (const drop of [2, 5]) {
+    wire(0, poleH - drop + 3, poles[0], poleH - drop, -3);
+    wire(poles[0], poleH - drop, poles[1], poleH - drop, -6);
+    wire(poles[1], poleH - drop, at(0.6), poleH - drop - 10, -3);
+  }
+
+  // bridge: deck, dotted railing, three arches
+  const bx0 = at(0.16);
+  const bx1 = at(0.39);
+  const deck = 10;
+  for (let x = bx0; x < bx1; x += 2 * u) ctx.fillRect(x, base - (deck + 2) * u, u, u);
+  ctx.fillRect(bx0, base - (deck + 1) * u, bx1 - bx0, 2 * u);
+  const span = (bx1 - bx0) / 3;
+  const rad = span / 2 - 2 * u;
+  for (let x = bx0; x < bx1; x += u) {
+    const local = ((x - bx0) % span) - span / 2;
+    const arch = Math.abs(local) < rad ? Math.sqrt(rad * rad - local * local) : 0;
+    const open = Math.min((deck - 2) * u, Math.round(arch / u) * u);
+    ctx.fillRect(x, base - (deck - 1) * u, u, (deck - 1) * u - open);
+  }
+
+  // cypress: a tall flame, with a smaller one beside it
+  const cypress = (cx: number, hgt: number, wide: number): void => {
+    for (let i = 0; i < hgt; i++) {
+      const k = i / hgt;
+      const half = Math.round(
+        wide * Math.sin(Math.PI * Math.pow(k, 0.55)) * (0.92 + 0.08 * Math.sin(i * 0.9)),
+      );
+      ctx.fillRect(cx - half * u, base - (hgt - i) * u, (2 * half + 1) * u, u);
+    }
+  };
+  cypress(at(0.61), 62, 7);
+  cypress(at(0.61) + 11 * u, 32, 5);
+
+  // village: houses, a church with a spire, windows lit after dusk
+  const vx = at(0.74);
+  const houses: Array<[number, number, number]> = [
+    [0, 8, 6],
+    [9, 10, 7],
+    [19, 7, 6],
+    [28, 13, 5],
+    [36, 8, 8],
+    [47, 6, 6],
+  ];
+  for (const [dx, hw, hh] of houses) {
+    ctx.fillRect(vx + dx * u, base - hh * u, hw * u, hh * u);
+    for (let rI = 0; rI < Math.floor(hw / 2); rI++) {
+      ctx.fillRect(vx + (dx + rI) * u, base - (hh + rI + 1) * u, (hw - 2 * rI) * u, u);
+    }
+  }
+  for (let i = 0; i < 16; i++) {
+    const half = Math.floor((16 - i) / 6);
+    ctx.fillRect(vx + (33 - half) * u, base - (10 + 16 - i) * u, (2 * half + 1) * u, u);
+  }
+  if (dusk > 0.5) {
+    ctx.fillStyle = SKY_WINDOW_COLOR;
+    for (const [dx, hw, hh] of houses) {
+      ctx.fillRect(vx + (dx + 2) * u, base - (hh - 2) * u, u, 2 * u);
+      if (hw > 7) ctx.fillRect(vx + (dx + hw - 3) * u, base - (hh - 2) * u, u, 2 * u);
+    }
+  }
+}
+
 let nightCache: { key: string; canvas: HTMLCanvasElement } | null = null;
 
 /**
@@ -129,9 +312,9 @@ function nightBackdrop(w: number, h: number, px: number): HTMLCanvasElement {
     c.fillStyle = inBand
       ? SKY_NIGHT_BAND_COLOR
       : SKY_SWIRL_COLORS[Math.min(last, Math.floor(rnd() * 3.4 + near * 2.4))];
-    const len = 4 + Math.floor(rnd() * 5);
+    const len = 8 + Math.floor(rnd() * 8);
     for (let s = 0; s < len; s++) {
-      c.fillRect(Math.round(x / px) * px, Math.round(y / px) * px, 2 * px, px);
+      c.fillRect(Math.round(x / px) * px, Math.round(y / px) * px, 3 * px, 2 * px);
       // flow: gentle rolling waves, bent into a spiral near each vortex
       const wave = Math.sin((x / w) * 7 + (y / h) * 4) * 0.5;
       let fx = Math.cos(wave) * 0.5;
@@ -192,6 +375,8 @@ export function drawSky(
     ctx.fillRect(0, n * band, w, band);
   }
 
+  // the skyline stands a wall's height above the top row of tiles, where the office's roofline is
+  const horizonY = avoid ? avoid.y - SKY_HORIZON_LIFT_SPRITE_PX * px : Math.round(h * 0.9);
   const r = SKY_BODY_RADIUS_SPRITE_PX;
   const sunPos = sky.sun ? arcPosition(sky.sun.p, sky.sun.lift, (r + 1) * px, w, h, avoid) : null;
   // Pixel-art glow: flat stepped rings of colour around the sun, small and pale at
@@ -215,107 +400,51 @@ export function drawSky(
     ctx.globalAlpha = 1;
   }
 
+  // Night sweeps in from the right behind a dithered edge (and back out at dawn)
+  const bandW = SKY_WIPE_BAND_SPRITE_PX * px;
+  const edge = Math.round((w - sky.starAlpha * (w + bandW)) / px) * px;
   if (sky.starAlpha > 0) {
     const sec0 = now.getTime() / 1000;
-    // The painted sky: swirling brushstrokes, cached per canvas size
-    ctx.globalAlpha = sky.starAlpha;
-    ctx.drawImage(nightBackdrop(w, h, px), 0, 0);
-    // Starry Night stars: a glowing core wrapped in concentric rings of turning
-    // yellow / blue / orange dashes, pulsing softly
+    const backdrop = nightBackdrop(w, h, px);
+    const solidFrom = Math.max(0, edge + bandW);
+    if (solidFrom < w)
+      ctx.drawImage(backdrop, solidFrom, 0, w - solidFrom, h, solidFrom, 0, w - solidFrom, h);
+    if (edge + bandW > 0 && edge < w) {
+      const strip = ditherStrip(backdrop, edge, bandW, h, px);
+      if (strip) ctx.drawImage(strip, edge, 0);
+    }
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(edge + bandW / 2, 0, w, h);
+    ctx.clip();
+    // Starry Night stars: a soft glow, a yellow body and a bright four-point sparkle
     for (const st of BIG_STARS) {
       const pulse = 0.8 + 0.2 * Math.sin(sec0 * 1.2 + st.phase);
       const sx = Math.round((st.x * w) / px) * px;
       const sy = Math.round((st.y * h) / px) * px;
-      ctx.fillStyle = SKY_BIG_STAR_HALO_COLORS[4];
-      ctx.globalAlpha = sky.starAlpha * pulse * 0.2;
-      disc(ctx, sx, sy, st.size * 4, px);
-      ctx.globalAlpha = sky.starAlpha * pulse * 0.2;
-      disc(ctx, sx, sy, st.size * 3, px);
-      SKY_BIG_STAR_HALO_COLORS.forEach((col, k) => {
-        const rad = st.size + 3 + k * 3;
-        const dashes = 16 + k * 8;
-        const spin = sec0 * (k % 2 === 0 ? 0.5 : -0.5) + st.phase;
-        ctx.fillStyle = col;
-        for (let j = 0; j < dashes; j++) {
-          if (j % 2 === 1) continue;
-          for (const sub of [0, 0.5]) {
-            const ang = ((j + sub) / dashes) * Math.PI * 2 + spin;
-            ctx.globalAlpha = sky.starAlpha * pulse * 0.9;
-            ctx.fillRect(
-              Math.round((sx + Math.cos(ang) * rad * px) / px) * px,
-              Math.round((sy + Math.sin(ang) * rad * px) / px) * px,
-              2 * px,
-              2 * px,
-            );
-          }
-        }
-      });
-      ctx.globalAlpha = sky.starAlpha;
+      ctx.fillStyle = SKY_BIG_STAR_GLOW_COLOR;
+      ctx.globalAlpha = 0.28 * pulse;
+      spanDisc(ctx, sx, sy, st.size * 2 + 2, px, w, h);
+      ctx.globalAlpha = 0.45 * pulse;
+      spanDisc(ctx, sx, sy, st.size + 3, px, w, h);
+      ctx.globalAlpha = 1;
       ctx.fillStyle = SKY_BIG_STAR_HALO_COLORS[0];
-      disc(ctx, sx, sy, st.size, px);
+      spanDisc(ctx, sx, sy, st.size, px, w, h);
       ctx.fillStyle = SKY_BIG_STAR_CORE_COLOR;
-      disc(ctx, sx, sy, st.size - 1, px);
+      spanDisc(ctx, sx, sy, st.size - 2, px, w, h);
+      ctx.fillStyle = SKY_BIG_STAR_HALO_COLORS[2];
+      const arm = Math.max(1, st.size - 2);
+      ctx.fillRect(sx - arm * px, sy, (2 * arm + 1) * px, px);
+      ctx.fillRect(sx, sy - arm * px, px, (2 * arm + 1) * px);
     }
-    ctx.globalAlpha = 1;
-
     ctx.fillStyle = SKY_STAR_COLOR;
-    const sec = now.getTime() / 1000;
     for (const star of STARS) {
-      const tw = 0.6 + 0.4 * Math.sin((sec / SKY_TWINKLE_SEC + star.phase) * Math.PI * 2);
-      ctx.globalAlpha = sky.starAlpha * tw;
+      const tw = 0.6 + 0.4 * Math.sin((sec0 / SKY_TWINKLE_SEC + star.phase) * Math.PI * 2);
+      ctx.globalAlpha = tw;
       ctx.fillRect(Math.round((star.x * w) / px) * px, Math.round((star.y * h) / px) * px, px, px);
     }
     ctx.globalAlpha = 1;
-  }
-
-  if (sky.dayAlpha > 0) {
-    const sec = now.getTime() / 1000;
-    const warmth = sky.sun ? Math.max(0, Math.min(1, (sky.sun.p - 0.55) / 0.3)) : 1;
-    const cloud = toCss(mix(parseHex(SKY_CLOUD_COLOR), parseHex(SKY_CLOUD_SUNSET_COLOR), warmth));
-    const lit = toCss(
-      mix(parseHex(SKY_CLOUD_SHADE_COLOR), parseHex(SKY_CLOUD_SUNSET_LIT_COLOR), warmth),
-    );
-    ctx.globalAlpha = sky.dayAlpha;
-    // Clouds: long flat streaks with stepped ends, drifting right and wrapping around
-    for (const c of CLOUDS) {
-      const u = px * c.scale;
-      const cw = 44 * u;
-      const x =
-        Math.round((((c.phase + (sec / SKY_CLOUD_CROSS_SEC) * c.speed) % 1) * (w + cw) - cw) / px) *
-        px;
-      const y = Math.round((c.y * h) / px) * px;
-      ctx.fillStyle = cloud;
-      ctx.fillRect(x + 10 * u, y, 22 * u, u);
-      ctx.fillRect(x + 4 * u, y + u, 36 * u, u);
-      ctx.fillRect(x, y + 2 * u, 44 * u, u);
-      ctx.fillRect(x + 8 * u, y + 3 * u, 30 * u, u);
-      ctx.fillStyle = lit;
-      ctx.fillRect(x + 14 * u, y + 4 * u, 20 * u, u);
-    }
-    // Birds: a loose flock of small v shapes, wings beating
-    ctx.fillStyle = SKY_BIRD_COLOR;
-    for (const [i, b] of BIRDS.entries()) {
-      const flapUp = Math.floor(sec / SKY_BIRD_FLAP_SEC + b.phase * 7) % 2 === 0;
-      const bu = px;
-      const x =
-        Math.round(
-          (((sec / SKY_BIRD_CROSS_SEC) % 1) * (w + 80 * px) - 70 * px + b.phase * 60 * px) / px,
-        ) * px;
-      const y =
-        Math.round((h * 0.12 + b.y * h * 0.3 + Math.sin(sec * 1.2 + b.bob + i) * 2 * px) / px) * px;
-      if (flapUp) {
-        ctx.fillRect(x, y, 2 * bu, bu);
-        ctx.fillRect(x + bu, y + bu, 2 * bu, bu);
-        ctx.fillRect(x + 3 * bu, y + 2 * bu, bu, bu);
-        ctx.fillRect(x + 4 * bu, y + bu, 2 * bu, bu);
-        ctx.fillRect(x + 5 * bu, y, 2 * bu, bu);
-      } else {
-        ctx.fillRect(x, y + bu, 3 * bu, bu);
-        ctx.fillRect(x + 3 * bu, y + 2 * bu, bu, bu);
-        ctx.fillRect(x + 4 * bu, y + bu, 3 * bu, bu);
-      }
-    }
-    ctx.globalAlpha = 1;
+    ctx.restore();
   }
 
   if (sky.moon) {
@@ -382,5 +511,61 @@ export function drawSky(
       ctx.fillStyle = SKY_MOON_COLOR;
       ctx.fillRect(mx + (sc(cdx) - sc(cr)) * px, my + (sc(cdy) - sc(cr)) * px, sc(cr) * px, px);
     }
+  }
+
+  // Skyline: silhouettes standing on the office's top edge, and the ground around it
+  const dusk = t < 0.96 ? Math.max(0, Math.min(1, (t - 0.5) / 0.14)) : Math.max(0, (1 - t) / 0.04);
+  drawSkyline(ctx, w, h, px, horizonY, dusk);
+
+  if (sky.dayAlpha > 0) {
+    const sec = now.getTime() / 1000;
+    const warmth = sky.sun ? Math.max(0, Math.min(1, (sky.sun.p - 0.55) / 0.3)) : 1;
+    const cloud = toCss(mix(parseHex(SKY_CLOUD_COLOR), parseHex(SKY_CLOUD_SUNSET_COLOR), warmth));
+    const lit = toCss(
+      mix(parseHex(SKY_CLOUD_SHADE_COLOR), parseHex(SKY_CLOUD_SUNSET_LIT_COLOR), warmth),
+    );
+    ctx.globalAlpha = sky.dayAlpha;
+    // Clouds: long flat streaks with stepped ends, drifting right and wrapping around
+    for (const c of CLOUDS) {
+      const u = px * c.scale;
+      const cw = 44 * u;
+      const x =
+        Math.round((((c.phase + (sec / SKY_CLOUD_CROSS_SEC) * c.speed) % 1) * (w + cw) - cw) / px) *
+        px;
+      const y = Math.round((c.y * horizonY * 1.3) / px) * px;
+      ctx.fillStyle = cloud;
+      ctx.fillRect(x + 10 * u, y, 22 * u, u);
+      ctx.fillRect(x + 4 * u, y + u, 36 * u, u);
+      ctx.fillRect(x, y + 2 * u, 44 * u, u);
+      ctx.fillRect(x + 8 * u, y + 3 * u, 30 * u, u);
+      ctx.fillStyle = lit;
+      ctx.fillRect(x + 14 * u, y + 4 * u, 20 * u, u);
+    }
+    // Birds: a loose flock of small v shapes, wings beating
+    ctx.fillStyle = SKY_BIRD_COLOR;
+    for (const [i, b] of BIRDS.entries()) {
+      const flapUp = Math.floor(sec / SKY_BIRD_FLAP_SEC + b.phase * 7) % 2 === 0;
+      const bu = px;
+      const x =
+        Math.round(
+          (((sec / SKY_BIRD_CROSS_SEC) % 1) * (w + 80 * px) - 70 * px + b.phase * 60 * px) / px,
+        ) * px;
+      const y =
+        Math.round(
+          (horizonY * 0.2 + b.y * horizonY * 0.7 + Math.sin(sec * 1.2 + b.bob + i) * 2 * px) / px,
+        ) * px;
+      if (flapUp) {
+        ctx.fillRect(x, y, 2 * bu, bu);
+        ctx.fillRect(x + bu, y + bu, 2 * bu, bu);
+        ctx.fillRect(x + 3 * bu, y + 2 * bu, bu, bu);
+        ctx.fillRect(x + 4 * bu, y + bu, 2 * bu, bu);
+        ctx.fillRect(x + 5 * bu, y, 2 * bu, bu);
+      } else {
+        ctx.fillRect(x, y + bu, 3 * bu, bu);
+        ctx.fillRect(x + 3 * bu, y + 2 * bu, bu, bu);
+        ctx.fillRect(x + 4 * bu, y + bu, 3 * bu, bu);
+      }
+    }
+    ctx.globalAlpha = 1;
   }
 }
