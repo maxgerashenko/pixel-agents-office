@@ -32,6 +32,8 @@ import {
   SKY_MOON_SHADE_COLOR,
   SKY_NIGHT_BAND_COLOR,
   SKY_NIGHT_BASE_COLOR,
+  SKY_NIGHT_FRAMES,
+  SKY_NIGHT_LOOP_SEC,
   SKY_RING_COLORS,
   SKY_RING_DAY_ALPHA,
   SKY_RING_SHARE,
@@ -394,61 +396,64 @@ function drawGround(
   }
 }
 
-let nightCache: { key: string; canvas: HTMLCanvasElement } | null = null;
+let nightCache: {
+  key: string;
+  canvas: HTMLCanvasElement;
+  frame: number;
+  frames: (HTMLCanvasElement | undefined)[];
+} | null = null;
 
 /**
- * The Starry Night sky: thousands of short brushstrokes following a flow field
- * that curls around two spirals and rolls in gentle waves elsewhere. Painted
- * once per canvas size into an offscreen canvas (it never changes), then
- * blitted each frame.
+ * One frame of the Starry Night sky at sprite resolution: thousands of short
+ * brushstrokes following a flow field that curls around two spirals and rolls
+ * in gentle waves elsewhere. Each stroke is a window travelling along its own
+ * looping streamline, so over `SKY_NIGHT_FRAMES` frames the paint flows round
+ * the spirals and the loop closes seamlessly.
  */
-function nightBackdrop(w: number, h: number, px: number): HTMLCanvasElement {
-  const key = `${w}x${h}x${px}`;
-  if (nightCache?.key === key) return nightCache.canvas;
+function paintNightFrame(sw: number, sh: number, frame: number): HTMLCanvasElement {
   const canvas = document.createElement('canvas');
-  canvas.width = w;
-  canvas.height = h;
+  canvas.width = sw;
+  canvas.height = sh;
   const c = canvas.getContext('2d');
-  nightCache = { key, canvas };
   if (!c) return canvas;
   c.fillStyle = SKY_NIGHT_BASE_COLOR;
-  c.fillRect(0, 0, w, h);
+  c.fillRect(0, 0, sw, sh);
   let seed = 2024;
   const rnd = (): number => {
     seed = (seed * 1103515245 + 12345) & 0x7fffffff;
     return seed / 0x7fffffff;
   };
-  const side = Math.min(w, h);
-  const count = Math.min(
-    SKY_STROKE_MAX,
-    Math.floor((w * h) / (SKY_STROKE_AREA_SPRITE_PX * px * px)),
-  );
-  const step = 2 * px;
+  const side = Math.min(sw, sh);
+  const count = Math.min(SKY_STROKE_MAX, Math.floor((sw * sh) / SKY_STROKE_AREA_SPRITE_PX));
   const last = SKY_SWIRL_COLORS.length - 1;
   for (let n = 0; n < count; n++) {
-    let x = rnd() * w;
-    let y = rnd() * h;
+    let x = rnd() * sw;
+    let y = rnd() * sh;
     // how close this stroke starts to a spiral core (paler there)
     let near = 0;
     for (const v of SKY_VORTICES) {
-      const d = Math.hypot(x - v.x * w, y - v.y * h) / (v.r * side);
+      const d = Math.hypot(x - v.x * sw, y - v.y * sh) / (v.r * side);
       near = Math.max(near, Math.exp(-d * d));
     }
-    const band = 0.66 + 0.07 * Math.sin((x / w) * 5 + 0.6);
-    const inBand = Math.abs(y / h - band) < 0.05 && rnd() < 0.55;
+    const band = 0.66 + 0.07 * Math.sin((x / sw) * 5 + 0.6);
+    const inBand = Math.abs(y / sh - band) < 0.05 && rnd() < 0.55;
     c.fillStyle = inBand
       ? SKY_NIGHT_BAND_COLOR
       : SKY_SWIRL_COLORS[Math.min(last, Math.floor(rnd() * 3.4 + near * 2.4))];
     const len = 8 + Math.floor(rnd() * 8);
-    for (let s = 0; s < len; s++) {
-      c.fillRect(Math.round(x / px) * px, Math.round(y / px) * px, 3 * px, 2 * px);
+    // the stroke is a `len`-step window on a loop twice as long, starting at
+    // its own phase and advancing one loop per animation cycle
+    const loop = len * 2;
+    const head = (Math.floor(rnd() * loop) + Math.floor((frame * loop) / SKY_NIGHT_FRAMES)) % loop;
+    for (let s = 0; s < loop; s++) {
+      if ((s - head + loop) % loop < len) c.fillRect(Math.round(x), Math.round(y), 3, 2);
       // flow: gentle rolling waves, bent into a spiral near each vortex
-      const wave = Math.sin((x / w) * 7 + (y / h) * 4) * 0.5;
+      const wave = Math.sin((x / sw) * 7 + (y / sh) * 4) * 0.5;
       let fx = Math.cos(wave) * 0.5;
       let fy = Math.sin(wave) * 0.5;
       for (const v of SKY_VORTICES) {
-        const dx = x - v.x * w;
-        const dy = y - v.y * h;
+        const dx = x - v.x * sw;
+        const dy = y - v.y * sh;
         const dist = Math.hypot(dx, dy) || 1;
         const reach = dist / (v.r * side * 1.7);
         const pull = Math.exp(-reach * reach) * 2.2;
@@ -456,11 +461,41 @@ function nightBackdrop(w: number, h: number, px: number): HTMLCanvasElement {
         fy += pull * (dx / dist - (0.3 * dy) / dist);
       }
       const mag = Math.hypot(fx, fy) || 1;
-      x += (fx / mag) * step;
-      y += (fy / mag) * step;
+      x += (fx / mag) * 2;
+      y += (fy / mag) * 2;
     }
   }
   return canvas;
+}
+
+/**
+ * The night sky for this moment, at canvas size. Frames are painted small (one
+ * canvas pixel per sprite pixel) the first time each is needed and scaled up
+ * onto one reused full-size canvas whenever the frame changes.
+ */
+function nightBackdrop(w: number, h: number, px: number, sec: number): HTMLCanvasElement {
+  const key = `${w}x${h}x${px}`;
+  if (nightCache?.key !== key) {
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    nightCache = { key, canvas, frame: -1, frames: [] };
+  }
+  const cache = nightCache;
+  const frame =
+    Math.floor(((sec % SKY_NIGHT_LOOP_SEC) / SKY_NIGHT_LOOP_SEC) * SKY_NIGHT_FRAMES) %
+    SKY_NIGHT_FRAMES;
+  if (cache.frame === frame) return cache.canvas;
+  const sw = Math.ceil(w / px);
+  const sh = Math.ceil(h / px);
+  const small = (cache.frames[frame] ??= paintNightFrame(sw, sh, frame));
+  const c = cache.canvas.getContext('2d');
+  if (c) {
+    c.imageSmoothingEnabled = false;
+    c.drawImage(small, 0, 0, sw * px, sh * px);
+    cache.frame = frame;
+  }
+  return cache.canvas;
 }
 
 /**
@@ -532,7 +567,7 @@ export function drawSky(
   const bandW = SKY_WIPE_BAND_SPRITE_PX * px;
   if (sky.starAlpha > 0) {
     const sec0 = now.getTime() / 1000;
-    const backdrop = nightBackdrop(w, h, px);
+    const backdrop = nightBackdrop(w, h, px, sec0);
     const dawn = t > SKY_STAR_FADE.out0;
     const anchor = sunPos ?? arcPosition(dawn ? 0 : 1, 0, (r + 1) * px, w, h, avoid);
     const cx = Math.round(anchor[0] / px) * px;
