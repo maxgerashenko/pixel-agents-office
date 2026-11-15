@@ -127,7 +127,7 @@ export const VIEW_BOTTOM_MARGIN_CSS_PX = 25;
 
 /** View mode keeps at least this fraction of the canvas height open above the
  *  office (room for the sky); landscape gives up a zoom step for it when needed. */
-export const VIEW_OPEN_TOP_FRACTION = 0.25;
+export const VIEW_OPEN_TOP_FRACTION = 0.1;
 /** Ghost-border hover tile when the border isn't shown — off any reachable tile. */
 export const GHOST_BORDER_NO_HOVER_TILE = -999;
 
