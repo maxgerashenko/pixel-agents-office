@@ -902,3 +902,6 @@ export const SKY_TREE_NIGHT_COLORS = { dark: '#080c1c', lit: '#24407e', trunk: '
 /** Sprite-pixel spacing of the trees in the side gaps, and the narrowest gap that gets any. */
 export const SKY_TREE_SPACING_SPRITE_PX = 26;
 export const SKY_TREE_MIN_GAP_SPRITE_PX = 16;
+/** The night sky's brushstrokes flow: this many frames, looping in this many seconds. */
+export const SKY_NIGHT_FRAMES = 16;
+export const SKY_NIGHT_LOOP_SEC = 4;
