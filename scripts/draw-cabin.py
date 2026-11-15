@@ -45,12 +45,6 @@ def far_pine(cx, base, h):
     for i in range(h):
         half = max(0, (h - i) * 3 // h)
         rect(cx - half, base - i, cx + half, base - i, FAR if (i // 3) % 2 == 0 else FAR_D)
-far_pine(2, 76, 26)
-far_pine(9, 72, 22)
-far_pine(75, 74, 24)
-far_pine(70, 70, 20)
-pine(4, 76, 44)
-pine(76, 78, 48)
 
 # --- chimney + smoke (behind the roof)
 rect(14, 8, 20, 24, BRICK)
@@ -109,21 +103,19 @@ d = ImageDraw.Draw(im)
 d.polygon([(36, 8), (47, 6), (71, 25), (62, 26)], fill=SL_D)
 for k in range(0, 24, 3):  # shingle courses along the receding roof
     d.line([(36 + k * 1.0, 9 + k * 0.75), (47 + k * 1.0, 7 + k * 0.78)], fill=SL_M)
-def side_wall(y0, y1):
-    for x in range(58, 70):
-        t = x - 58
-        top, bot = y0 + t * 0.35, y1 - t * 0.35
-        for y in range(int(top), int(bot) + 1):
-            put(x, y, SIDE_L if (y - y0) % 4 == 0 else (SIDE_LINE if (y - y0) % 4 == 3 else SIDE))
-side_wall(28, 42)
-side_wall(51, 64)
-side_wall(70, 84)
+# one continuous wall from the roof to the ground; its foot rises a little as
+# it recedes, and the corner post closes it at the far end
+for x in range(58, 70):
+    bot = 84 - int((x - 58) * 0.3)
+    for y in range(26, bot + 1):
+        put(x, y, SIDE_L if y % 4 == 0 else (SIDE_LINE if y % 4 == 3 else SIDE))
+    put(x, bot + 1, EDGE)
+rect(69, 26, 70, 81, TRIM)
 for y0 in (31, 54):
     rect(62, y0, 66, y0 + 6, TRIM)
     rect(63, y0 + 1, 65, y0 + 5, c('#c99a3c'))
     rect(64, y0 + 1, 64, y0 + 5, TRIM)
-rect(58, 43, 69, 43, TRIM)
-rect(58, 49, 69, 50, EDGE)
+rect(58, 49, 70, 50, EDGE)
 for y in range(65, 70):
     for x in range(58, 71):
         put(x, y, SL_D if ((x // 2 + y) % 2 == 0) else c('#232530'))
