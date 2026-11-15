@@ -9,7 +9,6 @@
  */
 
 import {
-  SKY_BIG_STAR_COUNT,
   SKY_BIRD_COUNT,
   SKY_CLOUD_COUNT,
   SKY_KEYFRAMES,
@@ -144,14 +143,4 @@ export const BIRDS = (() => {
     speed: 0.7 + rnd() * 0.7,
   }));
 })();
-export const BIG_STARS = (() => {
-  const rnd = seeded(31);
-  return Array.from({ length: SKY_BIG_STAR_COUNT }, () => ({
-    x: 0.05 + rnd() * 0.9,
-    y: 0.05 + rnd() * 0.5,
-    size: 4 + Math.floor(rnd() * 3),
-    phase: rnd() * Math.PI * 2,
-  }));
-})();
-
 export { mix, parseHex, STARS, toCss };

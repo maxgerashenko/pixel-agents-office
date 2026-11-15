@@ -2,9 +2,11 @@
 
 import {
   SKY_BAND_SPRITE_PX,
-  SKY_BIG_STAR_CORE_COLOR,
-  SKY_BIG_STAR_GLOW_COLOR,
-  SKY_BIG_STAR_HALO_COLORS,
+  SKY_BIG_STAR_BODY_COLOR,
+  SKY_BIG_STAR_DASH_COLORS,
+  SKY_BIG_STAR_HEART_COLOR,
+  SKY_BIG_STAR_PALE_COLOR,
+  SKY_BIG_STARS,
   SKY_BIRD_COLOR,
   SKY_BIRD_CROSS_SEC,
   SKY_BIRD_FLAP_SEC,
@@ -44,7 +46,6 @@ import {
   SKY_WIPE_BAND_SPRITE_PX,
 } from '../../constants.js';
 import {
-  BIG_STARS,
   BIRDS,
   CLOUDS,
   hourFraction,
@@ -415,27 +416,43 @@ export function drawSky(
     }
     ctx.save();
     ctx.beginPath();
-    ctx.rect(edge + bandW / 2, 0, w, h);
+    ctx.rect(edge + bandW / 2, 0, w + bandW, h);
     ctx.clip();
     // Starry Night stars: a soft glow, a yellow body and a bright four-point sparkle
-    for (const st of BIG_STARS) {
-      const pulse = 0.8 + 0.2 * Math.sin(sec0 * 1.2 + st.phase);
+    for (const [n, st] of SKY_BIG_STARS.entries()) {
       const sx = Math.round((st.x * w) / px) * px;
-      const sy = Math.round((st.y * h) / px) * px;
-      ctx.fillStyle = SKY_BIG_STAR_GLOW_COLOR;
-      ctx.globalAlpha = 0.28 * pulse;
-      spanDisc(ctx, sx, sy, st.size * 2 + 2, px, w, h);
-      ctx.globalAlpha = 0.45 * pulse;
-      spanDisc(ctx, sx, sy, st.size + 3, px, w, h);
+      const sy = Math.round((st.y * horizonY * 0.8) / px) * px;
+      const outer = st.size * 2 + 2;
+      // rings of short curved dashes, each ring turning slowly the other way
+      SKY_BIG_STAR_DASH_COLORS.forEach((color, k) => {
+        const rad = outer * (0.66 + k * 0.17);
+        const dashes = 7 + k * 3;
+        const spin = sec0 * (k % 2 === 0 ? 0.25 : -0.2) + n * 1.7;
+        ctx.fillStyle = color;
+        ctx.globalAlpha = 0.95 - k * 0.2;
+        for (let j = 0; j < dashes; j++) {
+          const a0 = (j / dashes) * Math.PI * 2 + spin;
+          const sweep = ((Math.PI * 2) / dashes) * 0.6;
+          const steps = Math.max(2, Math.round(rad * sweep));
+          for (let s = 0; s <= steps; s++) {
+            const ang = a0 + (s / steps) * sweep;
+            ctx.fillRect(
+              Math.round((sx + Math.cos(ang) * rad * px) / px) * px,
+              Math.round((sy + Math.sin(ang) * rad * px) / px) * px,
+              px,
+              px,
+            );
+          }
+        }
+      });
       ctx.globalAlpha = 1;
-      ctx.fillStyle = SKY_BIG_STAR_HALO_COLORS[0];
-      spanDisc(ctx, sx, sy, st.size, px, w, h);
-      ctx.fillStyle = SKY_BIG_STAR_CORE_COLOR;
-      spanDisc(ctx, sx, sy, st.size - 2, px, w, h);
-      ctx.fillStyle = SKY_BIG_STAR_HALO_COLORS[2];
-      const arm = Math.max(1, st.size - 2);
-      ctx.fillRect(sx - arm * px, sy, (2 * arm + 1) * px, px);
-      ctx.fillRect(sx, sy - arm * px, px, (2 * arm + 1) * px);
+      const pulse = 0.5 * Math.sin(sec0 * 1.1 + n * 2.3);
+      ctx.fillStyle = SKY_BIG_STAR_PALE_COLOR;
+      spanDisc(ctx, sx, sy, Math.round(outer * 0.52 + pulse), px, w, h);
+      ctx.fillStyle = SKY_BIG_STAR_BODY_COLOR;
+      spanDisc(ctx, sx, sy, Math.round(outer * 0.32), px, w, h);
+      ctx.fillStyle = SKY_BIG_STAR_HEART_COLOR;
+      spanDisc(ctx, sx, sy, Math.max(1, Math.round(outer * 0.12)), px, w, h);
     }
     ctx.fillStyle = SKY_STAR_COLOR;
     for (const star of STARS) {

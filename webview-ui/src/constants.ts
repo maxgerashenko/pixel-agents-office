@@ -827,15 +827,24 @@ export const SKY_VORTICES = [
 /** Canvas device pixels per brushstroke, in sprite-pixel area (lower = denser). */
 export const SKY_STROKE_AREA_SPRITE_PX = 30;
 export const SKY_STROKE_MAX = 14000;
-export const SKY_BIG_STAR_COUNT = 11;
-export const SKY_BIG_STAR_CORE_COLOR = '#f6c928';
-export const SKY_BIG_STAR_HALO_COLORS = [
-  '#f8e27a',
-  '#f2f0b8',
-  '#ffffff',
-  '#cfe6ee',
-  '#8fb4e4',
+/** The big stars, placed by hand: x across the canvas, y as a share of the sky above the
+ *  skyline, size in sprite pixels (the star's outer rings reach 2 x size + 2). */
+export const SKY_BIG_STARS = [
+  { x: 0.07, y: 0.3, size: 5 },
+  { x: 0.17, y: 0.66, size: 4 },
+  { x: 0.27, y: 0.14, size: 6 },
+  { x: 0.4, y: 0.5, size: 4 },
+  { x: 0.5, y: 0.16, size: 5 },
+  { x: 0.63, y: 0.6, size: 6 },
+  { x: 0.74, y: 0.2, size: 4 },
+  { x: 0.85, y: 0.46, size: 5 },
+  { x: 0.94, y: 0.12, size: 6 },
 ] as const;
+/** Star, from the middle out: orange heart, yellow body, pale glow, then rings of dashes. */
+export const SKY_BIG_STAR_HEART_COLOR = '#f0a02c';
+export const SKY_BIG_STAR_BODY_COLOR = '#ffe77a';
+export const SKY_BIG_STAR_PALE_COLOR = '#fff7c8';
+export const SKY_BIG_STAR_DASH_COLORS = ['#fdf3b0', '#ffffff', '#cfe4f6'] as const;
 /** (The sun itself is not drawn as a disc: the warm glow of dabs marks where it is.) */
 /** Realistic moon: shaded sphere with maria (dark patches) and craters. */
 export const SKY_MOON_SHADE_COLOR = '#a9aac4';
@@ -867,7 +876,5 @@ export const SKY_SKYLINE_NIGHT_COLOR = '#0d1226';
 export const SKY_HILL_DAY_COLOR = '#3d6b52';
 export const SKY_HILL_NIGHT_COLOR = '#1b2f6e';
 export const SKY_WINDOW_COLOR = '#ffd84a';
-/** Big star glow (drawn translucent) around its yellow body. */
-export const SKY_BIG_STAR_GLOW_COLOR = '#d8d040';
 /** How far above the top row of tiles the skyline stands (the wall face rises this much). */
 export const SKY_HORIZON_LIFT_SPRITE_PX = 14;
