@@ -822,7 +822,9 @@ function App() {
       {!isDebugMode && (
         <SkyFastForwardButton
           className={
-            isMobile ? 'absolute mobile-safe-top right-8 z-20' : 'absolute right-10 top-10 z-44'
+            isMobile
+              ? 'absolute mobile-safe-top mt-12 right-20 z-20'
+              : 'absolute right-24 top-24 z-44'
           }
         />
       )}
