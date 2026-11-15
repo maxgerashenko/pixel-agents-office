@@ -11,16 +11,13 @@ import {
   SKY_CLOUD_COLOR,
   SKY_CLOUD_CROSS_SEC,
   SKY_CLOUD_SHADE_COLOR,
-  SKY_MOON_CHEEK_COLOR,
   SKY_MOON_COLOR,
   SKY_MOON_CRATER_COLOR,
-  SKY_MOON_FACE_COLOR,
   SKY_MOON_GLOW_COLOR,
   SKY_MOON_MARE_COLOR,
   SKY_MOON_RADIUS_SPRITE_PX,
   SKY_MOON_SHADE_COLOR,
   SKY_STAR_COLOR,
-  SKY_SUN_EYE_HIGHLIGHT_COLOR,
   SKY_SUN_HIGHLIGHT_COLOR,
   SKY_SUN_RAY_COLOR,
   SKY_SUN_RAY_COUNT,
@@ -107,22 +104,6 @@ function drawSun(
       if (d2 <= 5) ctx.fillRect(ox + dx * px, oy + dy * px, px, px);
     }
   }
-  // Face: tall eyes with a sparkle, rosy cheeks, a happy smile
-  ctx.fillStyle = SKY_MOON_FACE_COLOR;
-  ctx.fillRect(ox - 4 * px, oy - 2 * px, 2 * px, 3 * px);
-  ctx.fillRect(ox + 2 * px, oy - 2 * px, 2 * px, 3 * px);
-  ctx.fillStyle = SKY_SUN_EYE_HIGHLIGHT_COLOR;
-  ctx.fillRect(ox - 4 * px, oy - 2 * px, px, px);
-  ctx.fillRect(ox + 2 * px, oy - 2 * px, px, px);
-  ctx.fillStyle = SKY_MOON_CHEEK_COLOR;
-  ctx.globalAlpha = 0.85;
-  ctx.fillRect(ox - 7 * px, oy + px, 2 * px, 2 * px);
-  ctx.fillRect(ox + 5 * px, oy + px, 2 * px, 2 * px);
-  ctx.globalAlpha = 1;
-  ctx.fillStyle = SKY_MOON_FACE_COLOR;
-  ctx.fillRect(ox - 3 * px, oy + 3 * px, px, px);
-  ctx.fillRect(ox - 2 * px, oy + 4 * px, 5 * px, px);
-  ctx.fillRect(ox + 3 * px, oy + 3 * px, px, px);
 }
 
 /**

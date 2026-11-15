@@ -792,8 +792,6 @@ export const SKY_STAR_COLOR = '#ffffff';
 export const SKY_TWINKLE_SEC = 3;
 /** The moon is a big cartoon character: a larger disc with a face. */
 export const SKY_MOON_RADIUS_SPRITE_PX = 16;
-export const SKY_MOON_FACE_COLOR = '#3a3a5c';
-export const SKY_MOON_CHEEK_COLOR = '#f4a0b4';
 /** Daytime fun: drifting clouds and flapping birds. */
 export const SKY_CLOUD_COLOR = '#ffffff';
 export const SKY_CLOUD_SHADE_COLOR = '#d4e8f6';
@@ -815,7 +813,6 @@ export const SKY_BIG_STAR_HALO_COLORS = ['#ffd84a', '#f0a030', '#9ec4f0'] as con
 export const SKY_SUN_RIM_COLOR = '#ffa726';
 export const SKY_SUN_HIGHLIGHT_COLOR = '#fff9c4';
 export const SKY_SUN_RAY_COLOR = '#ffd54f';
-export const SKY_SUN_EYE_HIGHLIGHT_COLOR = '#ffffff';
 export const SKY_SUN_RAY_COUNT = 12;
 /** Radians per second the rays turn. */
 export const SKY_SUN_RAY_SPIN = 0.12;
