@@ -113,9 +113,9 @@ for (const [name, viewport] of [
       await page.keyboard.up('Control');
       await page.waitForTimeout(400);
       expect(await measure(page)).toEqual(before);
-      // Anchored to the bottom: a ~50px gap above the bottom panels.
-      expect(before.bottomPanel - before.office.bottom).toBeLessThan(54);
-      expect(before.bottomPanel - before.office.bottom).toBeGreaterThanOrEqual(46);
+      // Anchored to the bottom: a ~25px gap above the bottom panels.
+      expect(before.bottomPanel - before.office.bottom).toBeLessThan(29);
+      expect(before.bottomPanel - before.office.bottom).toBeGreaterThanOrEqual(21);
       await page.screenshot({ path: test.info().outputPath(`ipad-${name}.png`) });
     });
   });
