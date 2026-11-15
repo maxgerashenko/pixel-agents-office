@@ -14,6 +14,7 @@
  * graph that imports it.
  */
 
+import { VIEW_FIT_BOTTOM_MARGIN_SPRITE_PX } from '../constants.js';
 import { TILE_SIZE, TileType } from './types.js';
 
 /** Device-pixel offset of the map's top-left corner inside the canvas.
@@ -205,7 +206,8 @@ export interface ContainSpace {
 
 /** The view view mode locks to: the largest whole zoom at which the office's
  *  drawn area fits entirely inside the canvas band between the top and bottom
- *  panels — width AND height — centred in that band, so no panel covers it.
+ *  panels — width AND height — resting on the bottom of that band with a small
+ *  margin, so no panel covers it and the spare room is sky above it.
  *  Zoom stays an integer so sprites stay pixel-perfect. Clamped to
  *  [minZoom, maxZoom]; below `minZoom` the office overflows rather than
  *  shrinking further. */
@@ -226,7 +228,14 @@ export function fitContainView(
   const byWidth = bounds.w > 0 && canvas.width > 0 ? Math.floor(canvas.width / bounds.w) : minZoom;
   const byHeight = bounds.h > 0 && bandHeight > 0 ? Math.floor(bandHeight / bounds.h) : minZoom;
   const zoom = Math.max(minZoom, Math.min(maxZoom, byWidth, byHeight));
-  const cy = space.top + bandHeight / 2;
+  // Sit on the bottom of the band with a small margin, so the room left over is
+  // all above the office — that is where the sky is. Overflowing stays centred.
+  const drawnH = bounds.h * zoom;
+  const slack = bandHeight - drawnH;
+  const cy =
+    slack > 0
+      ? space.top + Math.max(0, slack - VIEW_FIT_BOTTOM_MARGIN_SPRITE_PX * zoom) + drawnH / 2
+      : space.top + bandHeight / 2;
   // Pan is measured from the grid's centre (pan 0 centres the grid).
   const panX = ((layout.cols * TILE_SIZE) / 2 - (bounds.x + bounds.w / 2)) * zoom;
   const panY =

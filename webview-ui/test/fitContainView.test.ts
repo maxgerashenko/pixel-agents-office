@@ -1,6 +1,6 @@
 /**
  * Unit tests for the view-mode fit: the whole-number zoom at which the whole
- * office fits the band between the top and bottom panels, centred in it.
+ * office fits the band between the top and bottom panels, resting on its bottom.
  */
 
 import assert from 'node:assert/strict';
@@ -34,9 +34,19 @@ test('the panels are reserved: the office never reaches into them', () => {
   assert.equal(v.panX, 0);
 });
 
-test('without panels it is centred on the canvas', () => {
+test('an exact fit is centred on the canvas', () => {
   const v = fitContainView({ width: 1280, height: 704 }, solid(20, 11), 1, 10);
   assert.deepEqual(v, { zoom: 4, panX: 0, panY: 0 });
+});
+
+test('spare height goes above: the office rests near the bottom of the band', () => {
+  const canvas = { width: 1280, height: 1400 };
+  const space = { top: 0, bottom: 100 };
+  const v = fitContainView(canvas, solid(20, 11), 1, 10, space);
+  const drawnH = 11 * 16 * v.zoom;
+  const bottom = canvas.height / 2 + v.panY + drawnH / 2;
+  const gap = canvas.height - space.bottom - bottom;
+  assert.ok(gap > 0 && gap <= 4 * v.zoom, `gap ${gap}`);
 });
 
 test('clamps to the zoom range and tolerates an empty band', () => {
