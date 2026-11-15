@@ -450,3 +450,31 @@
     opacity: 0.3;
   }
 }
+
+/* The music note dances while the music plays: two hops with a sway to each
+   side, in whole-pixel steps so it stays pixel art. */
+@keyframes music-dance {
+  0% {
+    transform: translate(0, 0);
+  }
+  25% {
+    transform: translate(-3px, -3px);
+  }
+  50% {
+    transform: translate(0, 0);
+  }
+  75% {
+    transform: translate(3px, -3px);
+  }
+  100% {
+    transform: translate(0, 0);
+  }
+}
+[data-music='on'] .music-note {
+  animation: music-dance 0.8s steps(1, end) infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-music='on'] .music-note {
+    animation: none;
+  }
+}
