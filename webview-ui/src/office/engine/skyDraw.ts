@@ -26,11 +26,6 @@ import {
   SKY_STAR_COLOR,
   SKY_STROKE_AREA_SPRITE_PX,
   SKY_STROKE_MAX,
-  SKY_SUN_FLARE_COLOR,
-  SKY_SUN_FLARE_COUNT,
-  SKY_SUN_HIGHLIGHT_COLOR,
-  SKY_SUN_RIM_COLOR,
-  SKY_SUN_SPOT_COLOR,
   SKY_SWIRL_COLORS,
   SKY_TWINKLE_SEC,
   SKY_VORTICES,
@@ -177,93 +172,6 @@ function nightBackdrop(w: number, h: number, px: number): HTMLCanvasElement {
     }
   }
   return canvas;
-}
-
-/** The sun seen from space: a granulated fiery sphere with sunspots, a corona and flares. */
-function drawSun(
-  ctx: CanvasRenderingContext2D,
-  ox: number,
-  oy: number,
-  r: number,
-  px: number,
-  color: string,
-  sec: number,
-): void {
-  const base = parseHex(color);
-  // Corona: wide, soft, stepped glow
-  ctx.fillStyle = color;
-  for (const [rad, a] of [
-    [r + 9, 0.06],
-    [r + 7, 0.09],
-    [r + 5, 0.14],
-    [r + 3, 0.22],
-    [r + 1, 0.35],
-  ]) {
-    ctx.globalAlpha = a;
-    disc(ctx, ox, oy, rad, px);
-  }
-  ctx.globalAlpha = 1;
-  // Flares: curved prominences licking off the limb, wavering over time
-  ctx.fillStyle = SKY_SUN_FLARE_COLOR;
-  for (let i = 0; i < SKY_SUN_FLARE_COUNT; i++) {
-    const baseAng = (i / SKY_SUN_FLARE_COUNT) * Math.PI * 2 + 0.4;
-    const reach = 3 + 2 * (0.5 + 0.5 * Math.sin(sec * 0.8 + i * 2.1));
-    for (let s = 0; s < reach * 3; s++) {
-      const t = s / 3;
-      const ang = baseAng + Math.sin(t * 0.9 + sec * 0.5 + i) * 0.12;
-      const rad = r + t;
-      ctx.globalAlpha = 0.9 - (t / reach) * 0.6;
-      ctx.fillRect(
-        Math.round((ox + Math.cos(ang) * rad * px) / px) * px,
-        Math.round((oy + Math.sin(ang) * rad * px) / px) * px,
-        px,
-        px,
-      );
-    }
-  }
-  ctx.globalAlpha = 1;
-  // Limb: deep orange edge, hot yellow-white towards the middle (limb brightening)
-  ctx.fillStyle = SKY_SUN_RIM_COLOR;
-  disc(ctx, ox, oy, r, px);
-  ctx.fillStyle = toCss(mix(base, parseHex(SKY_SUN_RIM_COLOR), 0.5));
-  disc(ctx, ox, oy, r - 1, px);
-  ctx.fillStyle = color;
-  disc(ctx, ox, oy, Math.round(r * 0.78), px);
-  ctx.fillStyle = SKY_SUN_HIGHLIGHT_COLOR;
-  disc(ctx, ox, oy, Math.round(r * 0.45), px);
-  // Granulation: a boiling mottle of lighter and darker cells across the surface
-  const cells = Math.round(r * 3.2);
-  for (let i = 0; i < cells; i++) {
-    const a1 = Math.sin(i * 12.9898) * 43758.5453;
-    const a2 = Math.sin(i * 78.233) * 12543.123;
-    const fx = a1 - Math.floor(a1);
-    const fy = a2 - Math.floor(a2);
-    const cx = Math.round((fx * 2 - 1) * (r - 1));
-    const cy = Math.round((fy * 2 - 1) * (r - 1));
-    if (cx * cx + cy * cy > (r - 2) * (r - 2)) continue;
-    const boil = 0.5 + 0.5 * Math.sin(sec * 1.3 + i);
-    ctx.globalAlpha = 0.25 + 0.3 * boil;
-    ctx.fillStyle = i % 2 === 0 ? SKY_SUN_HIGHLIGHT_COLOR : SKY_SUN_RIM_COLOR;
-    ctx.fillRect(ox + cx * px, oy + cy * px, 2 * px, px);
-  }
-  ctx.globalAlpha = 1;
-  // Sunspots: a few dark cores with a lighter penumbra
-  for (const [sx, sy, sr] of [
-    [-0.35, -0.25, 0.14],
-    [0.3, 0.2, 0.1],
-    [0.05, 0.45, 0.08],
-  ]) {
-    const spx = ox + Math.round(sx * r) * px;
-    const spy = oy + Math.round(sy * r) * px;
-    const rad = Math.max(1, Math.round(sr * r));
-    ctx.fillStyle = SKY_SUN_RIM_COLOR;
-    ctx.globalAlpha = 0.8;
-    disc(ctx, spx, spy, rad + 1, px);
-    ctx.fillStyle = SKY_SUN_SPOT_COLOR;
-    ctx.globalAlpha = 0.9;
-    disc(ctx, spx, spy, rad, px);
-  }
-  ctx.globalAlpha = 1;
 }
 
 /**
@@ -431,18 +339,6 @@ export function drawSky(
     ctx.globalAlpha = 1;
   }
 
-  if (sky.sun && sunPos) {
-    const [sx, sy] = sunPos;
-    drawSun(
-      ctx,
-      Math.round(sx / px) * px,
-      Math.round(sy / px) * px,
-      r,
-      px,
-      sky.sun.color,
-      now.getTime() / 1000,
-    );
-  }
   if (sky.moon) {
     const mr = Math.max(
       6,

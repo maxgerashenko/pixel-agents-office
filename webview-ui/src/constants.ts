@@ -837,12 +837,7 @@ export const SKY_BIG_STAR_HALO_COLORS = [
   '#cfe6ee',
   '#8fb4e4',
 ] as const;
-/** Sun polish: glow, rotating rays, shading highlight, face. */
-export const SKY_SUN_RIM_COLOR = '#ff8a1f';
-export const SKY_SUN_HIGHLIGHT_COLOR = '#fff4b0';
-export const SKY_SUN_FLARE_COLOR = '#ff7a1a';
-export const SKY_SUN_SPOT_COLOR = '#8a2a0a';
-export const SKY_SUN_FLARE_COUNT = 7;
+/** (The sun itself is not drawn as a disc: the warm glow of dabs marks where it is.) */
 /** Realistic moon: shaded sphere with maria (dark patches) and craters. */
 export const SKY_MOON_SHADE_COLOR = '#a9aac4';
 export const SKY_MOON_MARE_COLOR = '#c4c5da';
