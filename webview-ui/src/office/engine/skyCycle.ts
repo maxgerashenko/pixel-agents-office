@@ -12,6 +12,9 @@ import {
   SKY_BIRD_COUNT,
   SKY_CLOUD_COUNT,
   SKY_DAY_LIFE_FADE,
+  SKY_FF_CYCLE_SEC,
+  SKY_FF_REWIND_SPEEDUP,
+  SKY_FF_TAP_MS,
   SKY_KEYFRAMES,
   SKY_MOON_RISE_AT,
   SKY_STAR_COUNT,
@@ -153,3 +156,63 @@ export const BIRDS = (() => {
   }));
 })();
 export { mix, parseHex, STARS, toCss };
+
+/**
+ * Fast-forward: holding the sky button runs the cycle ahead at one whole hour
+ * per `SKY_FF_CYCLE_SEC`; letting go runs it back, `SKY_FF_REWIND_SPEEDUP`
+ * times faster, to the real time. Only the position within the hour counts, so
+ * however many whole cycles went by, the way back is never more than one. A
+ * quick tap plays exactly one full cycle forward instead.
+ *
+ * The state is a plain value and every function takes the time, so it is pure.
+ */
+export interface SkyFastForward {
+  mode: 'idle' | 'forward' | 'rewind' | 'finish';
+  /** Offset (in hours) when this mode began, and when that was (ms). */
+  base: number;
+  since: number;
+}
+
+export const SKY_FF_IDLE: SkyFastForward = { mode: 'idle', base: 0, since: 0 };
+
+/** How far ahead of the real time the sky is showing, in hours. */
+export function skyFastForwardOffset(ff: SkyFastForward, nowMs: number): number {
+  const ran = Math.max(0, nowMs - ff.since) / 1000 / SKY_FF_CYCLE_SEC;
+  switch (ff.mode) {
+    case 'forward':
+      return ff.base + ran;
+    case 'finish':
+      return Math.min(1, ff.base + ran) % 1;
+    case 'rewind':
+      return Math.max(0, ff.base - ran * SKY_FF_REWIND_SPEEDUP);
+    default:
+      return 0;
+  }
+}
+
+export function pressSkyFastForward(ff: SkyFastForward, nowMs: number): SkyFastForward {
+  if (ff.mode === 'forward') return ff;
+  return { mode: 'forward', base: skyFastForwardOffset(ff, nowMs), since: nowMs };
+}
+
+export function releaseSkyFastForward(ff: SkyFastForward, nowMs: number): SkyFastForward {
+  if (ff.mode !== 'forward') return ff;
+  const offset = skyFastForwardOffset(ff, nowMs);
+  if (nowMs - ff.since < SKY_FF_TAP_MS && offset < 1) {
+    return { mode: 'finish', base: offset, since: nowMs };
+  }
+  return { mode: 'rewind', base: offset % 1, since: nowMs };
+}
+
+let fastForward: SkyFastForward = SKY_FF_IDLE;
+
+/** The fraction of the hour the sky shows now: the real one, plus any fast-forward. */
+export function skyFractionNow(now: Date): number {
+  return (hourFraction(now) + skyFastForwardOffset(fastForward, now.getTime())) % 1;
+}
+
+export function holdSkyFastForward(held: boolean, nowMs: number = Date.now()): void {
+  fastForward = held
+    ? pressSkyFastForward(fastForward, nowMs)
+    : releaseSkyFastForward(fastForward, nowMs);
+}

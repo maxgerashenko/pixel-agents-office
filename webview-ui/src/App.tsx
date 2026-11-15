@@ -12,6 +12,7 @@ import { EditActionBar } from './components/EditActionBar.js';
 import { IntroBubble } from './components/IntroBubble.js';
 import { MigrationNotice } from './components/MigrationNotice.js';
 import { SettingsModal } from './components/SettingsModal.js';
+import { SkyFastForwardButton } from './components/SkyFastForwardButton.js';
 import { TerminalDrawer } from './components/TerminalDrawer.js';
 import { Tooltip } from './components/Tooltip.js';
 import { Button } from './components/ui/Button.js';
@@ -814,6 +815,15 @@ function App() {
           onEditDirectory={directoryEditor.edit}
           terminalAvailable={terminalAvailable}
           terminalUnavailableReason={terminalUnavailableReason}
+        />
+      )}
+
+      {/* Sky fast-forward: top-right, level with the controls on the left. */}
+      {!isDebugMode && (
+        <SkyFastForwardButton
+          className={
+            isMobile ? 'absolute mobile-safe-top right-8 z-20' : 'absolute right-10 top-10 z-44'
+          }
         />
       )}
 

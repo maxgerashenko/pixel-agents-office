@@ -909,3 +909,9 @@ export const SKY_TREE_MIN_GAP_SPRITE_PX = 16;
 /** The night sky's brushstrokes flow: this many frames, looping in this many seconds. */
 export const SKY_NIGHT_FRAMES = 12;
 export const SKY_NIGHT_LOOP_SEC = 3;
+/** Sky fast-forward button: a whole hour of sky per this many seconds while held. */
+export const SKY_FF_CYCLE_SEC = 5;
+/** Letting go runs the sky back to the real time this many times faster. */
+export const SKY_FF_REWIND_SPEEDUP = 2;
+/** A press shorter than this is a tap: it plays one full cycle forward. */
+export const SKY_FF_TAP_MS = 300;

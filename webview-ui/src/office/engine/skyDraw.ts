@@ -59,10 +59,10 @@ import {
 import {
   BIRDS,
   CLOUDS,
-  hourFraction,
   mix,
   parseHex,
   skyAt,
+  skyFractionNow,
   skyOverride,
   STARS,
   toCss,
@@ -565,7 +565,7 @@ export function drawSky(
   avoid?: { x: number; y: number; w: number; h: number },
   now: Date = new Date(),
 ): void {
-  const t = skyOverride() ?? hourFraction(now);
+  const t = skyOverride() ?? skyFractionNow(now);
   const sky = skyAt(t);
   const px = Math.max(1, Math.round(zoom));
   const band = SKY_BAND_SPRITE_PX * px;
