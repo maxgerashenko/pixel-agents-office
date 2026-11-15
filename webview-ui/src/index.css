@@ -149,10 +149,10 @@
      scripts/draw-cabin.py after the reference): slate roof, brick chimney,
      balcony, window boxes, porch with a lantern, firewood, cobblestone, pines.
      One floor per control; each control is a wooden sign on its floor. The
-     sprite is 70x92 shown at 2x. */
+     sprite is 62x92 shown at 2x. */
   .cabin {
     position: relative;
-    width: 140px;
+    width: 124px;
     height: 184px;
     background-size: 100% 100%;
     background-repeat: no-repeat;
@@ -162,13 +162,17 @@
   .cabin-slot {
     position: absolute;
     left: 0;
-    width: 140px;
+    width: 112px; /* centred on the lit front; the side wall is to its right */
     display: flex;
     justify-content: center;
     pointer-events: none;
   }
   .cabin-slot > * {
     pointer-events: auto;
+  }
+  /* The launch drawer clears the side wall. */
+  .cabin-slot > div {
+    margin-left: 12px;
   }
   .cabin-slot[data-floor='top'] {
     top: 58px;
