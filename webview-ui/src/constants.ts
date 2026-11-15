@@ -878,3 +878,5 @@ export const SKY_HILL_NIGHT_COLOR = '#1b2f6e';
 export const SKY_WINDOW_COLOR = '#ffd84a';
 /** How far above the top row of tiles the skyline stands (the wall face rises this much). */
 export const SKY_HORIZON_LIFT_SPRITE_PX = 14;
+/** Opaque fill used only to cut masks (its colour never shows). */
+export const SKY_MASK_COLOR = '#000000';

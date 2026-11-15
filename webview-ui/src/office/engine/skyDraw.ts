@@ -19,6 +19,7 @@ import {
   SKY_HILL_DAY_COLOR,
   SKY_HILL_NIGHT_COLOR,
   SKY_HORIZON_LIFT_SPRITE_PX,
+  SKY_MASK_COLOR,
   SKY_MOON_COLOR,
   SKY_MOON_CRATER_COLOR,
   SKY_MOON_DESIGN_RADIUS,
@@ -100,58 +101,71 @@ const BAYER4 = [
   [3, 11, 1, 9],
   [15, 7, 13, 5],
 ];
-let ditherMask: { key: string; canvas: HTMLCanvasElement } | null = null;
-let ditherTemp: HTMLCanvasElement | null = null;
+let ditherPatterns: { px: number; patterns: CanvasPattern[] } | null = null;
+let nightTemp: HTMLCanvasElement | null = null;
+const DITHER_LEVELS = 4;
 
 /**
- * The band of `source` starting at x = `edge`, cut through an ordered-dither
- * mask that runs from empty on the left to solid on the right: the pixelated
- * edge night advances behind.
+ * The night backdrop with a hole cut round (cx, cy): fully open inside `radius`,
+ * then closing through rings of ordered dither over `bandW`. The curved, pixelated
+ * edge that night closes in behind at dusk and opens from at dawn.
  */
-function ditherStrip(
-  source: HTMLCanvasElement,
-  edge: number,
-  bandW: number,
+function nightAroundSun(
+  backdrop: HTMLCanvasElement,
+  w: number,
   h: number,
   px: number,
-  solidOnLeft: boolean,
+  cx: number,
+  cy: number,
+  radius: number,
+  bandW: number,
 ): HTMLCanvasElement | null {
-  const key = `${bandW}x${h}x${px}`;
-  if (ditherMask?.key !== key) {
-    const mask = document.createElement('canvas');
-    mask.width = bandW;
-    mask.height = h;
-    const m = mask.getContext('2d');
-    if (!m) return null;
-    const cols = bandW / px;
-    for (let cx = 0; cx < cols; cx++) {
-      const level = ((cx + 0.5) / cols) * 16;
-      for (let cy = 0; cy * px < h; cy++) {
-        if (BAYER4[cy % 4][cx % 4] < level) m.fillRect(cx * px, cy * px, px, px);
+  if (!nightTemp || nightTemp.width !== w || nightTemp.height !== h) {
+    nightTemp = document.createElement('canvas');
+    nightTemp.width = w;
+    nightTemp.height = h;
+  }
+  const tc = nightTemp.getContext('2d');
+  if (!tc) return null;
+  if (ditherPatterns?.px !== px) {
+    const patterns: CanvasPattern[] = [];
+    for (let level = 0; level < DITHER_LEVELS; level++) {
+      const tile = document.createElement('canvas');
+      tile.width = 4 * px;
+      tile.height = 4 * px;
+      const c = tile.getContext('2d');
+      if (!c) return null;
+      // innermost ring erases most of the night, outermost least
+      const cut = ((DITHER_LEVELS - level) / (DITHER_LEVELS + 1)) * 16;
+      c.fillStyle = SKY_MASK_COLOR;
+      for (let y = 0; y < 4; y++) {
+        for (let x = 0; x < 4; x++) {
+          if (BAYER4[y][x] < cut) c.fillRect(x * px, y * px, px, px);
+        }
       }
+      const pattern = tc.createPattern(tile, 'repeat');
+      if (!pattern) return null;
+      patterns.push(pattern);
     }
-    ditherMask = { key, canvas: mask };
-    ditherTemp = document.createElement('canvas');
-    ditherTemp.width = bandW;
-    ditherTemp.height = h;
+    ditherPatterns = { px, patterns };
   }
-  const temp = ditherTemp;
-  const tc = temp?.getContext('2d');
-  if (!temp || !tc) return null;
   tc.globalCompositeOperation = 'source-over';
-  tc.clearRect(0, 0, bandW, h);
-  tc.drawImage(source, edge, 0, bandW, h, 0, 0, bandW, h);
-  tc.globalCompositeOperation = 'destination-in';
-  if (solidOnLeft) {
-    tc.save();
-    tc.translate(bandW, 0);
-    tc.scale(-1, 1);
-    tc.drawImage(ditherMask.canvas, 0, 0);
-    tc.restore();
-  } else {
-    tc.drawImage(ditherMask.canvas, 0, 0);
-  }
-  return temp;
+  tc.clearRect(0, 0, w, h);
+  tc.drawImage(backdrop, 0, 0);
+  tc.globalCompositeOperation = 'destination-out';
+  tc.fillStyle = SKY_MASK_COLOR;
+  tc.beginPath();
+  tc.arc(cx, cy, radius, 0, Math.PI * 2);
+  tc.fill();
+  const ring = bandW / DITHER_LEVELS;
+  ditherPatterns.patterns.forEach((pattern, level) => {
+    tc.fillStyle = pattern;
+    tc.beginPath();
+    tc.arc(cx, cy, radius + (level + 1) * ring, 0, Math.PI * 2);
+    tc.arc(cx, cy, radius + level * ring, 0, Math.PI * 2);
+    tc.fill('evenodd');
+  });
+  return nightTemp;
 }
 
 /**
@@ -411,41 +425,34 @@ export function drawSky(
     ctx.globalAlpha = 1;
   }
 
-  // Everything moves left to right. At dusk night sweeps in from the left behind a
-  // dithered edge; at dawn the day does the same, pushing night off to the right.
+  // Night follows the sun's last rays: at dusk it closes in round the setting sun
+  // along a curved, dithered edge; at dawn it opens the same way round the rising sun.
   const bandW = SKY_WIPE_BAND_SPRITE_PX * px;
-  const dawn = t > SKY_STAR_FADE.out0;
-  const edge = dawn
-    ? Math.round((w - sky.starAlpha * (w + bandW)) / px) * px
-    : Math.round((sky.starAlpha * (w + bandW) - bandW) / px) * px;
   if (sky.starAlpha > 0) {
     const sec0 = now.getTime() / 1000;
     const backdrop = nightBackdrop(w, h, px);
-    // night is solid on one side of the dithered band [edge, edge + bandW]
-    const nightFrom = dawn ? Math.max(0, edge + bandW) : 0;
-    const nightTo = dawn ? w : Math.min(w, edge);
-    if (nightTo > nightFrom) {
-      ctx.drawImage(
-        backdrop,
-        nightFrom,
-        0,
-        nightTo - nightFrom,
-        h,
-        nightFrom,
-        0,
-        nightTo - nightFrom,
-        h,
-      );
-    }
-    if (edge + bandW > 0 && edge < w) {
-      const strip = ditherStrip(backdrop, edge, bandW, h, px, !dawn);
-      if (strip) ctx.drawImage(strip, edge, 0);
+    const dawn = t > SKY_STAR_FADE.out0;
+    const anchor = sunPos ?? arcPosition(dawn ? 0 : 1, 0, (r + 1) * px, w, h, avoid);
+    const cx = Math.round(anchor[0] / px) * px;
+    const cy = Math.round(anchor[1] / px) * px;
+    const far = Math.max(
+      Math.hypot(cx, cy),
+      Math.hypot(w - cx, cy),
+      Math.hypot(cx, h - cy),
+      Math.hypot(w - cx, h - cy),
+    );
+    const open = Math.round(((1 - sky.starAlpha) * (far + bandW) - bandW) / px) * px;
+    if (sky.starAlpha >= 1 || open + bandW <= 0) {
+      ctx.drawImage(backdrop, 0, 0);
+    } else {
+      const cut = nightAroundSun(backdrop, w, h, px, cx, cy, Math.max(0, open), bandW);
+      if (cut) ctx.drawImage(cut, 0, 0);
     }
     ctx.save();
     ctx.beginPath();
-    if (dawn) ctx.rect(edge + bandW / 2, 0, w + bandW, h);
-    else ctx.rect(-bandW, 0, edge + bandW * 1.5, h);
-    ctx.clip();
+    ctx.rect(0, 0, w, h);
+    ctx.arc(cx, cy, Math.max(0, open + bandW / 2), 0, Math.PI * 2);
+    ctx.clip('evenodd');
     // Starry Night stars: a soft glow, a yellow body and a bright four-point sparkle
     for (const [n, st] of SKY_BIG_STARS.entries()) {
       const sx = Math.round((st.x * w) / px) * px;
