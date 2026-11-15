@@ -36,7 +36,7 @@ test('the panels are reserved: the office never reaches into them', () => {
 
 test('without panels it is centred on the canvas', () => {
   const v = fitContainView({ width: 1280, height: 704 }, solid(20, 11), 1, 10);
-  assert.deepEqual(v, { zoom: 4, panX: 0, panY: 0 });
+  assert.deepEqual(v, { zoom: 4, panX: 0, panY: 0, steps: 0, maxSteps: 0, minSteps: 0 });
 });
 
 test('clamps to the zoom range and tolerates an empty band', () => {
@@ -75,4 +75,55 @@ test('open space above is kept: zoom steps down until it is left over', () => {
   assert.ok(open.zoom < tall.zoom);
   const top = canvas.height / 2 + open.panY - (11 * 16 * open.zoom) / 2;
   assert.ok(top >= 446 - 0.5);
+});
+
+test('size steps go up from the fit, never past the width or the sky', () => {
+  const canvas = { width: 2266, height: 1488 };
+  const base = {
+    top: 300,
+    bottom: 0,
+    bottomMargin: 50,
+    minOpenTop: 149,
+    extraMinOpenTop: 40,
+    maxExtraSteps: 4,
+  };
+  const fit = fitContainView(canvas, solid(20, 11), 1, 10, base);
+  assert.equal(fit.zoom, 5);
+  assert.equal(fit.steps, 0);
+  assert.equal(fit.maxSteps, 1); // 6x leaves the sky its 40px; 7x would not
+  const big = fitContainView(canvas, solid(20, 11), 1, 10, { ...base, extraSteps: 9 });
+  assert.equal(big.zoom, 6);
+  assert.equal(big.steps, 1);
+  assert.ok(20 * 16 * big.zoom <= canvas.width);
+  const bottomEdge = canvas.height / 2 + big.panY + (11 * 16 * big.zoom) / 2;
+  assert.equal(bottomEdge, canvas.height - 50);
+  assert.equal(big.panX, 0);
+});
+
+test('no steps are offered unless asked for', () => {
+  const v = fitContainView({ width: 2266, height: 1488 }, solid(20, 11), 1, 10, {
+    top: 0,
+    bottom: 0,
+  });
+  assert.equal(v.maxSteps, 0);
+});
+
+test('size steps go below the fit too, never under minZoom', () => {
+  const canvas = { width: 2266, height: 1488 };
+  const base = {
+    top: 0,
+    bottom: 0,
+    bottomMargin: 50,
+    minOpenTop: 149,
+    maxExtraSteps: 1,
+    maxLessSteps: 5,
+  };
+  const fit = fitContainView(canvas, solid(20, 11), 1, 10, base);
+  assert.equal(fit.minSteps, 5);
+  const small = fitContainView(canvas, solid(20, 11), 1, 10, { ...base, extraSteps: -9 });
+  assert.equal(small.steps, -5);
+  assert.equal(small.zoom, fit.zoom - 5 < 1 ? 1 : fit.zoom - 5);
+  const bottomEdge = canvas.height / 2 + small.panY + (11 * 16 * small.zoom) / 2;
+  assert.equal(bottomEdge, canvas.height - 50);
+  assert.equal(small.panX, 0);
 });
