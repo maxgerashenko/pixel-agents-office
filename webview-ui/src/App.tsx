@@ -25,7 +25,6 @@ import {
   READ_ONLY_CONTROL_HINT,
   VIEW_BOTTOM_MARGIN_CSS_PX,
   VIEW_FIT_CHECK_MS,
-  VIEW_LANDSCAPE_ZOOM_SCALE,
   VIEW_OPEN_TOP_FRACTION,
 } from './constants.js';
 import { useDirectoryEditor } from './hooks/useDirectoryEditor.js';
@@ -439,7 +438,6 @@ function App() {
         bottom: m.bottom,
         bottomMargin: VIEW_BOTTOM_MARGIN_CSS_PX * (window.devicePixelRatio || 1),
         minOpenTop: VIEW_OPEN_TOP_FRACTION * m.canvas.height,
-        zoomScale: m.canvas.width > m.canvas.height ? VIEW_LANDSCAPE_ZOOM_SCALE : 1,
       });
     };
     const frame = requestAnimationFrame(refit);

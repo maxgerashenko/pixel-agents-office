@@ -116,8 +116,8 @@ for (const [name, viewport] of [
       // Anchored to the bottom: a ~25px gap above the bottom panels.
       expect(before.bottomPanel - before.office.bottom).toBeLessThan(29);
       expect(before.bottomPanel - before.office.bottom).toBeGreaterThanOrEqual(21);
-      // Open space above for the sky: at least 30% of the viewport height.
-      expect(before.office.top).toBeGreaterThanOrEqual(viewport.height * 0.3 - 2);
+      // Open space above for the sky: at least 25% of the viewport height.
+      expect(before.office.top).toBeGreaterThanOrEqual(viewport.height * 0.25 - 2);
       await page.screenshot({ path: test.info().outputPath(`ipad-${name}.png`) });
     });
   });

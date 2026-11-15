@@ -206,9 +206,6 @@ export interface ContainSpace {
   /** Open space kept free above the office (default 0): zoom steps down until
    *  at least this much is left over. */
   minOpenTop?: number;
-  /** Shrink the fitted zoom by this factor, rounded down to a whole step
-   *  (default 1: no shrink). */
-  zoomScale?: number;
 }
 
 /** The view view mode locks to: the largest whole zoom at which the office's
@@ -240,8 +237,7 @@ export function fitContainView(
   // steps down before either shrinks.
   const usableHeight = bandHeight - (space.bottomMargin ?? 0) - (space.minOpenTop ?? 0);
   const byHeight = bounds.h > 0 && usableHeight > 0 ? Math.floor(usableHeight / bounds.h) : minZoom;
-  const fitted = Math.max(minZoom, Math.min(maxZoom, byWidth, byHeight));
-  const zoom = Math.max(minZoom, Math.floor(fitted * (space.zoomScale ?? 1)));
+  const zoom = Math.max(minZoom, Math.min(maxZoom, byWidth, byHeight));
   const drawnH = bounds.h * zoom;
   const bandBottom = canvas.height - space.bottom;
   const wanted = bandBottom - (space.bottomMargin ?? 0) - drawnH / 2;
