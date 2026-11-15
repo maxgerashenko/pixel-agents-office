@@ -81,32 +81,32 @@ test('the moon crosses left to right during the night phase', () => {
   assert.ok(a.p < b.p);
 });
 
-test('holding fast-forward runs a whole hour of sky every 5 seconds', () => {
+test('holding fast-forward runs a whole hour of sky every 6 seconds', () => {
   const held = pressSkyFastForward(SKY_FF_IDLE, 1000);
   assert.equal(skyFastForwardOffset(held, 1000), 0);
-  assert.equal(skyFastForwardOffset(held, 3500), 0.5);
-  assert.equal(skyFastForwardOffset(held, 13500), 2.5);
+  assert.equal(skyFastForwardOffset(held, 4000), 0.5);
+  assert.equal(skyFastForwardOffset(held, 16000), 2.5);
 });
 
 test('letting go runs back twice as fast, and only the part of a cycle counts', () => {
-  // held 12.5 s = 2.5 cycles ahead: the way back is half a cycle, 1.25 s
-  const back = releaseSkyFastForward(pressSkyFastForward(SKY_FF_IDLE, 0), 12500);
+  // held 15 s = 2.5 cycles ahead: the way back is half a cycle, 1.5 s
+  const back = releaseSkyFastForward(pressSkyFastForward(SKY_FF_IDLE, 0), 15000);
   assert.equal(back.mode, 'rewind');
-  assert.equal(skyFastForwardOffset(back, 12500), 0.5);
-  assert.equal(skyFastForwardOffset(back, 12500 + 625), 0.25);
-  assert.equal(skyFastForwardOffset(back, 12500 + 1250), 0);
+  assert.equal(skyFastForwardOffset(back, 15000), 0.5);
+  assert.equal(skyFastForwardOffset(back, 15750), 0.25);
+  assert.equal(skyFastForwardOffset(back, 16500), 0);
   assert.equal(skyFastForwardOffset(back, 99999), 0);
 });
 
 test('a quick tap plays exactly one full cycle forward', () => {
   const tap = releaseSkyFastForward(pressSkyFastForward(SKY_FF_IDLE, 0), 100);
   assert.equal(tap.mode, 'finish');
-  assert.ok(skyFastForwardOffset(tap, 2600) > 0.5);
-  assert.equal(skyFastForwardOffset(tap, 5100), 0);
+  assert.ok(skyFastForwardOffset(tap, 3200) > 0.5);
+  assert.equal(skyFastForwardOffset(tap, 6100), 0);
 });
 
 test('pressing again mid-rewind carries on from where the sky is', () => {
-  const back = releaseSkyFastForward(pressSkyFastForward(SKY_FF_IDLE, 0), 2500);
-  const again = pressSkyFastForward(back, 2500 + 625);
-  assert.equal(skyFastForwardOffset(again, 2500 + 625), 0.25);
+  const back = releaseSkyFastForward(pressSkyFastForward(SKY_FF_IDLE, 0), 3000);
+  const again = pressSkyFastForward(back, 3750);
+  assert.equal(skyFastForwardOffset(again, 3750), 0.25);
 });

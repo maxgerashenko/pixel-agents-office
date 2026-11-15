@@ -910,8 +910,50 @@ export const SKY_TREE_MIN_GAP_SPRITE_PX = 16;
 export const SKY_NIGHT_FRAMES = 12;
 export const SKY_NIGHT_LOOP_SEC = 3;
 /** Sky fast-forward button: a whole hour of sky per this many seconds while held. */
-export const SKY_FF_CYCLE_SEC = 5;
+export const SKY_FF_CYCLE_SEC = 6;
 /** Letting go runs the sky back to the real time this many times faster. */
 export const SKY_FF_REWIND_SPEEDUP = 2;
 /** A press shorter than this is a tap: it plays one full cycle forward. */
 export const SKY_FF_TAP_MS = 300;
+/** The sky button's sprites: a hot air balloon by day, the ISS by night. One
+ *  character per sprite pixel, coloured from the palette; `.` is clear. */
+export const SKY_BUTTON_PALETTE: Readonly<Record<string, string>> = {
+  r: '#d8433a',
+  y: '#f6c244',
+  w: '#fdf3d8',
+  k: '#3a2a24',
+  b: '#8a5a34',
+  p: '#3f6fd0',
+  g: '#9cc0f4',
+  s: '#c9ced8',
+  m: '#f2f4f8',
+};
+export const SKY_BUTTON_BALLOON = [
+  '...ywwwy...',
+  '..yywwwyy..',
+  '.ryywwwyyr.',
+  'rryywwwyyrr',
+  'rryywwwyyrr',
+  'rryywwwyyrr',
+  'rryywwwyyrr',
+  '.ryywwwyyr.',
+  '..yywwwyy..',
+  '...ywwwy...',
+  '....www....',
+  '...k...k...',
+  '....k.k....',
+  '....bbb....',
+  '....bbb....',
+] as const;
+export const SKY_BUTTON_ISS = [
+  'pp.pp.......pp.pp',
+  'pg.gp.......pg.gp',
+  'pp.pp...m...pp.pp',
+  'ssssssssmssssssss',
+  'pp.pp..mmm..pp.pp',
+  'pg.gp..msm..pg.gp',
+  'pp.pp...m...pp.pp',
+] as const;
+/** CSS pixels per sprite pixel of the sky button, and how often it checks day or night. */
+export const SKY_BUTTON_SCALE = 4;
+export const SKY_BUTTON_CHECK_MS = 250;
