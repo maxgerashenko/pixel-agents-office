@@ -120,6 +120,10 @@ export const FIT_OBSTACLE_ATTR = 'data-fit-obstacle';
 /** View mode refits when the canvas, a panel or the layout changes; this is how
  *  often that is checked (panels resize without any event the app can hook). */
 export const VIEW_FIT_CHECK_MS = 250;
+
+/** View mode sits the office at the bottom of its band with this small gap above
+ *  the bottom panels; the spare height stays open above it. */
+export const VIEW_BOTTOM_MARGIN_CSS_PX = 8;
 /** Ghost-border hover tile when the border isn't shown — off any reachable tile. */
 export const GHOST_BORDER_NO_HOVER_TILE = -999;
 

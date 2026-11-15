@@ -23,6 +23,7 @@ import {
   FIT_OBSTACLE_ATTR,
   OFFICE_CANVAS_TEST_ID,
   READ_ONLY_CONTROL_HINT,
+  VIEW_BOTTOM_MARGIN_CSS_PX,
   VIEW_FIT_CHECK_MS,
 } from './constants.js';
 import { useDirectoryEditor } from './hooks/useDirectoryEditor.js';
@@ -431,7 +432,11 @@ function App() {
       if (signature === lastSignature && layout === lastLayout) return;
       lastSignature = signature;
       lastLayout = layout;
-      handleFitContainRef.current(m.canvas, { top: m.top, bottom: m.bottom });
+      handleFitContainRef.current(m.canvas, {
+        top: m.top,
+        bottom: m.bottom,
+        bottomMargin: VIEW_BOTTOM_MARGIN_CSS_PX * (window.devicePixelRatio || 1),
+      });
     };
     const frame = requestAnimationFrame(refit);
     const interval = setInterval(refit, VIEW_FIT_CHECK_MS);
