@@ -17,13 +17,15 @@ interface LaunchDrawerProps {
   /** Open the Directory modal pre-filled with this entry (user-defined rows). */
   onEditDirectory: (directory: Directory) => void;
   className?: string;
+  /** Which side of the button the drawer opens on (default above). */
+  placement?: 'above' | 'below';
 }
 
 /**
  * The launch button's drawer: one row per Directory an agent can be launched
  * into, with `+ Directory` pinned above them behind a separator. Opened by a
  * plain press of the launch button (and by hover on desktop), and rendered
- * above the button by the shared Dropdown. Every launch goes through a row
+ * on the side the placement names (above by default) by the shared Dropdown. Every launch goes through a row
  * here — the button itself never launches.
  *
  * Rows arrive already ordered (host rows first, then user rows, each group
@@ -45,6 +47,7 @@ export function LaunchDrawer({
   onAddDirectory,
   onEditDirectory,
   className = '',
+  placement = 'above',
 }: LaunchDrawerProps) {
   return (
     // Open even with no Directories: `+ Directory` is always worth showing, and
@@ -52,7 +55,12 @@ export function LaunchDrawer({
     // fitViewport: a long list must never push `+ Directory` above the top of
     // the screen, so the drawer is capped at the room above the button and
     // only the rows scroll.
-    <Dropdown isOpen={isOpen} fitViewport className={`min-w-128 ${className}`}>
+    <Dropdown
+      isOpen={isOpen}
+      fitViewport
+      placement={placement}
+      className={`min-w-128 ${className}`}
+    >
       <div data-testid="launch-drawer" className="flex flex-col min-h-0">
         {/* DropdownItem hard-resets to border-none, so the separator lives on
             this wrapper. Pinned: it never scrolls away with the rows. */}
