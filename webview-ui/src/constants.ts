@@ -882,17 +882,11 @@ export const SKY_WINDOW_COLOR = '#ffd84a';
 export const SKY_HORIZON_LIFT_SPRITE_PX = 14;
 /** Opaque fill used only to cut masks (its colour never shows). */
 export const SKY_MASK_COLOR = '#000000';
-/** The land round the office: banded ground, trees in the side gaps, a lake below. */
+/** The land round the office: banded ground, trees in the side gaps. */
 export const SKY_GROUND_DAY_COLORS = ['#5a3230', '#663a33'] as const;
 export const SKY_GROUND_NIGHT_COLORS = ['#182654', '#1d2e62'] as const;
 export const SKY_TREE_DAY_COLORS = { dark: '#15131a', lit: '#6a3c2c', trunk: '#0f0d12' } as const;
 export const SKY_TREE_NIGHT_COLORS = { dark: '#080c1c', lit: '#24407e', trunk: '#060814' } as const;
-export const SKY_LAKE_DAY_COLORS = { water: '#a04e3a', glint: '#f8c060' } as const;
-export const SKY_LAKE_NIGHT_COLORS = { water: '#16307a', glint: '#9ec4f0' } as const;
 /** Sprite-pixel spacing of the trees in the side gaps, and the narrowest gap that gets any. */
 export const SKY_TREE_SPACING_SPRITE_PX = 26;
 export const SKY_TREE_MIN_GAP_SPRITE_PX = 16;
-/** The lake starts this far below the office and needs at least this much room. */
-export const SKY_LAKE_OFFSET_SPRITE_PX = 8;
-export const SKY_LAKE_MIN_SPRITE_PX = 12;
-export const SKY_LAKE_GLINT_COUNT = 46;

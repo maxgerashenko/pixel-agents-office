@@ -21,11 +21,6 @@ import {
   SKY_HILL_DAY_COLOR,
   SKY_HILL_NIGHT_COLOR,
   SKY_HORIZON_LIFT_SPRITE_PX,
-  SKY_LAKE_DAY_COLORS,
-  SKY_LAKE_GLINT_COUNT,
-  SKY_LAKE_MIN_SPRITE_PX,
-  SKY_LAKE_NIGHT_COLORS,
-  SKY_LAKE_OFFSET_SPRITE_PX,
   SKY_MASK_COLOR,
   SKY_MOON_COLOR,
   SKY_MOON_CRATER_COLOR,
@@ -305,7 +300,7 @@ function drawSkyline(
 
 /**
  * The land round the office: banded ground, round trees and pines filling the gaps
- * to its left and right, and a lake below it glinting with the colour of the sky.
+ * to its left and right, and plain ground below it.
  * `night` (0..1) blends every colour from the golden day set to the blue night set.
  */
 function drawGround(
@@ -316,7 +311,6 @@ function drawGround(
   base: number,
   rect: { x: number; y: number; w: number; h: number },
   night: number,
-  sec: number,
 ): void {
   const u = px;
   const blend = (day: string, dark: string): string =>
@@ -328,36 +322,11 @@ function drawGround(
     ctx.fillRect(0, y, w, bandH);
   }
 
-  // lake below the office
-  const lakeTop = Math.round((rect.y + rect.h) / px) * px + SKY_LAKE_OFFSET_SPRITE_PX * u;
-  const hasLake = h - lakeTop >= SKY_LAKE_MIN_SPRITE_PX * u;
-  if (hasLake) {
-    ctx.fillStyle = blend(SKY_LAKE_DAY_COLORS.water, SKY_LAKE_NIGHT_COLORS.water);
-    ctx.fillRect(0, lakeTop, w, h - lakeTop);
-    ctx.fillStyle = blend(SKY_LAKE_DAY_COLORS.glint, SKY_LAKE_NIGHT_COLORS.glint);
-    ctx.fillRect(0, lakeTop, w, u);
-    let seed = 515;
-    const rnd = (): number => {
-      seed = (seed * 1103515245 + 12345) & 0x7fffffff;
-      return seed / 0x7fffffff;
-    };
-    for (let n = 0; n < SKY_LAKE_GLINT_COUNT; n++) {
-      const gx = rnd() * w;
-      const gy = lakeTop + 2 * u + rnd() * (h - lakeTop - 3 * u);
-      const len = (3 + Math.floor(rnd() * 10)) * u;
-      const phase = rnd() * Math.PI * 2;
-      ctx.globalAlpha = 0.35 + 0.35 * Math.sin(sec * 1.4 + phase);
-      const drift = Math.round(Math.sin(sec * 0.6 + phase) * 3) * u;
-      ctx.fillRect(Math.round(gx / px) * px + drift, Math.round(gy / px) * px, len, u);
-    }
-    ctx.globalAlpha = 1;
-  }
-
   // trees in the side gaps, nearer ones lower and bigger
   const dark = blend(SKY_TREE_DAY_COLORS.dark, SKY_TREE_NIGHT_COLORS.dark);
   const lit = blend(SKY_TREE_DAY_COLORS.lit, SKY_TREE_NIGHT_COLORS.lit);
   const trunk = blend(SKY_TREE_DAY_COLORS.trunk, SKY_TREE_NIGHT_COLORS.trunk);
-  const floor = hasLake ? lakeTop : h;
+  const floor = h;
   const spacing = SKY_TREE_SPACING_SPRITE_PX * u;
   let treeSeed = 9001;
   const tr = (): number => {
@@ -702,16 +671,7 @@ export function drawSky(
   const dusk = 1;
   drawSkyline(ctx, w, h, px, horizonY, dusk);
   if (avoid) {
-    drawGround(
-      ctx,
-      w,
-      h,
-      px,
-      Math.round(horizonY / px) * px,
-      avoid,
-      sky.starAlpha,
-      now.getTime() / 1000,
-    );
+    drawGround(ctx, w, h, px, Math.round(horizonY / px) * px, avoid, sky.starAlpha);
   }
 
   if (sky.dayAlpha > 0) {
