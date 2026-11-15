@@ -20,7 +20,7 @@ export function ViewZoomMenu({ step, maxSteps, minSteps, onStepChange }: ViewZoo
     <div
       data-testid="view-zoom-menu"
       className="absolute right-10 z-10 flex flex-col items-center gap-4"
-      style={{ bottom: 44 }}
+      style={{ bottom: 34 }}
     >
       <button
         type="button"
