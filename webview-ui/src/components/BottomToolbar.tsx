@@ -77,8 +77,8 @@ export function BottomToolbar({
   if (readOnly) {
     return (
       <div
-        data-fit-obstacle="bottom"
-        className="absolute left-10 bottom-10 z-44 flex items-center gap-4 pixel-panel p-4"
+        data-fit-obstacle="top"
+        className="absolute left-10 top-10 z-44 flex items-center gap-4 pixel-panel p-4"
       >
         {['+ Agent', 'Layout', 'Settings'].map((label) => (
           <Button key={label} variant="disabled" disabled title={READ_ONLY_CONTROL_HINT}>
@@ -90,11 +90,12 @@ export function BottomToolbar({
   }
 
   return (
-    // Bottom-left. The terminal panel docks on the right edge, so it never
-    // reaches these buttons and no lift is needed.
+    // Top-left, just under the agent cards (the office region starts below
+    // them), inset from the left edge and the cards. The terminal panel docks
+    // on the right edge, so it never reaches these buttons.
     <div
-      data-fit-obstacle="bottom"
-      className="absolute left-10 bottom-10 z-44 flex items-center gap-4 pixel-panel p-4"
+      data-fit-obstacle="top"
+      className="absolute left-10 top-10 z-44 flex items-center gap-4 pixel-panel p-4"
     >
       {showUnavailable && (
         <Button
@@ -122,6 +123,7 @@ export function BottomToolbar({
             + Agent
           </Button>
           <LaunchDrawer
+            placement="below"
             isOpen={isDrawerOpen}
             directories={directories}
             onSelect={handleDirectorySelect}

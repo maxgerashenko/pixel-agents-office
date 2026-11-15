@@ -15,9 +15,17 @@ interface DropdownProps {
    * `min-h-0 overflow-y-auto` and pin the rest with `shrink-0`.
    */
   fitViewport?: boolean;
+  /** Open above the anchor (default) or below it, for anchors near the top. */
+  placement?: 'above' | 'below';
 }
 
-export function Dropdown({ isOpen, children, className = '', fitViewport = false }: DropdownProps) {
+export function Dropdown({
+  isOpen,
+  children,
+  className = '',
+  fitViewport = false,
+  placement = 'above',
+}: DropdownProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const [maxHeight, setMaxHeight] = useState<number | undefined>(undefined);
 
@@ -31,7 +39,16 @@ export function Dropdown({ isOpen, children, className = '', fitViewport = false
     const measure = () => {
       const panel = panelRef.current;
       if (!panel) return;
-      const room = panel.getBoundingClientRect().bottom - DROPDOWN_VIEWPORT_MARGIN_PX;
+      const rect = panel.getBoundingClientRect();
+      // Above: the panel's bottom is pinned to the anchor, so its bottom edge
+      // is the room up to the top. Below: its top is pinned, so the room is
+      // what is left down to the bottom of the viewport.
+      const room =
+        placement === 'above'
+          ? rect.bottom - DROPDOWN_VIEWPORT_MARGIN_PX
+          : (window.visualViewport?.height ?? window.innerHeight) -
+            rect.top -
+            DROPDOWN_VIEWPORT_MARGIN_PX;
       setMaxHeight(Math.max(0, Math.floor(room)));
     };
     measure();
@@ -41,12 +58,14 @@ export function Dropdown({ isOpen, children, className = '', fitViewport = false
       window.removeEventListener('resize', measure);
       window.visualViewport?.removeEventListener('resize', measure);
     };
-  }, [isOpen, fitViewport]);
+  }, [isOpen, fitViewport, placement]);
 
   if (!isOpen) return null;
 
   return (
-    <div className="absolute bottom-full left-0 pb-10 z-44">
+    <div
+      className={`absolute left-0 z-44 ${placement === 'above' ? 'bottom-full pb-10' : 'top-full pt-10'}`}
+    >
       <div
         ref={panelRef}
         style={fitViewport ? { maxHeight } : undefined}
