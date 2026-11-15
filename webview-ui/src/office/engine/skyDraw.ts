@@ -382,7 +382,7 @@ export function drawSky(
   // Pixel-art glow: flat stepped rings of colour around the sun, small and pale at
   // midday, growing into a full orange-to-mauve sunset; then the cream sun itself
   if (sunPos && sky.sun) {
-    const warmth = Math.max(0, Math.min(1, (sky.sun.p - 0.55) / 0.3));
+    const warmth = 1;
     const fade = Math.min(1, (1 - sky.sun.p) / 0.06);
     const reach = (Math.min(w, h) / px) * (SKY_RING_SHARE + SKY_RING_SUNSET_SHARE * warmth);
     const ox = Math.round(sunPos[0] / px) * px;
@@ -514,12 +514,12 @@ export function drawSky(
   }
 
   // Skyline: silhouettes standing on the office's top edge, and the ground around it
-  const dusk = t < 0.96 ? Math.max(0, Math.min(1, (t - 0.5) / 0.14)) : Math.max(0, (1 - t) / 0.04);
+  const dusk = 1;
   drawSkyline(ctx, w, h, px, horizonY, dusk);
 
   if (sky.dayAlpha > 0) {
     const sec = now.getTime() / 1000;
-    const warmth = sky.sun ? Math.max(0, Math.min(1, (sky.sun.p - 0.55) / 0.3)) : 1;
+    const warmth = 1;
     const cloud = toCss(mix(parseHex(SKY_CLOUD_COLOR), parseHex(SKY_CLOUD_SUNSET_COLOR), warmth));
     const lit = toCss(
       mix(parseHex(SKY_CLOUD_SHADE_COLOR), parseHex(SKY_CLOUD_SUNSET_LIT_COLOR), warmth),

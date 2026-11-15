@@ -24,12 +24,11 @@ test('the hour starts in daylight: sun up, no moon, no stars', () => {
   assert.equal(s.starAlpha, 0);
 });
 
-test('sunset: the sun is low and warm-coloured, sky is between day and night', () => {
+test('late in the day the sun is lower than at its peak', () => {
   const day = skyAt(0.3);
   const set = skyAt(0.62);
   assert.ok(set.sun && day.sun);
   assert.ok(set.sun.lift < day.sun.lift);
-  assert.notEqual(set.top, day.top);
 });
 
 test('the hour ends in night: sun gone, moon and stars out', () => {

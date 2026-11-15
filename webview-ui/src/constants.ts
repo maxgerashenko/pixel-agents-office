@@ -761,16 +761,15 @@ export const TABLE_TENNIS_PADDLE_HANDLE_COLOR = '#9a6a35';
 
 /** Sky keyframes across one real clock hour. `at` is the fraction of the hour
  *  (0 = :00, 1 = the next :00); colours blend linearly between neighbours and
- *  the last keyframe equals the first so the cycle loops with no jump. Day
- *  runs :00–:30, sunset :30–:43, night :43–:56, a short dawn :56–:00. */
+ *  the last keyframe equals the first so the cycle loops with no jump. The
+ *  day is one long golden hour (:00–:43) as the sun crosses; night sweeps in
+ *  by :43 and back out from :56. */
 export const SKY_KEYFRAMES: ReadonlyArray<{ at: number; top: string; bottom: string }> = [
-  { at: 0, top: '#4aa8e8', bottom: '#bfe6f7' },
-  { at: 0.5, top: '#4aa8e8', bottom: '#bfe6f7' },
+  { at: 0, top: '#e2683c', bottom: '#f7b65a' },
   { at: 0.62, top: '#e2683c', bottom: '#f7b65a' },
   { at: 0.72, top: '#c2543e', bottom: '#f2a050' },
-  { at: 0.94, top: '#e88a5a', bottom: '#f9d49a' },
-  { at: 0.98, top: '#f0a878', bottom: '#fbe2b4' },
-  { at: 1, top: '#4aa8e8', bottom: '#bfe6f7' },
+  { at: 0.94, top: '#c2543e', bottom: '#f2a050' },
+  { at: 1, top: '#e2683c', bottom: '#f7b65a' },
 ];
 /** The sun is up from the top of the hour until this fraction, then below the horizon. */
 export const SKY_SUN_SET_AT = 0.72;
