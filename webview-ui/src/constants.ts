@@ -909,5 +909,3 @@ export const SKY_TREE_MIN_GAP_SPRITE_PX = 16;
 /** The night sky's brushstrokes flow: this many frames, looping in this many seconds. */
 export const SKY_NIGHT_FRAMES = 12;
 export const SKY_NIGHT_LOOP_SEC = 3;
-/** The whole night sky turns once about its pivot in this many seconds, like a star timelapse. */
-export const SKY_NIGHT_TURN_SEC = 480;
