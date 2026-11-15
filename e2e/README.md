@@ -275,8 +275,8 @@ This section is auto-generated. Do not edit between the markers; CI fails on dri
 - `e2e/standalone/hooks.spec.ts:164` — an untokened spectator page never sees the consent dialog (Standalone / hooks consent)
 - `e2e/standalone/hooks.spec.ts:186` — an untokened spectator page shows the toolbar with every control disabled (Standalone / hooks consent)
 - `e2e/standalone/hooks.spec.ts:213` — the hooks checkbox reflects install state and its click is the consent grant (Standalone / hooks consent)
-- `e2e/standalone/ipad-fit.spec.ts:98` — the office is fitted between the panels and the camera is locked (Standalone / iPad mini portrait)
-- `e2e/standalone/ipad-fit.spec.ts:98` — the office is fitted between the panels and the camera is locked (Standalone / iPad mini landscape)
+- `e2e/standalone/ipad-fit.spec.ts:101` — the office is fitted between the panels and the camera is locked (Standalone / iPad mini portrait)
+- `e2e/standalone/ipad-fit.spec.ts:101` — the office is fitted between the panels and the camera is locked (Standalone / iPad mini landscape)
 - `e2e/standalone/launch-drawer.spec.ts:45` — the server start directory is a badged host row that launches an agent labeled with it (Standalone / launch drawer)
 - `e2e/standalone/launch-drawer.spec.ts:97` — a Directory added in the modal launches an agent and is still there after a reload (Standalone / user-defined Directories)
 - `e2e/standalone/launch-drawer.spec.ts:152` — deleting a Directory drops its row and leaves its running agent alone (Standalone / user-defined Directories)
@@ -351,7 +351,7 @@ This section is auto-generated. Do not edit between the markers; CI fails on dri
 - `e2e/standalone/mobile.spec.ts:272` — copy and paste work on a plain-http origin (no Clipboard API) (Standalone / mobile shell)
 - `e2e/standalone/mobile.spec.ts:344` — the hooks info modal fits the phone screen (Standalone / mobile shell)
 - `e2e/standalone/mobile.spec.ts:369` — view mode locks the camera: a pinch and a two-finger pan move nothing (Standalone / mobile shell)
-- `e2e/standalone/mobile.spec.ts:413` — the trackpad key follows the finger that pressed it, not touches[0] (Standalone / mobile shell)
+- `e2e/standalone/mobile.spec.ts:415` — the trackpad key follows the finger that pressed it, not touches[0] (Standalone / mobile shell)
 
 ### `@area:pets` (3 tests)
 

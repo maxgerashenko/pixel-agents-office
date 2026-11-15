@@ -31,6 +31,26 @@
   --color-btn-hover: rgb(78, 75, 104);
   --color-active-bg: rgb(44, 43, 109);
 
+  /* Wooden log cabin (the bottom-left controls) */
+  --cabin-slate: #4a4e5c;
+  --cabin-slate-dark: #2c2f3a;
+  --cabin-slate-light: #62677a;
+  --cabin-log: #b6763b;
+  --cabin-log-line: #8a5528;
+  --cabin-log-hover: #cd8a4a;
+  --cabin-trim: #6b3f1d;
+  --cabin-edge: #3a2210;
+  --cabin-text: #fff1d6;
+  --cabin-glow: #ffd36b;
+  --cabin-brick: #a05a44;
+  --cabin-mortar: #d39a80;
+  --cabin-smoke: rgba(235, 240, 245, 0.55);
+  --cabin-flower: #f0a0be;
+  --cabin-leaf: #5aa03c;
+  --cabin-stone: #9a9a96;
+  --cabin-stone-dark: #6c6c6a;
+  --cabin-wood-end: #e0ad6c;
+
   /* Semantic */
   --color-reset-text: #ecc;
   --color-danger: #d14249;
@@ -125,9 +145,77 @@
 }
 
 @layer components {
-  /* Panel with standard pixel-art border + shadow */
-  .pixel-panel {
-    @apply bg-bg border-2 border-border rounded-none shadow-pixel;
+  /* The layout controls as a small log cabin (assets/cabin.png, drawn by
+     scripts/draw-cabin.py after the reference): slate roof, brick chimney,
+     balcony, window boxes, porch with a lantern, firewood, cobblestone, pines.
+     One floor per control; each control is a wooden sign on its floor. The
+     sprite is 62x92 shown at 2x. */
+  .cabin {
+    position: relative;
+    width: 124px;
+    height: 184px;
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+    image-rendering: pixelated;
+    pointer-events: none; /* only the signs take presses, the forest stays click-through */
+  }
+  .cabin-slot {
+    position: absolute;
+    left: 0;
+    width: 112px; /* centred on the lit front; the side wall is to its right */
+    display: flex;
+    justify-content: center;
+    pointer-events: none;
+  }
+  .cabin-slot > * {
+    pointer-events: auto;
+  }
+  /* The launch drawer clears the side wall. */
+  .cabin-slot > div {
+    margin-left: 12px;
+  }
+  .cabin-slot[data-floor='top'] {
+    top: 58px;
+  }
+  .cabin-slot[data-floor='mid'] {
+    top: 108px;
+  }
+  .cabin-slot[data-floor='porch'] {
+    top: 142px;
+  }
+  .cabin-plank {
+    @apply cursor-pointer rounded-none;
+    position: relative;
+    pointer-events: auto;
+    min-width: 56px;
+    height: 28px;
+    padding: 0 4px;
+    font-size: 12px;
+    color: var(--cabin-text);
+    background: var(--cabin-trim);
+    border: 2px solid var(--cabin-edge);
+    box-shadow:
+      inset 0 2px 0 var(--cabin-log-hover),
+      1px 2px 0 var(--cabin-edge);
+  }
+  /* Taller hit area than the sign itself, for a finger. */
+  .cabin-plank::before {
+    content: '';
+    position: absolute;
+    inset: -6px -10px;
+  }
+  .cabin-plank:hover:not(:disabled) {
+    background: var(--cabin-log-line);
+  }
+  .cabin-plank[data-on='true'] {
+    color: var(--cabin-glow);
+    box-shadow:
+      0 0 0 2px var(--cabin-glow),
+      1px 2px 0 2px var(--cabin-edge);
+  }
+  .cabin-plank:disabled {
+    @apply cursor-default;
+    opacity: var(--btn-disabled-opacity);
   }
 
   /* Horizontal carousel for editor items */

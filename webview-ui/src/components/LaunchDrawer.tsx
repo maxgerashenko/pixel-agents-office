@@ -18,7 +18,7 @@ interface LaunchDrawerProps {
   onEditDirectory: (directory: Directory) => void;
   className?: string;
   /** Which side of the button the drawer opens on (default above). */
-  placement?: 'above' | 'below';
+  placement?: 'above' | 'below' | 'right';
 }
 
 /**
