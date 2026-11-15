@@ -203,6 +203,9 @@ export interface ContainSpace {
   bottom: number;
   /** Gap kept between the office and the bottom panels (default 0). */
   bottomMargin?: number;
+  /** Open space kept free above the office (default 0): zoom steps down until
+   *  at least this much is left over. */
+  minOpenTop?: number;
 }
 
 /** The view view mode locks to: the largest whole zoom at which the office's
@@ -230,9 +233,9 @@ export function fitContainView(
   };
   const bandHeight = Math.max(0, canvas.height - space.top - space.bottom);
   const byWidth = bounds.w > 0 && canvas.width > 0 ? Math.floor(canvas.width / bounds.w) : minZoom;
-  // The margin is part of what the office needs, so zoom steps down before the
-  // gap does.
-  const usableHeight = bandHeight - (space.bottomMargin ?? 0);
+  // The margin and the open top are part of what the office needs, so zoom
+  // steps down before either shrinks.
+  const usableHeight = bandHeight - (space.bottomMargin ?? 0) - (space.minOpenTop ?? 0);
   const byHeight = bounds.h > 0 && usableHeight > 0 ? Math.floor(usableHeight / bounds.h) : minZoom;
   const zoom = Math.max(minZoom, Math.min(maxZoom, byWidth, byHeight));
   const drawnH = bounds.h * zoom;

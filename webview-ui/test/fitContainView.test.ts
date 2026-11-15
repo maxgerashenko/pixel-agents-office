@@ -66,3 +66,13 @@ test('the margin shrinks before the office reaches the top panels', () => {
   const top = canvas.height / 2 + v.panY - drawnH / 2;
   assert.ok(top >= 60 - 0.5);
 });
+
+test('open space above is kept: zoom steps down until it is left over', () => {
+  const canvas = { width: 2266, height: 1488 };
+  const space = { top: 0, bottom: 100, bottomMargin: 50 };
+  const tall = fitContainView(canvas, solid(20, 11), 1, 10, space);
+  const open = fitContainView(canvas, solid(20, 11), 1, 10, { ...space, minOpenTop: 446 });
+  assert.ok(open.zoom < tall.zoom);
+  const top = canvas.height / 2 + open.panY - (11 * 16 * open.zoom) / 2;
+  assert.ok(top >= 446 - 0.5);
+});
