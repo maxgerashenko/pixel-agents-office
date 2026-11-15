@@ -957,3 +957,28 @@ export const SKY_BUTTON_ISS = [
 /** CSS pixels per sprite pixel of the sky button, and how often it checks day or night. */
 export const SKY_BUTTON_SCALE = 4;
 export const SKY_BUTTON_CHECK_MS = 250;
+
+// ── Hourly music (YouTube IFrame player synced to the :00 clock) ──
+/** localStorage keys (per device): the track link and whether music is on. */
+export const MUSIC_URL_STORAGE_KEY = 'pixel-agents.musicUrl';
+export const MUSIC_ON_STORAGE_KEY = 'pixel-agents.musicOn';
+/** Window event the Settings field fires after saving a new link. */
+export const MUSIC_URL_CHANGED_EVENT = 'pixel-agents:music-url-changed';
+export const YOUTUBE_IFRAME_API_SRC = 'https://www.youtube.com/iframe_api';
+/** How often the player is compared with the clock, and the drift that triggers a seek. */
+export const MUSIC_RESYNC_CHECK_MS = 5000;
+export const MUSIC_DRIFT_TOLERANCE_SEC = 1.5;
+/** Seconds of lead added when seeking, to cover the seek's own latency. */
+export const MUSIC_SEEK_LEAD_SEC = 0.3;
+/** Music button note sprite ('x' = filled) and its CSS pixels per sprite pixel. */
+export const MUSIC_BUTTON_NOTE = [
+  '...xxxx',
+  '...xxxx',
+  '...x..x',
+  '...x..x',
+  '...x..x',
+  '.xxx.xxx',
+  'xxxx.xxxx',
+  '.xx...xx',
+] as const;
+export const MUSIC_BUTTON_SCALE = 3;
