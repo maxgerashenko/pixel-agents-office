@@ -98,8 +98,8 @@ export function VersionIndicator({
         onMouseEnter={() => setLabelHovered(true)}
         onMouseLeave={() => setLabelHovered(false)}
         onClick={handleOpenChangelog}
-        className="absolute bottom-4 right-10 z-44 text-lg cursor-pointer select-none pr-2 transition-opacity duration-200"
-        style={{ opacity: labelHovered ? 0.8 : 0.4 }}
+        className="absolute right-10 z-44 text-lg cursor-pointer select-none pr-2 transition-opacity duration-200"
+        style={{ bottom: 0, lineHeight: 1, opacity: labelHovered ? 0.8 : 0.4 }}
       >
         v{currentMajorMinor}
       </div>
