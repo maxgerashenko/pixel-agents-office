@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { useEffect, useRef, useState } from 'react';
 
 import { READ_ONLY_CONTROL_HINT } from '../constants.js';
@@ -5,7 +6,6 @@ import type { Directory } from '../hooks/useExtensionMessages.js';
 import { isBrowserRuntime } from '../runtime.js';
 import { transport } from '../transport/index.js';
 import { LaunchDrawer } from './LaunchDrawer.js';
-import { Button } from './ui/Button.js';
 
 interface BottomToolbarProps {
   /** View-only office (no server token): every control shows, disabled. */
@@ -71,53 +71,52 @@ export function BottomToolbar({
   const canLaunch = !isBrowserRuntime || terminalAvailable;
   const showUnavailable = isBrowserRuntime && !terminalAvailable;
 
+  // The three controls are a small wooden cabin in the bottom-left corner
+  // (over the side forest): a shingled roof, then one plank per control. The
+  // layout editor's toolbar sits to its right in edit mode.
+  const cabin = (walls: ReactNode) => (
+    <div className="absolute bottom-10 left-10 z-44 cabin">
+      <div className="cabin-roof" aria-hidden />
+      <div className="cabin-walls">{walls}</div>
+    </div>
+  );
+
   // View only: the same three controls, all disabled, the tooltip saying how
   // to get them back. Nothing here could do anything — the server refuses every
   // change from an untokened page.
   if (readOnly) {
-    return (
-      <div className="absolute left-10 top-10 z-44 flex flex-col items-stretch gap-2 pixel-panel p-2">
-        {['+ Agent', 'Layout', 'Settings'].map((label) => (
-          <Button key={label} size="sm" variant="disabled" disabled title={READ_ONLY_CONTROL_HINT}>
-            {label}
-          </Button>
-        ))}
-      </div>
+    return cabin(
+      ['+ Agent', 'Layout', 'Settings'].map((label) => (
+        <button key={label} className="cabin-plank" disabled title={READ_ONLY_CONTROL_HINT}>
+          {label}
+        </button>
+      )),
     );
   }
 
-  return (
-    // Top-left, just under the agent cards (the office region starts below
-    // them), inset from the left edge and the cards. The terminal panel docks
-    // on the right edge, so it never reaches these buttons.
-    <div className="absolute left-10 top-10 z-44 flex flex-col items-stretch gap-2 pixel-panel p-2">
+  return cabin(
+    <>
       {showUnavailable && (
-        <Button
-          size="sm"
-          variant="disabled"
+        <button
+          className="cabin-plank"
           disabled
           title={terminalUnavailableReason ?? 'Terminal unavailable on this server.'}
         >
           + Agent
-        </Button>
+        </button>
       )}
       {canLaunch && (
         <div
           ref={launchRef}
-          className="relative"
+          className="relative flex flex-col"
           // Hover is the desktop secondary gesture (long-press is the mobile
           // one): it opens the drawer without committing to a launch.
           onMouseEnter={() => setIsDrawerOpen(true)}
           onMouseLeave={() => setIsDrawerOpen(false)}
         >
-          <Button
-            size="sm"
-            variant="accent"
-            onClick={handleAgentClick}
-            className={isDrawerOpen ? 'bg-accent-bright' : 'bg-accent hover:bg-accent-bright'}
-          >
+          <button className="cabin-plank" data-on={isDrawerOpen} onClick={handleAgentClick}>
             + Agent
-          </Button>
+          </button>
           <LaunchDrawer
             placement="right"
             isOpen={isDrawerOpen}
@@ -134,22 +133,22 @@ export function BottomToolbar({
           />
         </div>
       )}
-      <Button
-        size="sm"
-        variant={isEditMode ? 'active' : 'default'}
+      <button
+        className="cabin-plank"
+        data-on={isEditMode}
         onClick={onToggleEditMode}
         title="Edit office layout"
       >
         Layout
-      </Button>
-      <Button
-        size="sm"
-        variant={isSettingsOpen ? 'active' : 'default'}
+      </button>
+      <button
+        className="cabin-plank"
+        data-on={isSettingsOpen}
         onClick={onToggleSettings}
         title="Settings"
       >
         Settings
-      </Button>
-    </div>
+      </button>
+    </>,
   );
 }

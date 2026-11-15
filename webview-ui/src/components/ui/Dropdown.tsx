@@ -15,7 +15,7 @@ interface DropdownProps {
    * `min-h-0 overflow-y-auto` and pin the rest with `shrink-0`.
    */
   fitViewport?: boolean;
-  /** Open above the anchor (default), below it for anchors near the top, or to its right for a vertical stack at the left edge. */
+  /** Open above the anchor (default), below it for anchors near the top, or to its right (bottom-aligned, growing upward) for a stack in the bottom-left corner. */
   placement?: 'above' | 'below' | 'right';
 }
 
@@ -44,7 +44,7 @@ export function Dropdown({
       // is the room up to the top. Below: its top is pinned, so the room is
       // what is left down to the bottom of the viewport.
       const room =
-        placement === 'above'
+        placement === 'above' || placement === 'right'
           ? rect.bottom - DROPDOWN_VIEWPORT_MARGIN_PX
           : (window.visualViewport?.height ?? window.innerHeight) -
             rect.top -
@@ -69,7 +69,7 @@ export function Dropdown({
           ? 'left-0 bottom-full pb-10'
           : placement === 'below'
             ? 'left-0 top-full pt-10'
-            : 'left-full top-0 pl-10'
+            : 'left-full bottom-0 pl-10'
       }`}
     >
       <div

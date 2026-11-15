@@ -31,6 +31,16 @@
   --color-btn-hover: rgb(78, 75, 104);
   --color-active-bg: rgb(44, 43, 109);
 
+  /* Wooden cabin (the bottom-left controls) */
+  --cabin-roof: #3a2418;
+  --cabin-roof-line: #24150d;
+  --cabin-log: #7a4e2d;
+  --cabin-log-line: #5e3a20;
+  --cabin-log-hover: #93613a;
+  --cabin-edge: #2b1a10;
+  --cabin-text: #f6e7c8;
+  --cabin-glow: #f2b84b;
+
   /* Semantic */
   --color-reset-text: #ecc;
   --color-danger: #d14249;
@@ -125,6 +135,53 @@
 }
 
 @layer components {
+  /* The layout controls as a small wooden cabin: a shingled roof over a stack
+     of plank-and-log buttons, to sit in the forest at the left edge. */
+  .cabin {
+    @apply flex flex-col items-stretch;
+    width: 84px;
+  }
+  .cabin-roof {
+    height: 22px;
+    margin-bottom: -2px;
+    background: repeating-linear-gradient(
+      0deg,
+      var(--cabin-roof-line) 0 2px,
+      var(--cabin-roof) 2px 6px
+    );
+    clip-path: polygon(50% 0, 100% 100%, 0 100%);
+  }
+  .cabin-walls {
+    @apply flex flex-col;
+    border: 2px solid var(--cabin-edge);
+    box-shadow: 2px 2px 0 var(--cabin-edge);
+    background: var(--cabin-log);
+  }
+  .cabin-plank {
+    @apply cursor-pointer rounded-none text-sm;
+    padding: 6px 4px;
+    color: var(--cabin-text);
+    border: 0;
+    border-bottom: 2px solid var(--cabin-edge);
+    background:
+      repeating-linear-gradient(180deg, transparent 0 7px, var(--cabin-log-line) 7px 9px),
+      var(--cabin-log);
+  }
+  .cabin-plank:last-child {
+    border-bottom: 0;
+  }
+  .cabin-plank:hover:not(:disabled) {
+    background-color: var(--cabin-log-hover);
+  }
+  .cabin-plank[data-on='true'] {
+    box-shadow: inset 0 0 0 2px var(--cabin-glow);
+    color: var(--cabin-glow);
+  }
+  .cabin-plank:disabled {
+    @apply cursor-default;
+    opacity: var(--btn-disabled-opacity);
+  }
+
   /* Panel with standard pixel-art border + shadow */
   .pixel-panel {
     @apply bg-bg border-2 border-border rounded-none shadow-pixel;
