@@ -15,8 +15,10 @@ import {
   SKY_MOON_CRATER_COLOR,
   SKY_MOON_DESIGN_RADIUS,
   SKY_MOON_GLOW_COLOR,
+  SKY_MOON_MARE_COLOR,
   SKY_MOON_MAX_CANVAS_SHARE,
   SKY_MOON_RADIUS_SPRITE_PX,
+  SKY_MOON_SHADE_COLOR,
   SKY_NIGHT_BAND_COLOR,
   SKY_NIGHT_BASE_COLOR,
   SKY_STAR_COLOR,
@@ -370,35 +372,61 @@ export function drawSky(
         Math.floor((SKY_MOON_MAX_CANVAS_SHARE * Math.min(w, h)) / px),
       ),
     );
-    const sc = (n: number): number => Math.round((n * mr) / SKY_MOON_DESIGN_RADIUS);
+    const k = mr / SKY_MOON_DESIGN_RADIUS;
+    const sc = (n: number): number => Math.round(n * k);
     const [cx, cy] = arcPosition(sky.moon.p, sky.moon.lift, (mr + 1) * px, w, h, avoid);
     const mx = Math.round(cx / px) * px;
     const my = Math.round(cy / px) * px;
-    // halo: wide concentric rings of pale yellow, like the painting
+    const dot = (dx: number, dy: number, sw = 1, sh = 1): void =>
+      ctx.fillRect(mx + dx * px, my + dy * px, sw * px, sh * px);
+    // soft glow
     ctx.fillStyle = SKY_MOON_GLOW_COLOR;
     for (const [gr, ga] of [
-      [mr + sc(12), 0.1],
-      [mr + sc(9), 0.14],
-      [mr + sc(6), 0.2],
-      [mr + sc(3), 0.3],
-      [mr, 0.45],
+      [mr + sc(6), 0.07],
+      [mr + sc(4), 0.1],
+      [mr + sc(2), 0.16],
     ]) {
       ctx.globalAlpha = ga;
       disc(ctx, mx, my, gr, px);
     }
     ctx.globalAlpha = 1;
-    // crescent: the disc minus a second disc shifted up and to the right
-    const cr = Math.round(mr * 0.8);
-    const off = Math.round(mr * 0.38);
-    const inner = Math.round(mr * 0.86);
-    for (let dy = -cr; dy <= cr; dy++) {
-      for (let dx = -cr; dx <= cr; dx++) {
-        if (dx * dx + dy * dy > cr * cr) continue;
-        const cut = (dx - off) * (dx - off) + (dy + off / 2) * (dy + off / 2);
-        if (cut <= inner * inner * 0.72) continue;
-        ctx.fillStyle = cut <= inner * inner * 0.86 ? SKY_MOON_CRATER_COLOR : SKY_MOON_COLOR;
-        ctx.fillRect(mx + dx * px, my + dy * px, px, px);
+    // sphere: lit face, shadow creeping in from the lower right
+    ctx.fillStyle = SKY_MOON_COLOR;
+    disc(ctx, mx, my, mr, px);
+    ctx.fillStyle = SKY_MOON_MARE_COLOR;
+    for (const [mxo, myo, mrad] of [
+      [-5, -5, 5],
+      [3, -8, 3],
+      [-8, 3, 4],
+      [4, 2, 4],
+    ]) {
+      disc(ctx, mx + sc(mxo) * px, my + sc(myo) * px, sc(mrad), px);
+    }
+    ctx.fillStyle = SKY_MOON_SHADE_COLOR;
+    for (let dy = -mr; dy <= mr; dy++) {
+      for (let dx = -mr; dx <= mr; dx++) {
+        if (dx * dx + dy * dy > mr * mr + mr) continue;
+        const lit = (dx - sc(7)) * (dx - sc(7)) + (dy - sc(7)) * (dy - sc(7));
+        if (lit > (mr + sc(7)) * (mr + sc(7)) - 40 * k * k) dot(dx, dy);
       }
+    }
+    // craters: dark bowl with a bright rim on the lit side
+    for (const [cdx, cdy, cr] of [
+      [-9, -9, 2],
+      [-2, -11, 1],
+      [8, -4, 2],
+      [-12, 0, 1],
+      [-4, 4, 3],
+      [3, 9, 2],
+      [9, 7, 1],
+      [-8, 9, 1],
+      [1, -3, 1],
+      [-1, 12, 1],
+    ]) {
+      ctx.fillStyle = SKY_MOON_CRATER_COLOR;
+      disc(ctx, mx + sc(cdx) * px, my + sc(cdy) * px, sc(cr), px);
+      ctx.fillStyle = SKY_MOON_COLOR;
+      ctx.fillRect(mx + (sc(cdx) - sc(cr)) * px, my + (sc(cdy) - sc(cr)) * px, sc(cr) * px, px);
     }
   }
 }

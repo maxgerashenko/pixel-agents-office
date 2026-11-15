@@ -785,9 +785,8 @@ export const SKY_BAND_SPRITE_PX = 4;
 export const SKY_BODY_RADIUS_SPRITE_PX = 14;
 export const SKY_SUN_COLOR = '#ffe066';
 export const SKY_SUN_SETTING_COLOR = '#ff8a3d';
-export const SKY_MOON_COLOR = '#f2b81c';
-/** The crescent's bright inner edge. */
-export const SKY_MOON_CRATER_COLOR = '#f8e060';
+export const SKY_MOON_COLOR = '#e8e8f4';
+export const SKY_MOON_CRATER_COLOR = '#b8b8d0';
 export const SKY_STAR_COLOR = '#ffffff';
 /** Twinkle period range in seconds. */
 export const SKY_TWINKLE_SEC = 3;
@@ -844,5 +843,7 @@ export const SKY_SUN_HIGHLIGHT_COLOR = '#fff4b0';
 export const SKY_SUN_FLARE_COLOR = '#ff7a1a';
 export const SKY_SUN_SPOT_COLOR = '#8a2a0a';
 export const SKY_SUN_FLARE_COUNT = 7;
-/** Starry Night moon: a yellow crescent inside a pale glowing halo. */
-export const SKY_MOON_GLOW_COLOR = '#f3efb0';
+/** Realistic moon: shaded sphere with maria (dark patches) and craters. */
+export const SKY_MOON_SHADE_COLOR = '#a9aac4';
+export const SKY_MOON_MARE_COLOR = '#c4c5da';
+export const SKY_MOON_GLOW_COLOR = '#b8c4ff';
