@@ -76,12 +76,9 @@ export function BottomToolbar({
   // change from an untokened page.
   if (readOnly) {
     return (
-      <div
-        data-fit-obstacle="top"
-        className="absolute left-10 top-10 z-44 flex items-center gap-4 pixel-panel p-4"
-      >
+      <div className="absolute left-10 top-10 z-44 flex flex-col items-stretch gap-2 pixel-panel p-2">
         {['+ Agent', 'Layout', 'Settings'].map((label) => (
-          <Button key={label} variant="disabled" disabled title={READ_ONLY_CONTROL_HINT}>
+          <Button key={label} size="sm" variant="disabled" disabled title={READ_ONLY_CONTROL_HINT}>
             {label}
           </Button>
         ))}
@@ -93,12 +90,10 @@ export function BottomToolbar({
     // Top-left, just under the agent cards (the office region starts below
     // them), inset from the left edge and the cards. The terminal panel docks
     // on the right edge, so it never reaches these buttons.
-    <div
-      data-fit-obstacle="top"
-      className="absolute left-10 top-10 z-44 flex items-center gap-4 pixel-panel p-4"
-    >
+    <div className="absolute left-10 top-10 z-44 flex flex-col items-stretch gap-2 pixel-panel p-2">
       {showUnavailable && (
         <Button
+          size="sm"
           variant="disabled"
           disabled
           title={terminalUnavailableReason ?? 'Terminal unavailable on this server.'}
@@ -116,6 +111,7 @@ export function BottomToolbar({
           onMouseLeave={() => setIsDrawerOpen(false)}
         >
           <Button
+            size="sm"
             variant="accent"
             onClick={handleAgentClick}
             className={isDrawerOpen ? 'bg-accent-bright' : 'bg-accent hover:bg-accent-bright'}
@@ -123,7 +119,7 @@ export function BottomToolbar({
             + Agent
           </Button>
           <LaunchDrawer
-            placement="below"
+            placement="right"
             isOpen={isDrawerOpen}
             directories={directories}
             onSelect={handleDirectorySelect}
@@ -139,6 +135,7 @@ export function BottomToolbar({
         </div>
       )}
       <Button
+        size="sm"
         variant={isEditMode ? 'active' : 'default'}
         onClick={onToggleEditMode}
         title="Edit office layout"
@@ -146,6 +143,7 @@ export function BottomToolbar({
         Layout
       </Button>
       <Button
+        size="sm"
         variant={isSettingsOpen ? 'active' : 'default'}
         onClick={onToggleSettings}
         title="Settings"

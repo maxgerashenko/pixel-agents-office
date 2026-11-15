@@ -15,8 +15,8 @@ interface DropdownProps {
    * `min-h-0 overflow-y-auto` and pin the rest with `shrink-0`.
    */
   fitViewport?: boolean;
-  /** Open above the anchor (default) or below it, for anchors near the top. */
-  placement?: 'above' | 'below';
+  /** Open above the anchor (default), below it for anchors near the top, or to its right for a vertical stack at the left edge. */
+  placement?: 'above' | 'below' | 'right';
 }
 
 export function Dropdown({
@@ -64,7 +64,13 @@ export function Dropdown({
 
   return (
     <div
-      className={`absolute left-0 z-44 ${placement === 'above' ? 'bottom-full pb-10' : 'top-full pt-10'}`}
+      className={`absolute z-44 ${
+        placement === 'above'
+          ? 'left-0 bottom-full pb-10'
+          : placement === 'below'
+            ? 'left-0 top-full pt-10'
+            : 'left-full top-0 pl-10'
+      }`}
     >
       <div
         ref={panelRef}
