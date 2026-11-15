@@ -128,6 +128,10 @@ export const VIEW_BOTTOM_MARGIN_CSS_PX = 25;
 /** View mode keeps at least this fraction of the canvas height open above the
  *  office (room for the sky); landscape gives up a zoom step for it. */
 export const VIEW_OPEN_TOP_FRACTION = 0.3;
+
+/** Landscape view mode zooms the fitted office out to this fraction (whole
+ *  steps, rounded down), leaving more sky than the fit alone does. */
+export const VIEW_LANDSCAPE_ZOOM_SCALE = 2 / 3;
 /** Ghost-border hover tile when the border isn't shown — off any reachable tile. */
 export const GHOST_BORDER_NO_HOVER_TILE = -999;
 

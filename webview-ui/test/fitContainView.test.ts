@@ -76,3 +76,14 @@ test('open space above is kept: zoom steps down until it is left over', () => {
   const top = canvas.height / 2 + open.panY - (11 * 16 * open.zoom) / 2;
   assert.ok(top >= 446 - 0.5);
 });
+
+test('zoomScale zooms the fit out to a fraction, in whole steps, bottom-anchored', () => {
+  const canvas = { width: 2266, height: 1488 };
+  const space = { top: 0, bottom: 100, bottomMargin: 50, minOpenTop: 446 };
+  const base = fitContainView(canvas, solid(20, 11), 1, 10, space);
+  const scaled = fitContainView(canvas, solid(20, 11), 1, 10, { ...space, zoomScale: 2 / 3 });
+  assert.equal(base.zoom, 5);
+  assert.equal(scaled.zoom, 3);
+  const bottom = canvas.height / 2 + scaled.panY + (11 * 16 * scaled.zoom) / 2;
+  assert.equal(bottom, canvas.height - 100 - 50);
+});
