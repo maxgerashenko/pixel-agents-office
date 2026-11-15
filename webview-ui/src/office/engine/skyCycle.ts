@@ -9,6 +9,9 @@
  */
 
 import {
+  SKY_BIG_STAR_COUNT,
+  SKY_BIRD_COUNT,
+  SKY_CLOUD_COUNT,
   SKY_KEYFRAMES,
   SKY_MOON_RISE_AT,
   SKY_STAR_COUNT,
@@ -16,6 +19,7 @@ import {
   SKY_SUN_COLOR,
   SKY_SUN_SET_AT,
   SKY_SUN_SETTING_COLOR,
+  SKY_SWIRL_COUNT,
 } from '../../constants.js';
 
 export interface SkyState {
@@ -27,6 +31,8 @@ export interface SkyState {
   moon: { p: number; lift: number } | null;
   /** 0..1 */
   starAlpha: number;
+  /** 0..1: how visible the daytime extras (clouds, birds) are; fades out through sunset, back in at dawn. */
+  dayAlpha: number;
 }
 
 type Rgb = [number, number, number];
@@ -82,7 +88,8 @@ export function skyAt(t: number): SkyState {
   }
   const { in0, in1, out0, out1 } = SKY_STAR_FADE;
   const starAlpha = clamp01((f - in0) / (in1 - in0)) * clamp01((out1 - f) / (out1 - out0));
-  return { top: toCss(top), bottom: toCss(bottom), sun, moon, starAlpha };
+  const dayAlpha = f < 0.7 ? clamp01((0.7 - f) / 0.15) : clamp01((f - 0.96) / 0.04);
+  return { top: toCss(top), bottom: toCss(bottom), sun, moon, starAlpha, dayAlpha };
 }
 
 /** Stable pseudo-random star field (fractions of the canvas + twinkle phase). */
@@ -110,5 +117,50 @@ export function skyOverride(): number | null {
 export function setSkyHourFraction(t: number | null): void {
   override = t;
 }
+
+/** Stable pseudo-random placements for clouds, birds, swirls and big stars. */
+function seeded(seed: number): () => number {
+  let v = seed;
+  return () => {
+    v = (v * 1103515245 + 12345) & 0x7fffffff;
+    return v / 0x7fffffff;
+  };
+}
+export const CLOUDS = (() => {
+  const rnd = seeded(777);
+  return Array.from({ length: SKY_CLOUD_COUNT }, () => ({
+    phase: rnd(),
+    y: 0.05 + rnd() * 0.6,
+    speed: 0.7 + rnd() * 0.6,
+    scale: 1 + Math.floor(rnd() * 2),
+  }));
+})();
+export const BIRDS = (() => {
+  const rnd = seeded(4242);
+  return Array.from({ length: SKY_BIRD_COUNT }, () => ({
+    phase: rnd(),
+    y: 0.1 + rnd() * 0.45,
+    bob: rnd() * Math.PI * 2,
+  }));
+})();
+export const SWIRLS = (() => {
+  const rnd = seeded(99);
+  return Array.from({ length: SKY_SWIRL_COUNT }, (_, i) => ({
+    y: 0.08 + (i / SKY_SWIRL_COUNT) * 0.8 + rnd() * 0.05,
+    amp: 0.03 + rnd() * 0.04,
+    freq: 2 + rnd() * 2.5,
+    phase: rnd() * Math.PI * 2,
+    thick: 2 + Math.floor(rnd() * 2),
+  }));
+})();
+export const BIG_STARS = (() => {
+  const rnd = seeded(31);
+  return Array.from({ length: SKY_BIG_STAR_COUNT }, () => ({
+    x: 0.05 + rnd() * 0.9,
+    y: 0.05 + rnd() * 0.6,
+    size: 2 + Math.floor(rnd() * 2),
+    phase: rnd() * Math.PI * 2,
+  }));
+})();
 
 export { mix, parseHex, STARS, toCss };

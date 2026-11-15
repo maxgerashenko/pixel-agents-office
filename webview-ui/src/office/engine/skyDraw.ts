@@ -2,13 +2,37 @@
 
 import {
   SKY_BAND_SPRITE_PX,
+  SKY_BIG_STAR_CORE_COLOR,
+  SKY_BIG_STAR_HALO_COLORS,
+  SKY_BIRD_COLOR,
+  SKY_BIRD_CROSS_SEC,
+  SKY_BIRD_FLAP_SEC,
   SKY_BODY_RADIUS_SPRITE_PX,
+  SKY_CLOUD_COLOR,
+  SKY_CLOUD_CROSS_SEC,
+  SKY_CLOUD_SHADE_COLOR,
+  SKY_MOON_CHEEK_COLOR,
   SKY_MOON_COLOR,
   SKY_MOON_CRATER_COLOR,
+  SKY_MOON_FACE_COLOR,
+  SKY_MOON_RADIUS_SPRITE_PX,
   SKY_STAR_COLOR,
+  SKY_SWIRL_COLORS,
   SKY_TWINKLE_SEC,
 } from '../../constants.js';
-import { hourFraction, mix, parseHex, skyAt, skyOverride, STARS, toCss } from './skyCycle.js';
+import {
+  BIG_STARS,
+  BIRDS,
+  CLOUDS,
+  hourFraction,
+  mix,
+  parseHex,
+  skyAt,
+  skyOverride,
+  STARS,
+  SWIRLS,
+  toCss,
+} from './skyCycle.js';
 
 function disc(
   ctx: CanvasRenderingContext2D,
@@ -66,6 +90,38 @@ export function drawSky(
   }
 
   if (sky.starAlpha > 0) {
+    const sec0 = now.getTime() / 1000;
+    // Van Gogh swirls: slowly rolling wavy bands of lighter blue
+    for (const [i, sw] of SWIRLS.entries()) {
+      ctx.fillStyle = SKY_SWIRL_COLORS[i % SKY_SWIRL_COLORS.length];
+      ctx.globalAlpha = sky.starAlpha * 0.55;
+      const step = 2 * px;
+      for (let x = 0; x < w; x += step) {
+        const u = x / w;
+        const y =
+          (sw.y + Math.sin(u * sw.freq * Math.PI * 2 + sw.phase + sec0 * 0.15) * sw.amp) * h;
+        ctx.fillRect(x, Math.round(y / px) * px, step, sw.thick * px);
+      }
+    }
+    // Big glowing stars: bright core, stepped halo rings, a slow pulse
+    for (const st of BIG_STARS) {
+      const pulse = 0.75 + 0.25 * Math.sin(sec0 * 1.2 + st.phase);
+      const sx = Math.round((st.x * w) / px) * px;
+      const sy = Math.round((st.y * h) / px) * px;
+      for (let ring = SKY_BIG_STAR_HALO_COLORS.length; ring >= 1; ring--) {
+        ctx.fillStyle = SKY_BIG_STAR_HALO_COLORS[ring - 1];
+        ctx.globalAlpha = sky.starAlpha * pulse * (0.7 - ring * 0.15);
+        const rr = (st.size + ring * 2) * px;
+        ctx.fillRect(sx - rr, sy - px, 2 * rr + px, 2 * px);
+        ctx.fillRect(sx - px, sy - rr, 2 * px, 2 * rr + px);
+        disc(ctx, sx, sy, st.size + ring, px);
+      }
+      ctx.globalAlpha = sky.starAlpha;
+      ctx.fillStyle = SKY_BIG_STAR_CORE_COLOR;
+      disc(ctx, sx, sy, st.size - 1, px);
+    }
+    ctx.globalAlpha = 1;
+
     ctx.fillStyle = SKY_STAR_COLOR;
     const sec = now.getTime() / 1000;
     for (const star of STARS) {
@@ -76,20 +132,88 @@ export function drawSky(
     ctx.globalAlpha = 1;
   }
 
+  if (sky.dayAlpha > 0) {
+    const sec = now.getTime() / 1000;
+    ctx.globalAlpha = sky.dayAlpha;
+    // Clouds: a flat-bottomed puff of rects, drifting right and wrapping around
+    for (const c of CLOUDS) {
+      const u = px * c.scale;
+      const cw = 14 * u;
+      const x =
+        Math.round((((c.phase + (sec / SKY_CLOUD_CROSS_SEC) * c.speed) % 1) * (w + cw) - cw) / px) *
+        px;
+      const y = Math.round((c.y * h) / px) * px;
+      ctx.fillStyle = SKY_CLOUD_COLOR;
+      ctx.fillRect(x + 2 * u, y, 5 * u, u);
+      ctx.fillRect(x + 7 * u, y + u, 4 * u, u);
+      ctx.fillRect(x + u, y + u, 10 * u, 2 * u);
+      ctx.fillRect(x, y + 2 * u, 14 * u, 2 * u);
+      ctx.fillStyle = SKY_CLOUD_SHADE_COLOR;
+      ctx.fillRect(x + u, y + 4 * u, 12 * u, u);
+    }
+    // Birds: little flapping V shapes crossing the sky with a gentle bob
+    ctx.fillStyle = SKY_BIRD_COLOR;
+    const flapUp = Math.floor(sec / SKY_BIRD_FLAP_SEC) % 2 === 0;
+    for (const b of BIRDS) {
+      const x =
+        Math.round((((b.phase + sec / SKY_BIRD_CROSS_SEC) % 1) * (w + 12 * px) - 6 * px) / px) * px;
+      const y = Math.round((b.y * h + Math.sin(sec * 1.5 + b.bob) * 3 * px) / px) * px;
+      if (flapUp) {
+        ctx.fillRect(x, y, px, px);
+        ctx.fillRect(x + px, y + px, px, px);
+        ctx.fillRect(x + 2 * px, y + 2 * px, px, px);
+        ctx.fillRect(x + 3 * px, y + px, px, px);
+        ctx.fillRect(x + 4 * px, y, px, px);
+      } else {
+        ctx.fillRect(x, y + px, 2 * px, px);
+        ctx.fillRect(x + 2 * px, y + 2 * px, px, px);
+        ctx.fillRect(x + 3 * px, y + px, 2 * px, px);
+      }
+    }
+    ctx.globalAlpha = 1;
+  }
+
   const r = SKY_BODY_RADIUS_SPRITE_PX;
   if (sky.sun) {
     ctx.fillStyle = sky.sun.color;
     const [sx, sy] = arcPosition(sky.sun.p, sky.sun.lift, (r + 1) * px, w, h, avoid);
-    disc(ctx, Math.round(sx / px) * px, Math.round(sy / px) * px, r, px);
+    const ox = Math.round(sx / px) * px;
+    const oy = Math.round(sy / px) * px;
+    disc(ctx, ox, oy, r, px);
+    // cartoon face to match the moon
+    ctx.fillStyle = SKY_MOON_FACE_COLOR;
+    ctx.fillRect(ox - 3 * px, oy - 2 * px, px, 2 * px);
+    ctx.fillRect(ox + 2 * px, oy - 2 * px, px, 2 * px);
+    ctx.fillRect(ox - 2 * px, oy + 2 * px, px, px);
+    ctx.fillRect(ox - px, oy + 3 * px, 3 * px, px);
+    ctx.fillRect(ox + 2 * px, oy + 2 * px, px, px);
+    ctx.fillStyle = SKY_MOON_CHEEK_COLOR;
+    ctx.fillRect(ox - 6 * px, oy + px, 2 * px, px);
+    ctx.fillRect(ox + 4 * px, oy + px, 2 * px, px);
   }
   if (sky.moon) {
-    const [cx, cy] = arcPosition(sky.moon.p, sky.moon.lift, (r + 1) * px, w, h, avoid);
+    const mr = SKY_MOON_RADIUS_SPRITE_PX;
+    const [cx, cy] = arcPosition(sky.moon.p, sky.moon.lift, (mr + 1) * px, w, h, avoid);
     const mx = Math.round(cx / px) * px;
     const my = Math.round(cy / px) * px;
+    const dot = (dx: number, dy: number, sw = 1, sh = 1): void =>
+      ctx.fillRect(mx + dx * px, my + dy * px, sw * px, sh * px);
     ctx.fillStyle = SKY_MOON_COLOR;
-    disc(ctx, mx, my, r, px);
+    disc(ctx, mx, my, mr, px);
+    // craters
     ctx.fillStyle = SKY_MOON_CRATER_COLOR;
-    ctx.fillRect(mx - 2 * px, my - px, 2 * px, 2 * px);
-    ctx.fillRect(mx + px, my + 2 * px, 2 * px, px);
+    dot(-8, -6, 3, 3);
+    dot(5, 5, 3, 2);
+    dot(6, -7, 2, 2);
+    // face: eyes, smile, rosy cheeks
+    ctx.fillStyle = SKY_MOON_FACE_COLOR;
+    dot(-5, -3, 2, 3);
+    dot(3, -3, 2, 3);
+    dot(-3, 3);
+    dot(-2, 4, 5, 1);
+    dot(3, 3);
+    ctx.fillStyle = SKY_MOON_CHEEK_COLOR;
+    dot(-7, 1, 2, 2);
+    dot(5, 1, 2, 2);
   }
 }

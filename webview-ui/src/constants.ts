@@ -782,7 +782,7 @@ export const SKY_STAR_COUNT = 48;
 /** Height of one gradient band, in sprite pixels (gives the sky a stepped, pixel look). */
 export const SKY_BAND_SPRITE_PX = 4;
 /** Sun/moon radius in sprite pixels. */
-export const SKY_BODY_RADIUS_SPRITE_PX = 5;
+export const SKY_BODY_RADIUS_SPRITE_PX = 8;
 export const SKY_SUN_COLOR = '#ffe066';
 export const SKY_SUN_SETTING_COLOR = '#ff8a3d';
 export const SKY_MOON_COLOR = '#e8e8f4';
@@ -790,3 +790,24 @@ export const SKY_MOON_CRATER_COLOR = '#b8b8d0';
 export const SKY_STAR_COLOR = '#ffffff';
 /** Twinkle period range in seconds. */
 export const SKY_TWINKLE_SEC = 3;
+/** The moon is a big cartoon character: a larger disc with a face. */
+export const SKY_MOON_RADIUS_SPRITE_PX = 11;
+export const SKY_MOON_FACE_COLOR = '#3a3a5c';
+export const SKY_MOON_CHEEK_COLOR = '#f4a0b4';
+/** Daytime fun: drifting clouds and flapping birds. */
+export const SKY_CLOUD_COLOR = '#ffffff';
+export const SKY_CLOUD_SHADE_COLOR = '#d4e8f6';
+export const SKY_BIRD_COLOR = '#3a3a5c';
+export const SKY_CLOUD_COUNT = 7;
+/** Seconds a cloud / bird takes to cross the canvas (clouds vary per cloud, around this). */
+export const SKY_CLOUD_CROSS_SEC = 160;
+export const SKY_BIRD_COUNT = 4;
+export const SKY_BIRD_CROSS_SEC = 40;
+/** Seconds per wing flap. */
+export const SKY_BIRD_FLAP_SEC = 0.3;
+/** Starry-Night night sky: swirling bands and big glowing stars with halos. */
+export const SKY_SWIRL_COLORS = ['#1c2a6b', '#2c4a9a', '#4a78c8'] as const;
+export const SKY_SWIRL_COUNT = 5;
+export const SKY_BIG_STAR_COUNT = 6;
+export const SKY_BIG_STAR_CORE_COLOR = '#fff3a0';
+export const SKY_BIG_STAR_HALO_COLORS = ['#ffd84a', '#f0a030', '#9ec4f0'] as const;
