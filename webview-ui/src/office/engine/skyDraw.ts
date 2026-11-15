@@ -13,6 +13,7 @@ import {
   SKY_CLOUD_SHADE_COLOR,
   SKY_DAB_AREA_SPRITE_PX,
   SKY_DAY_DAB_COLORS,
+  SKY_HOT_DAB_COLORS,
   SKY_MOON_COLOR,
   SKY_MOON_CRATER_COLOR,
   SKY_MOON_DESIGN_RADIUS,
@@ -26,11 +27,14 @@ import {
   SKY_STAR_COLOR,
   SKY_STROKE_AREA_SPRITE_PX,
   SKY_STROKE_MAX,
+  SKY_SUN_CORE_COLOR,
+  SKY_SUN_EDGE_COLOR,
   SKY_SWIRL_COLORS,
   SKY_TWINKLE_SEC,
   SKY_VORTICES,
   SKY_WARM_DAB_COLORS,
   SKY_WARM_GLOW_SHARE,
+  SKY_WARM_GLOW_STEPS,
   SKY_WARM_GLOW_SUNSET_SHARE,
 } from '../../constants.js';
 import {
@@ -227,20 +231,21 @@ export function drawSky(
     const fade = Math.min(1, (1 - sky.sun.p) / 0.06);
     const reach = Math.min(w, h) * (SKY_WARM_GLOW_SHARE + SKY_WARM_GLOW_SUNSET_SHARE * warmth);
     const warm = dabLayer('warm', SKY_WARM_DAB_COLORS, w, h, px);
-    for (const [share, alpha] of [
-      [1, 0.3],
-      [0.72, 0.4],
-      [0.48, 0.55],
-      [0.28, 0.8],
-    ]) {
-      ctx.save();
-      ctx.beginPath();
-      ctx.arc(sunPos[0], sunPos[1], reach * share, 0, Math.PI * 2);
-      ctx.clip();
-      ctx.globalAlpha = alpha * fade;
-      ctx.drawImage(warm, 0, 0);
-      ctx.restore();
-    }
+    const hot = dabLayer('hot', SKY_HOT_DAB_COLORS, w, h, px);
+    // many thin steps, so orange melts into the blue; then yellow into the orange
+    const glow = (layer: HTMLCanvasElement, radius: number, strength: number): void => {
+      for (let s = 0; s < SKY_WARM_GLOW_STEPS; s++) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(sunPos[0], sunPos[1], radius * (1 - s / SKY_WARM_GLOW_STEPS), 0, Math.PI * 2);
+        ctx.clip();
+        ctx.globalAlpha = strength * fade;
+        ctx.drawImage(layer, 0, 0);
+        ctx.restore();
+      }
+    };
+    glow(warm, reach, 0.2);
+    glow(hot, reach * 0.5, 0.22);
     ctx.globalAlpha = 1;
   }
 
@@ -321,24 +326,52 @@ export function drawSky(
     const flapUp = Math.floor(sec / SKY_BIRD_FLAP_SEC) % 2 === 0;
     for (const b of BIRDS) {
       const x =
-        Math.round((((b.phase + sec / SKY_BIRD_CROSS_SEC) % 1) * (w + 12 * px) - 6 * px) / px) * px;
+        Math.round(
+          (((b.phase + (sec / SKY_BIRD_CROSS_SEC) * b.speed) % 1) * (w + 12 * px) - 6 * px) / px,
+        ) * px;
       const y = Math.round((b.y * h + Math.sin(sec * 1.5 + b.bob) * 3 * px) / px) * px;
-      const bu = 2 * px;
+      const bu = b.scale * px;
+      // silhouette: a small body with long swept wings, beating up and down
+      ctx.fillRect(x + 4 * bu, y + 2 * bu, 3 * bu, bu);
+      ctx.fillRect(x + 5 * bu, y + 3 * bu, bu, bu);
       if (flapUp) {
-        ctx.fillRect(x, y, bu, bu);
-        ctx.fillRect(x + bu, y + bu, bu, bu);
-        ctx.fillRect(x + 2 * bu, y + 2 * bu, 2 * bu, bu);
-        ctx.fillRect(x + 4 * bu, y + bu, bu, bu);
-        ctx.fillRect(x + 5 * bu, y, bu, bu);
+        ctx.fillRect(x, y - bu, 2 * bu, bu);
+        ctx.fillRect(x + bu, y, 2 * bu, bu);
+        ctx.fillRect(x + 2 * bu, y + bu, 3 * bu, bu);
+        ctx.fillRect(x + 6 * bu, y + bu, 3 * bu, bu);
+        ctx.fillRect(x + 8 * bu, y, 2 * bu, bu);
+        ctx.fillRect(x + 9 * bu, y - bu, 2 * bu, bu);
       } else {
-        ctx.fillRect(x, y + bu, 2 * bu, bu);
-        ctx.fillRect(x + 2 * bu, y + 2 * bu, 2 * bu, bu);
-        ctx.fillRect(x + 4 * bu, y + bu, 2 * bu, bu);
+        ctx.fillRect(x, y + 3 * bu, 2 * bu, bu);
+        ctx.fillRect(x + bu, y + 2 * bu, 4 * bu, bu);
+        ctx.fillRect(x + 6 * bu, y + 2 * bu, 4 * bu, bu);
+        ctx.fillRect(x + 9 * bu, y + 3 * bu, 2 * bu, bu);
       }
     }
     ctx.globalAlpha = 1;
   }
 
+  if (sunPos && sky.sun) {
+    const fade = Math.min(1, (1 - sky.sun.p) / 0.06);
+    // the sun itself: white-hot, with a yellow edge and a soft bright halo
+    const ox = Math.round(sunPos[0] / px) * px;
+    const oy = Math.round(sunPos[1] / px) * px;
+    ctx.fillStyle = SKY_SUN_CORE_COLOR;
+    for (const [extra, alpha] of [
+      [6, 0.18],
+      [4, 0.28],
+      [2, 0.45],
+    ]) {
+      ctx.globalAlpha = alpha * fade;
+      disc(ctx, ox, oy, r + extra, px);
+    }
+    ctx.globalAlpha = fade;
+    ctx.fillStyle = SKY_SUN_EDGE_COLOR;
+    disc(ctx, ox, oy, r, px);
+    ctx.fillStyle = SKY_SUN_CORE_COLOR;
+    disc(ctx, ox, oy, r - 2, px);
+    ctx.globalAlpha = 1;
+  }
   if (sky.moon) {
     const mr = Math.max(
       6,

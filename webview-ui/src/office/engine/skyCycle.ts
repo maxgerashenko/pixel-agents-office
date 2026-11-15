@@ -140,6 +140,8 @@ export const BIRDS = (() => {
     phase: rnd(),
     y: 0.1 + rnd() * 0.45,
     bob: rnd() * Math.PI * 2,
+    scale: 1 + Math.floor(rnd() * 2),
+    speed: 0.7 + rnd() * 0.7,
   }));
 })();
 export const BIG_STARS = (() => {
