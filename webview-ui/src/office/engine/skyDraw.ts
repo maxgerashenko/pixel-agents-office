@@ -379,25 +379,46 @@ function drawGround(
           ) * px;
         const foot = Math.round((y + (tr() - 0.5) * spacing * 0.3) / px) * px;
         const size = 7 + Math.floor(tr() * 4) + Math.min(3, row);
-        if (tr() < 0.4) {
-          // pine
-          const hgt = size * 3;
+        const phase = tr() * Math.PI * 2;
+        if (tr() < 0.62) {
+          // pine: a spike over ragged tiers that widen downwards, on a short trunk
+          const tiers = 3 + Math.floor(size / 3);
+          const tierH = 5;
+          const top = foot - (tiers * tierH + 5) * u;
           ctx.fillStyle = dark;
-          for (let i = 0; i < hgt; i++) {
-            const half = 1 + Math.floor((i % 7) * 0.8 + i * 0.1);
-            ctx.fillRect(cx - half * u, foot - (hgt - i) * u, (2 * half + 1) * u, u);
+          ctx.fillRect(cx, top, u, 3 * u);
+          for (let t = 0; t < tiers; t++) {
+            const wide = 3 + t * 1.6;
+            for (let i = 0; i < tierH + 1; i++) {
+              const half = Math.max(1, Math.round(wide * (0.3 + (0.7 * i) / tierH)));
+              const y = top + (2 + t * tierH + i) * u;
+              ctx.fillStyle = dark;
+              ctx.fillRect(cx - half * u, y, (2 * half + 1) * u, u);
+              if (i === tierH) {
+                ctx.fillStyle = lit;
+                ctx.fillRect(cx - half * u, y, u, u);
+              }
+            }
           }
-          ctx.fillStyle = lit;
-          for (let i = 3; i < hgt; i += 7) ctx.fillRect(cx - 2 * u, foot - (hgt - i) * u, 2 * u, u);
-        } else {
-          // round tree: trunk, dark crown, a lit crescent on the sky side
           ctx.fillStyle = trunk;
-          ctx.fillRect(cx - u, foot - size * u, 2 * u, size * u);
-          const cy = foot - (size + Math.round(size * 0.6)) * u;
-          ctx.fillStyle = lit;
-          spanDisc(ctx, cx, cy, size, px, w, h);
-          ctx.fillStyle = dark;
-          spanDisc(ctx, cx + u, cy + 2 * u, size - 1, px, w, h);
+          ctx.fillRect(cx, foot - 3 * u, u, 3 * u);
+        } else {
+          // cypress: a tall dark flame, swaying to a point
+          const hgt = size * 4;
+          const wide = Math.max(3, size * 0.55);
+          for (let i = 0; i < hgt; i++) {
+            const s = i / hgt;
+            const body = s < 0.65 ? Math.pow(s / 0.65, 0.75) : 1 - 0.3 * ((s - 0.65) / 0.35);
+            const half = Math.max(0, Math.round(wide * body + Math.sin(i * 0.8 + phase) * 0.7));
+            const sway = Math.round(Math.sin(i * 0.22 + phase) * (1 - s) * 2);
+            const y = foot - (hgt - i) * u;
+            ctx.fillStyle = dark;
+            ctx.fillRect(cx + (sway - half) * u, y, (2 * half + 1) * u, u);
+            if (i % 6 === 3 && half > 1) {
+              ctx.fillStyle = lit;
+              ctx.fillRect(cx + (sway - half) * u, y, u, u);
+            }
+          }
         }
       }
     }

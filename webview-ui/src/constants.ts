@@ -883,8 +883,8 @@ export const SKY_HORIZON_LIFT_SPRITE_PX = 14;
 /** Opaque fill used only to cut masks (its colour never shows). */
 export const SKY_MASK_COLOR = '#000000';
 /** The land round the office: banded ground, trees in the side gaps, a lake below. */
-export const SKY_GROUND_DAY_COLORS = ['#231d24', '#2b2329'] as const;
-export const SKY_GROUND_NIGHT_COLORS = ['#0d1226', '#121a36'] as const;
+export const SKY_GROUND_DAY_COLORS = ['#5a3230', '#663a33'] as const;
+export const SKY_GROUND_NIGHT_COLORS = ['#182654', '#1d2e62'] as const;
 export const SKY_TREE_DAY_COLORS = { dark: '#15131a', lit: '#6a3c2c', trunk: '#0f0d12' } as const;
 export const SKY_TREE_NIGHT_COLORS = { dark: '#080c1c', lit: '#24407e', trunk: '#060814' } as const;
 export const SKY_LAKE_DAY_COLORS = { water: '#a04e3a', glint: '#f8c060' } as const;
