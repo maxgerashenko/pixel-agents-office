@@ -766,7 +766,7 @@ export const TABLE_TENNIS_PADDLE_HANDLE_COLOR = '#9a6a35';
 export const SKY_KEYFRAMES: ReadonlyArray<{ at: number; top: string; bottom: string }> = [
   { at: 0, top: '#4aa8e8', bottom: '#bfe6f7' },
   { at: 0.5, top: '#4aa8e8', bottom: '#bfe6f7' },
-  { at: 0.62, top: '#6a4a9c', bottom: '#f08a4b' },
+  { at: 0.62, top: '#343a78', bottom: '#75609a' },
   { at: 0.72, top: '#142a6e', bottom: '#2d5eb5' },
   { at: 0.94, top: '#142a6e', bottom: '#2d5eb5' },
   { at: 0.98, top: '#3b3a7a', bottom: '#f2a07a' },
@@ -782,7 +782,7 @@ export const SKY_STAR_COUNT = 48;
 /** Height of one gradient band, in sprite pixels (gives the sky a stepped, pixel look). */
 export const SKY_BAND_SPRITE_PX = 4;
 /** Sun/moon radius in sprite pixels. */
-export const SKY_BODY_RADIUS_SPRITE_PX = 14;
+export const SKY_BODY_RADIUS_SPRITE_PX = 16;
 export const SKY_SUN_COLOR = '#ffe066';
 export const SKY_SUN_SETTING_COLOR = '#ff8a3d';
 export const SKY_MOON_COLOR = '#e8e8f4';
@@ -797,13 +797,13 @@ export const SKY_MOON_MAX_CANVAS_SHARE = 0.22;
 /** The radius the moon's craters and patches were drawn for. */
 export const SKY_MOON_DESIGN_RADIUS = 16;
 /** Daytime fun: drifting clouds and flapping birds. */
-export const SKY_CLOUD_COLOR = '#fff6e0';
-export const SKY_CLOUD_SHADE_COLOR = '#f3d9ae';
+export const SKY_CLOUD_COLOR = '#f4f8fd';
+export const SKY_CLOUD_SHADE_COLOR = '#d4e6f6';
 export const SKY_BIRD_COLOR = '#1f2238';
-export const SKY_CLOUD_COUNT = 7;
+export const SKY_CLOUD_COUNT = 6;
 /** Seconds a cloud / bird takes to cross the canvas (clouds vary per cloud, around this). */
 export const SKY_CLOUD_CROSS_SEC = 160;
-export const SKY_BIRD_COUNT = 9;
+export const SKY_BIRD_COUNT = 8;
 export const SKY_BIRD_CROSS_SEC = 40;
 /** Seconds per wing flap. */
 export const SKY_BIRD_FLAP_SEC = 0.3;
@@ -842,39 +842,21 @@ export const SKY_BIG_STAR_HALO_COLORS = [
 export const SKY_MOON_SHADE_COLOR = '#a9aac4';
 export const SKY_MOON_MARE_COLOR = '#c4c5da';
 export const SKY_MOON_GLOW_COLOR = '#b8c4ff';
-/** Palette-knife day sky: chunky dabs of blue, with warm dabs glowing around the sun. */
-export const SKY_DAY_DAB_COLORS = [
-  '#2f66a8',
-  '#3f7fc4',
-  '#5b9bd5',
-  '#7fb4e0',
-  '#8fc0e8',
-  '#a9cfee',
+/** Pixel-art day and sunset: flat stepped rings of colour around a cream sun (outermost first). */
+export const SKY_RING_COLORS = [
+  '#8f6a92',
+  '#b5757f',
+  '#d3835f',
+  '#e89850',
+  '#f2ae54',
+  '#f8cc68',
 ] as const;
-export const SKY_WARM_DAB_COLORS = [
-  '#e8743a',
-  '#ee8a3c',
-  '#f29a4a',
-  '#f7a85c',
-  '#f4b26a',
-  '#f6c544',
-] as const;
-/** The hottest dabs, right around the sun. */
-export const SKY_HOT_DAB_COLORS = [
-  '#f9c93c',
-  '#ffd84a',
-  '#ffe680',
-  '#fbe9a8',
-  '#fff3b0',
-  '#fff8d8',
-] as const;
-/** The sun: a vivid white-hot disc with a yellow edge. */
-export const SKY_SUN_CORE_COLOR = '#fffbe8';
-export const SKY_SUN_EDGE_COLOR = '#ffe873';
-/** Steps in the glow gradient around the sun (more = smoother). */
-export const SKY_WARM_GLOW_STEPS = 10;
-/** Canvas area per dab, in sprite pixels squared (lower = denser). */
-export const SKY_DAB_AREA_SPRITE_PX = 26;
-/** Warm glow radius around the sun as a share of the canvas's smaller side: at midday, and added by sunset. */
-export const SKY_WARM_GLOW_SHARE = 0.26;
-export const SKY_WARM_GLOW_SUNSET_SHARE = 0.75;
+export const SKY_SUN_CORE_COLOR = '#fff8cc';
+/** Outer ring radius as a share of the canvas's smaller side: at midday, and added by sunset. */
+export const SKY_RING_SHARE = 0.2;
+export const SKY_RING_SUNSET_SHARE = 0.7;
+/** How strongly the rings show at midday (they are fully opaque at sunset). */
+export const SKY_RING_DAY_ALPHA = 0.45;
+/** Cloud streaks at sunset: purple body, with a warm lit underside. */
+export const SKY_CLOUD_SUNSET_COLOR = '#6f5c9a';
+export const SKY_CLOUD_SUNSET_LIT_COLOR = '#f0b080';

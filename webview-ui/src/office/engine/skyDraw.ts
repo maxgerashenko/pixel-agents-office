@@ -11,9 +11,8 @@ import {
   SKY_CLOUD_COLOR,
   SKY_CLOUD_CROSS_SEC,
   SKY_CLOUD_SHADE_COLOR,
-  SKY_DAB_AREA_SPRITE_PX,
-  SKY_DAY_DAB_COLORS,
-  SKY_HOT_DAB_COLORS,
+  SKY_CLOUD_SUNSET_COLOR,
+  SKY_CLOUD_SUNSET_LIT_COLOR,
   SKY_MOON_COLOR,
   SKY_MOON_CRATER_COLOR,
   SKY_MOON_DESIGN_RADIUS,
@@ -24,18 +23,17 @@ import {
   SKY_MOON_SHADE_COLOR,
   SKY_NIGHT_BAND_COLOR,
   SKY_NIGHT_BASE_COLOR,
+  SKY_RING_COLORS,
+  SKY_RING_DAY_ALPHA,
+  SKY_RING_SHARE,
+  SKY_RING_SUNSET_SHARE,
   SKY_STAR_COLOR,
   SKY_STROKE_AREA_SPRITE_PX,
   SKY_STROKE_MAX,
   SKY_SUN_CORE_COLOR,
-  SKY_SUN_EDGE_COLOR,
   SKY_SWIRL_COLORS,
   SKY_TWINKLE_SEC,
   SKY_VORTICES,
-  SKY_WARM_DAB_COLORS,
-  SKY_WARM_GLOW_SHARE,
-  SKY_WARM_GLOW_STEPS,
-  SKY_WARM_GLOW_SUNSET_SHARE,
 } from '../../constants.js';
 import {
   BIG_STARS,
@@ -66,47 +64,24 @@ function disc(
   }
 }
 
-const dabCache = new Map<string, { key: string; canvas: HTMLCanvasElement }>();
-
-/**
- * A palette-knife layer: the canvas covered in chunky slanted dabs of the given
- * colours. Painted once per canvas size per palette, then blitted.
- */
-function dabLayer(
-  name: string,
-  colors: readonly string[],
+/** A filled pixel disc drawn as one span per row: cheap enough for rings hundreds of pixels wide. */
+function spanDisc(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  radius: number,
+  px: number,
   w: number,
   h: number,
-  px: number,
-): HTMLCanvasElement {
-  const key = `${w}x${h}x${px}`;
-  const hit = dabCache.get(name);
-  if (hit?.key === key) return hit.canvas;
-  const canvas = document.createElement('canvas');
-  canvas.width = w;
-  canvas.height = h;
-  dabCache.set(name, { key, canvas });
-  const c = canvas.getContext('2d');
-  if (!c) return canvas;
-  c.fillStyle = colors[Math.floor(colors.length / 2)];
-  c.fillRect(0, 0, w, h);
-  let seed = name.length * 7919 + 17;
-  const rnd = (): number => {
-    seed = (seed * 1103515245 + 12345) & 0x7fffffff;
-    return seed / 0x7fffffff;
-  };
-  const count = Math.floor((w * h) / (SKY_DAB_AREA_SPRITE_PX * px * px));
-  for (let n = 0; n < count; n++) {
-    const x = Math.round((rnd() * w) / px) * px;
-    const y = Math.round((rnd() * h) / px) * px;
-    const dw = (4 + Math.floor(rnd() * 7)) * px;
-    const rows = 2 + Math.floor(rnd() * 4);
-    const slant = rnd() < 0.5 ? px : -px;
-    c.fillStyle = colors[Math.floor(rnd() * colors.length)];
-    // a slanted slab: each row shifted sideways, like a knife stroke
-    for (let rI = 0; rI < rows; rI++) c.fillRect(x + rI * slant, y + rI * px, dw, px);
+): void {
+  for (let dy = -radius; dy <= radius; dy++) {
+    const y = cy + dy * px;
+    if (y < -px || y > h) continue;
+    const half = Math.floor(Math.sqrt(radius * radius - dy * dy));
+    const x0 = Math.max(0, cx - half * px);
+    const x1 = Math.min(w, cx + (half + 1) * px);
+    if (x1 > x0) ctx.fillRect(x0, y, x1 - x0, px);
   }
-  return canvas;
 }
 
 let nightCache: { key: string; canvas: HTMLCanvasElement } | null = null;
@@ -219,33 +194,24 @@ export function drawSky(
 
   const r = SKY_BODY_RADIUS_SPRITE_PX;
   const sunPos = sky.sun ? arcPosition(sky.sun.p, sky.sun.lift, (r + 1) * px, w, h, avoid) : null;
-  // Painted day: blue knife dabs, fading out through sunset
-  if (sky.dayAlpha > 0) {
-    ctx.globalAlpha = sky.dayAlpha;
-    ctx.drawImage(dabLayer('day', SKY_DAY_DAB_COLORS, w, h, px), 0, 0);
-    ctx.globalAlpha = 1;
-  }
-  // Warm dabs glow around the sun in stepped rings, spreading across the sky at sunset
+  // Pixel-art glow: flat stepped rings of colour around the sun, small and pale at
+  // midday, growing into a full orange-to-mauve sunset; then the cream sun itself
   if (sunPos && sky.sun) {
-    const warmth = Math.max(0, Math.min(1, (sky.sun.p - 0.6) / 0.3));
+    const warmth = Math.max(0, Math.min(1, (sky.sun.p - 0.55) / 0.3));
     const fade = Math.min(1, (1 - sky.sun.p) / 0.06);
-    const reach = Math.min(w, h) * (SKY_WARM_GLOW_SHARE + SKY_WARM_GLOW_SUNSET_SHARE * warmth);
-    const warm = dabLayer('warm', SKY_WARM_DAB_COLORS, w, h, px);
-    const hot = dabLayer('hot', SKY_HOT_DAB_COLORS, w, h, px);
-    // many thin steps, so orange melts into the blue; then yellow into the orange
-    const glow = (layer: HTMLCanvasElement, radius: number, strength: number): void => {
-      for (let s = 0; s < SKY_WARM_GLOW_STEPS; s++) {
-        ctx.save();
-        ctx.beginPath();
-        ctx.arc(sunPos[0], sunPos[1], radius * (1 - s / SKY_WARM_GLOW_STEPS), 0, Math.PI * 2);
-        ctx.clip();
-        ctx.globalAlpha = strength * fade;
-        ctx.drawImage(layer, 0, 0);
-        ctx.restore();
-      }
-    };
-    glow(warm, reach, 0.2);
-    glow(hot, reach * 0.5, 0.22);
+    const reach = (Math.min(w, h) / px) * (SKY_RING_SHARE + SKY_RING_SUNSET_SHARE * warmth);
+    const ox = Math.round(sunPos[0] / px) * px;
+    const oy = Math.round(sunPos[1] / px) * px;
+    SKY_RING_COLORS.forEach((color, i) => {
+      // midday shows only the inner, yellow rings, faintly; sunset brings them all in, solid
+      const inner = i >= SKY_RING_COLORS.length / 2 ? SKY_RING_DAY_ALPHA : 0;
+      ctx.globalAlpha = (warmth + (1 - warmth) * inner) * fade;
+      ctx.fillStyle = color;
+      spanDisc(ctx, ox, oy, Math.round(reach * (1 - i / SKY_RING_COLORS.length)), px, w, h);
+    });
+    ctx.globalAlpha = fade;
+    ctx.fillStyle = SKY_SUN_CORE_COLOR;
+    spanDisc(ctx, ox, oy, r, px, w, h);
     ctx.globalAlpha = 1;
   }
 
@@ -304,74 +270,54 @@ export function drawSky(
 
   if (sky.dayAlpha > 0) {
     const sec = now.getTime() / 1000;
+    const warmth = sky.sun ? Math.max(0, Math.min(1, (sky.sun.p - 0.55) / 0.3)) : 1;
+    const cloud = toCss(mix(parseHex(SKY_CLOUD_COLOR), parseHex(SKY_CLOUD_SUNSET_COLOR), warmth));
+    const lit = toCss(
+      mix(parseHex(SKY_CLOUD_SHADE_COLOR), parseHex(SKY_CLOUD_SUNSET_LIT_COLOR), warmth),
+    );
     ctx.globalAlpha = sky.dayAlpha;
-    // Clouds: a flat-bottomed puff of rects, drifting right and wrapping around
+    // Clouds: long flat streaks with stepped ends, drifting right and wrapping around
     for (const c of CLOUDS) {
       const u = px * c.scale;
-      const cw = 14 * u;
+      const cw = 44 * u;
       const x =
         Math.round((((c.phase + (sec / SKY_CLOUD_CROSS_SEC) * c.speed) % 1) * (w + cw) - cw) / px) *
         px;
       const y = Math.round((c.y * h) / px) * px;
-      ctx.fillStyle = SKY_CLOUD_COLOR;
-      ctx.fillRect(x + 2 * u, y, 5 * u, u);
-      ctx.fillRect(x + 7 * u, y + u, 4 * u, u);
-      ctx.fillRect(x + u, y + u, 10 * u, 2 * u);
-      ctx.fillRect(x, y + 2 * u, 14 * u, 2 * u);
-      ctx.fillStyle = SKY_CLOUD_SHADE_COLOR;
-      ctx.fillRect(x + u, y + 4 * u, 12 * u, u);
+      ctx.fillStyle = cloud;
+      ctx.fillRect(x + 10 * u, y, 22 * u, u);
+      ctx.fillRect(x + 4 * u, y + u, 36 * u, u);
+      ctx.fillRect(x, y + 2 * u, 44 * u, u);
+      ctx.fillRect(x + 8 * u, y + 3 * u, 30 * u, u);
+      ctx.fillStyle = lit;
+      ctx.fillRect(x + 14 * u, y + 4 * u, 20 * u, u);
     }
-    // Birds: little flapping V shapes crossing the sky with a gentle bob
+    // Birds: a loose flock of small v shapes, wings beating
     ctx.fillStyle = SKY_BIRD_COLOR;
-    const flapUp = Math.floor(sec / SKY_BIRD_FLAP_SEC) % 2 === 0;
-    for (const b of BIRDS) {
+    for (const [i, b] of BIRDS.entries()) {
+      const flapUp = Math.floor(sec / SKY_BIRD_FLAP_SEC + b.phase * 7) % 2 === 0;
+      const bu = px;
       const x =
         Math.round(
-          (((b.phase + (sec / SKY_BIRD_CROSS_SEC) * b.speed) % 1) * (w + 12 * px) - 6 * px) / px,
+          (((sec / SKY_BIRD_CROSS_SEC) % 1) * (w + 80 * px) - 70 * px + b.phase * 60 * px) / px,
         ) * px;
-      const y = Math.round((b.y * h + Math.sin(sec * 1.5 + b.bob) * 3 * px) / px) * px;
-      const bu = b.scale * px;
-      // silhouette: a small body with long swept wings, beating up and down
-      ctx.fillRect(x + 4 * bu, y + 2 * bu, 3 * bu, bu);
-      ctx.fillRect(x + 5 * bu, y + 3 * bu, bu, bu);
+      const y =
+        Math.round((h * 0.12 + b.y * h * 0.3 + Math.sin(sec * 1.2 + b.bob + i) * 2 * px) / px) * px;
       if (flapUp) {
-        ctx.fillRect(x, y - bu, 2 * bu, bu);
-        ctx.fillRect(x + bu, y, 2 * bu, bu);
-        ctx.fillRect(x + 2 * bu, y + bu, 3 * bu, bu);
-        ctx.fillRect(x + 6 * bu, y + bu, 3 * bu, bu);
-        ctx.fillRect(x + 8 * bu, y, 2 * bu, bu);
-        ctx.fillRect(x + 9 * bu, y - bu, 2 * bu, bu);
+        ctx.fillRect(x, y, 2 * bu, bu);
+        ctx.fillRect(x + bu, y + bu, 2 * bu, bu);
+        ctx.fillRect(x + 3 * bu, y + 2 * bu, bu, bu);
+        ctx.fillRect(x + 4 * bu, y + bu, 2 * bu, bu);
+        ctx.fillRect(x + 5 * bu, y, 2 * bu, bu);
       } else {
-        ctx.fillRect(x, y + 3 * bu, 2 * bu, bu);
-        ctx.fillRect(x + bu, y + 2 * bu, 4 * bu, bu);
-        ctx.fillRect(x + 6 * bu, y + 2 * bu, 4 * bu, bu);
-        ctx.fillRect(x + 9 * bu, y + 3 * bu, 2 * bu, bu);
+        ctx.fillRect(x, y + bu, 3 * bu, bu);
+        ctx.fillRect(x + 3 * bu, y + 2 * bu, bu, bu);
+        ctx.fillRect(x + 4 * bu, y + bu, 3 * bu, bu);
       }
     }
     ctx.globalAlpha = 1;
   }
 
-  if (sunPos && sky.sun) {
-    const fade = Math.min(1, (1 - sky.sun.p) / 0.06);
-    // the sun itself: white-hot, with a yellow edge and a soft bright halo
-    const ox = Math.round(sunPos[0] / px) * px;
-    const oy = Math.round(sunPos[1] / px) * px;
-    ctx.fillStyle = SKY_SUN_CORE_COLOR;
-    for (const [extra, alpha] of [
-      [6, 0.18],
-      [4, 0.28],
-      [2, 0.45],
-    ]) {
-      ctx.globalAlpha = alpha * fade;
-      disc(ctx, ox, oy, r + extra, px);
-    }
-    ctx.globalAlpha = fade;
-    ctx.fillStyle = SKY_SUN_EDGE_COLOR;
-    disc(ctx, ox, oy, r, px);
-    ctx.fillStyle = SKY_SUN_CORE_COLOR;
-    disc(ctx, ox, oy, r - 2, px);
-    ctx.globalAlpha = 1;
-  }
   if (sky.moon) {
     const mr = Math.max(
       6,
