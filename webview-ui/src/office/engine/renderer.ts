@@ -75,6 +75,7 @@ import { getWallInstances, hasWallSprites, wallColorToHex } from '../wallTiles.j
 import { characterDrawOffsetY, getCharacterSprite } from './characters.js';
 import { renderMatrixEffect } from './matrixEffect.js';
 import { getPetSpriteData } from './petEntity.js';
+import { drawSky } from './skyDraw.js';
 import type { TableBall, TableScore } from './tableTennis.js';
 
 // ── Settings ────────────────────────────────────────────────────
@@ -938,6 +939,40 @@ export interface SelectionRenderState {
   characters: Map<number, Character>;
 }
 
+let builtCache: {
+  map: TileTypeVal[][];
+  bounds: { col: number; row: number; cols: number; rows: number };
+} | null = null;
+
+/** Bounding box (in tiles) of the non-void part of the grid; the whole grid when it is all void. */
+function builtBounds(tileMap: TileTypeVal[][]): {
+  col: number;
+  row: number;
+  cols: number;
+  rows: number;
+} {
+  if (builtCache?.map === tileMap) return builtCache.bounds;
+  let c0 = Infinity;
+  let r0 = Infinity;
+  let c1 = -1;
+  let r1 = -1;
+  tileMap.forEach((line, rI) =>
+    line.forEach((tile, cI) => {
+      if (tile === TileType.VOID) return;
+      c0 = Math.min(c0, cI);
+      c1 = Math.max(c1, cI);
+      r0 = Math.min(r0, rI);
+      r1 = Math.max(r1, rI);
+    }),
+  );
+  const bounds =
+    c1 < 0
+      ? { col: 0, row: 0, cols: tileMap[0]?.length ?? 0, rows: tileMap.length }
+      : { col: c0, row: r0, cols: c1 - c0 + 1, rows: r1 - r0 + 1 };
+  builtCache = { map: tileMap, bounds };
+  return bounds;
+}
+
 export function renderFrame(
   ctx: CanvasRenderingContext2D,
   canvasWidth: number,
@@ -962,7 +997,7 @@ export function renderFrame(
   balls?: TableBall[],
   scores?: TableScore[],
 ): { offsetX: number; offsetY: number } {
-  // Clear
+  // Clear, then the day/night sky (visible wherever the layout doesn't cover)
   ctx.clearRect(0, 0, canvasWidth, canvasHeight);
 
   // Use layout dimensions (fallback to tileMap size)
@@ -972,6 +1007,16 @@ export function renderFrame(
   // Center map in viewport + pan offset (integer device pixels). Shared with
   // the DOM overlays so a label lands exactly on the sprite it belongs to.
   const { offsetX, offsetY } = mapOffset(canvasWidth, canvasHeight, cols, rows, zoom, panX, panY);
+
+  // Day/night sky behind everything; the sun and moon stay out of the layout's footprint
+  // (the footprint is the built part of the grid: empty rows and columns round it are sky too)
+  const built = builtBounds(tileMap);
+  drawSky(ctx, canvasWidth, canvasHeight, zoom, {
+    x: offsetX + built.col * TILE_SIZE * zoom,
+    y: offsetY + built.row * TILE_SIZE * zoom,
+    w: built.cols * TILE_SIZE * zoom,
+    h: built.rows * TILE_SIZE * zoom,
+  });
 
   // Draw tiles (floor + wall base color)
   renderTileGrid(ctx, tileMap, offsetX, offsetY, zoom, tileColors, layoutCols);

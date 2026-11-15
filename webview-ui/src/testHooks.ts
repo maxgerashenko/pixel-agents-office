@@ -1,12 +1,15 @@
 import type { ColorValue } from './components/ui/types.js';
 import { OfficeState } from './office/engine/officeState.js';
 import { isGhostHeadlessAgentsEnabled } from './office/engine/renderer.js';
+import { setSkyHourFraction } from './office/engine/skyCycle.js';
 import { carpetJunctionCase } from './office/sprites/carpetTiles.js';
 
 declare global {
   interface Window {
     __pixelAgentsTestHooks?: {
       playedSounds?: Array<{ kind: string; at: number }>;
+      /** Pin the sky to a fraction of the hour (null = real clock). */
+      setSkyHourFraction?: (t: number | null) => void;
       getCharacters?: () => Array<{
         id: number;
         matrixEffect: 'spawn' | 'despawn' | null;
@@ -141,6 +144,7 @@ export function installTestHooks(officeStateRef: { current: OfficeState | null }
   const hooks = window.__pixelAgentsTestHooks;
   if (!hooks.addAgentLog) hooks.addAgentLog = [];
 
+  hooks.setSkyHourFraction = setSkyHourFraction;
   hooks.getCharacters = () => {
     const os = officeStateRef.current;
     if (!os) return [];

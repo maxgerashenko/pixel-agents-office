@@ -768,3 +768,137 @@ export const TABLE_TENNIS_BALL_SHADOW_COLOR = 'rgba(0, 0, 0, 0.35)';
 export const TABLE_TENNIS_PADDLE_COLOR = '#d23a3a';
 export const TABLE_TENNIS_PADDLE_RIM_COLOR = '#8e2026';
 export const TABLE_TENNIS_PADDLE_HANDLE_COLOR = '#9a6a35';
+
+// ── Day/night sky (the space around and behind the office layout) ──────────
+
+/** Sky keyframes across one real clock hour. `at` is the fraction of the hour
+ *  (0 = :00, 1 = the next :00); colours blend linearly between neighbours and
+ *  the last keyframe equals the first so the cycle loops with no jump. The
+ *  day is one long golden hour (:00–:43) as the sun crosses; night sweeps in
+ *  by :43 and opens again from :54 as the sun rises. */
+export const SKY_KEYFRAMES: ReadonlyArray<{ at: number; top: string; bottom: string }> = [
+  { at: 0, top: '#e2683c', bottom: '#f7b65a' },
+  { at: 0.62, top: '#e2683c', bottom: '#f7b65a' },
+  { at: 0.72, top: '#c2543e', bottom: '#f2a050' },
+  { at: 0.9, top: '#c2543e', bottom: '#f2a050' },
+  { at: 1, top: '#e2683c', bottom: '#f7b65a' },
+];
+/** The sun is up from the top of the hour until this fraction, then below the horizon. */
+export const SKY_SUN_SET_AT = 0.72;
+/** The sun starts rising at this fraction, as dawn begins, and is already up when the hour turns. */
+export const SKY_SUN_RISE_AT = 0.9;
+/** The moon rises at this fraction and sets at the end of the hour. */
+export const SKY_MOON_RISE_AT = 0.62;
+/** Stars fade in over [in0, in1] and out over [out0, out1]. */
+export const SKY_STAR_FADE = { in0: 0.64, in1: 0.74, out0: 0.9, out1: 1 } as const;
+export const SKY_STAR_COUNT = 48;
+/** Height of one gradient band, in sprite pixels (gives the sky a stepped, pixel look). */
+export const SKY_BAND_SPRITE_PX = 4;
+/** Sun/moon radius in sprite pixels. */
+export const SKY_BODY_RADIUS_SPRITE_PX = 16;
+export const SKY_SUN_COLOR = '#ffe066';
+export const SKY_SUN_SETTING_COLOR = '#ff8a3d';
+export const SKY_MOON_COLOR = '#e8e8f4';
+export const SKY_MOON_CRATER_COLOR = '#b8b8d0';
+export const SKY_STAR_COLOR = '#ffffff';
+/** Twinkle period range in seconds. */
+export const SKY_TWINKLE_SEC = 3;
+/** The moon is a big cartoon character: a larger disc with a face. */
+/** Same size as the sun; capped to a share of the canvas on a very small screen. */
+export const SKY_MOON_RADIUS_SPRITE_PX = 16;
+export const SKY_MOON_MAX_CANVAS_SHARE = 0.22;
+/** The radius the moon's craters and patches were drawn for. */
+export const SKY_MOON_DESIGN_RADIUS = 16;
+/** Daytime fun: drifting clouds and flapping birds. */
+export const SKY_CLOUD_COLOR = '#f4f8fd';
+export const SKY_CLOUD_SHADE_COLOR = '#d4e6f6';
+export const SKY_BIRD_COLOR = '#1f2238';
+export const SKY_CLOUD_COUNT = 6;
+/** Seconds a cloud / bird takes to cross the canvas (clouds vary per cloud, around this). */
+export const SKY_CLOUD_CROSS_SEC = 160;
+export const SKY_BIRD_COUNT = 8;
+export const SKY_BIRD_CROSS_SEC = 40;
+/** Seconds per wing flap. */
+export const SKY_BIRD_FLAP_SEC = 0.3;
+/** Starry-Night night sky: swirling bands and big glowing stars with halos. */
+/** Brushstroke palette for the night sky, darkest to palest (strokes near a spiral's core run paler). */
+export const SKY_SWIRL_COLORS = [
+  '#0f2260',
+  '#1b3a8c',
+  '#2a58b8',
+  '#4a7ed0',
+  '#7fa8e0',
+  '#c8e0f0',
+] as const;
+export const SKY_NIGHT_BASE_COLOR = '#173a8a';
+/** The pale band of cloud rolling through the lower sky. */
+export const SKY_NIGHT_BAND_COLOR = '#cfe6ee';
+/** The two spirals: centre (fractions of the canvas), reach (share of the smaller side). */
+export const SKY_VORTICES = [
+  { x: 0.46, y: 0.36, r: 0.24 },
+  { x: 0.74, y: 0.52, r: 0.13 },
+] as const;
+/** Canvas device pixels per brushstroke, in sprite-pixel area (lower = denser). */
+export const SKY_STROKE_AREA_SPRITE_PX = 30;
+export const SKY_STROKE_MAX = 14000;
+/** The big stars, placed by hand: x across the canvas, y as a share of the sky above the
+ *  skyline, size in sprite pixels (the star's outer rings reach 2 x size + 2). */
+export const SKY_BIG_STARS = [
+  { x: 0.07, y: 0.3, size: 5 },
+  { x: 0.17, y: 0.66, size: 4 },
+  { x: 0.27, y: 0.14, size: 6 },
+  { x: 0.4, y: 0.5, size: 4 },
+  { x: 0.5, y: 0.16, size: 5 },
+  { x: 0.63, y: 0.6, size: 6 },
+  { x: 0.74, y: 0.2, size: 4 },
+  { x: 0.85, y: 0.46, size: 5 },
+  { x: 0.94, y: 0.12, size: 6 },
+] as const;
+/** Star, from the middle out: orange heart, yellow body, pale glow, then rings of dashes. */
+export const SKY_BIG_STAR_HEART_COLOR = '#f0a02c';
+export const SKY_BIG_STAR_BODY_COLOR = '#ffe77a';
+export const SKY_BIG_STAR_PALE_COLOR = '#fff7c8';
+export const SKY_BIG_STAR_DASH_COLORS = ['#fdf3b0', '#ffffff', '#cfe4f6'] as const;
+/** (The sun itself is not drawn as a disc: the warm glow of dabs marks where it is.) */
+/** Realistic moon: shaded sphere with maria (dark patches) and craters. */
+export const SKY_MOON_SHADE_COLOR = '#a9aac4';
+export const SKY_MOON_MARE_COLOR = '#c4c5da';
+export const SKY_MOON_GLOW_COLOR = '#b8c4ff';
+/** Pixel-art day and sunset: flat stepped rings of colour around a cream sun (outermost first). */
+export const SKY_RING_COLORS = [
+  '#ee8244',
+  '#f2964a',
+  '#f5aa52',
+  '#f8c060',
+  '#fad478',
+  '#fce698',
+] as const;
+export const SKY_SUN_CORE_COLOR = '#fff8cc';
+/** Outer ring radius as a share of the canvas's smaller side: at midday, and added by sunset. */
+export const SKY_RING_SHARE = 0.2;
+export const SKY_RING_SUNSET_SHARE = 0.7;
+/** How strongly the rings show at midday (they are fully opaque at sunset). */
+export const SKY_RING_DAY_ALPHA = 0.45;
+/** Cloud streaks at sunset: purple body, with a warm lit underside. */
+export const SKY_CLOUD_SUNSET_COLOR = '#a85a6e';
+export const SKY_CLOUD_SUNSET_LIT_COLOR = '#7a4a78';
+/** Night sweeps in from the right behind a dithered edge this many sprite pixels wide. */
+export const SKY_WIPE_BAND_SPRITE_PX = 48;
+/** Skyline silhouettes standing on the office's top edge, and the ground around the office. */
+export const SKY_SKYLINE_DAY_COLOR = '#24382e';
+export const SKY_SKYLINE_NIGHT_COLOR = '#0d1226';
+export const SKY_HILL_DAY_COLOR = '#3d6b52';
+export const SKY_HILL_NIGHT_COLOR = '#1b2f6e';
+export const SKY_WINDOW_COLOR = '#ffd84a';
+/** How far above the top row of tiles the skyline stands (the wall face rises this much). */
+export const SKY_HORIZON_LIFT_SPRITE_PX = 14;
+/** Opaque fill used only to cut masks (its colour never shows). */
+export const SKY_MASK_COLOR = '#000000';
+/** The land round the office: banded ground, trees in the side gaps. */
+export const SKY_GROUND_DAY_COLORS = ['#5a3230', '#663a33'] as const;
+export const SKY_GROUND_NIGHT_COLORS = ['#182654', '#1d2e62'] as const;
+export const SKY_TREE_DAY_COLORS = { dark: '#15131a', lit: '#6a3c2c', trunk: '#0f0d12' } as const;
+export const SKY_TREE_NIGHT_COLORS = { dark: '#080c1c', lit: '#24407e', trunk: '#060814' } as const;
+/** Sprite-pixel spacing of the trees in the side gaps, and the narrowest gap that gets any. */
+export const SKY_TREE_SPACING_SPRITE_PX = 26;
+export const SKY_TREE_MIN_GAP_SPRITE_PX = 16;
