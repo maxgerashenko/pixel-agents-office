@@ -7,6 +7,7 @@ import {
   PET_BITE_REACH_PX,
   PET_BITE_SIDE_OFFSET_PX,
   PET_BITE_TRAIL_PX,
+  PET_BITE_UP_TRAIL_PX,
   PET_CAT_TREE_CHANCE,
   PET_CHASE_MAX_SEC,
   PET_CHASE_RECALC_INTERVAL_SEC,
@@ -696,17 +697,20 @@ export function updatePet(
       }
       // Hang on to the leg: the agent walks on slowly, dragging the dog
       target.petDragTimer = PET_BITE_DRAG_HOLD_SEC;
-      // Lying side-on behind the leg: walking sideways turns the dog to follow,
-      // walking up or down keeps the side it caught the leg from
-      if (target.dir === Direction.RIGHT || target.dir === Direction.LEFT) pet.dir = target.dir;
-      pet.x =
-        target.x +
-        (pet.dir === Direction.RIGHT ? -PET_BITE_SIDE_OFFSET_PX : PET_BITE_SIDE_OFFSET_PX);
+      // Lying flat behind the leg, head to the boot: walking sideways turns the
+      // dog side-on to follow; walking up or down lays it along the screen's
+      // vertical axis (front view dragged down, back view dragged up)
+      pet.dir = target.dir;
+      const vertical = target.dir === Direction.DOWN || target.dir === Direction.UP;
+      pet.x = vertical
+        ? target.x
+        : target.x +
+          (pet.dir === Direction.RIGHT ? -PET_BITE_SIDE_OFFSET_PX : PET_BITE_SIDE_OFFSET_PX);
       const trail =
         target.dir === Direction.DOWN
           ? -PET_BITE_TRAIL_PX
           : target.dir === Direction.UP
-            ? PET_BITE_TRAIL_PX
+            ? PET_BITE_UP_TRAIL_PX
             : 0;
       pet.y = target.y + trail;
       // In front of the agent so the bite shows, unless it trails above them
@@ -922,7 +926,14 @@ export function getPetSpriteData(pet: Pet, petSprites: PetSpriteFrames | null): 
   if (!petSprites) return null;
 
   if (pet.state === PetState.BITE) {
-    const frames = pet.dir === Direction.LEFT ? petSprites.biteLeft : petSprites.biteRight;
+    const frames =
+      pet.dir === Direction.LEFT
+        ? petSprites.biteLeft
+        : pet.dir === Direction.DOWN
+          ? petSprites.biteDown
+          : pet.dir === Direction.UP
+            ? petSprites.biteUp
+            : petSprites.biteRight;
     return frames[PET_WALK_SEQUENCE[pet.frame % PET_WALK_SEQUENCE.length]];
   }
 
