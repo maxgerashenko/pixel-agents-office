@@ -240,6 +240,19 @@ export interface Character {
   /** Play spot (in front of an arcade machine) this idle agent has claimed, or
    *  null. Transient like restSeatId: released the moment the agent works. */
   playSpotId?: string | null;
+  /** Break spot (in front of a vending machine / coffee) this tired idle agent
+   *  has claimed, or null. Transient like playSpotId. */
+  breakSpotId?: string | null;
+  /** Seconds of work since the agent's last break (or since it appeared). */
+  activeSec?: number;
+  /** Worn out: a long stretch of work, or a nearly full context after a while.
+   *  Derived every frame by OfficeState; drives the slump, yawn, Zzz and the
+   *  trip to a vending machine / coffee when it next goes idle. */
+  tired?: boolean;
+  /** Seconds the agent has looked tired; times the yawns and the Zzz drift. */
+  tiredClock?: number;
+  /** Seconds a tired agent has been idle without finding anywhere to recover. */
+  tiredIdleSec?: number;
   /** Positive while a dog hangs on this agent's leg (walk slowed to PET_DRAG_SPEED_FACTOR).
    *  Transient, renewed every tick by the pet FSM and zeroed when it lets go; absent or 0 when free. */
   petDragTimer?: number;
