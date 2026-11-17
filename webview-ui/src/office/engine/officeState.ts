@@ -2,6 +2,7 @@ import { pickDiversePalette } from '../../../../core/src/paletteUtils.js';
 import {
   AUTO_ON_FACING_DEPTH,
   AUTO_ON_SIDE_DEPTH,
+  BREAK_FURNITURE_TYPE_PATTERN,
   CHARACTER_HIT_HALF_WIDTH,
   CHARACTER_HIT_HEIGHT,
   DISMISS_BUBBLE_FAST_FADE_SEC,
@@ -27,6 +28,10 @@ import {
   REST_SEAT_TYPE_PATTERN,
   SERVER_RACK_TYPE_PREFIXES,
   TABLE_TENNIS_START_CHANCE,
+  TIRED_ACTIVE_SEC,
+  TIRED_CONTEXT_FRACTION,
+  TIRED_CONTEXT_MIN_ACTIVE_SEC,
+  TIRED_IDLE_RECOVER_SEC,
   WAITING_BUBBLE_DURATION_SEC,
 } from '../../constants.js';
 import { arcadePlaySpot } from '../layout/arcadePlacement.js';
@@ -127,6 +132,9 @@ export class OfficeState {
   /** Standing spots in front of arcade machines outside every Area and its
    *  buffer — where idle agents play. Keyed `play:<furniture uid>`. */
   playSpots = new Map<string, PlaySpot>();
+  /** Standing spots at vending machines / coffee, under the same Area rule —
+   *  where a tired idle agent goes for a drink. Keyed `break:<furniture uid>`. */
+  breakSpots = new Map<string, PlaySpot>();
   characters: Map<number, Character> = new Map();
   pets: Pet[] = [];
   /** Accumulated time for furniture animation frame cycling */
@@ -255,6 +263,7 @@ export class OfficeState {
       ch.restSeatId = null; // rest claims don't survive a seat rebuild
       if (ch.playSlot) leaveTable(ch); // nor do table claims
       ch.playSpotId = null;
+      ch.breakSpotId = null;
       ch.workSpot = null; // nor do pairing / phone spots (replanned next frame)
       const lostItsComputer =
         ch.seatId !== null &&
@@ -389,6 +398,9 @@ export class OfficeState {
     const play = ch.playSpotId ? this.playSpots.get(ch.playSpotId) : undefined;
     const playKey = play ? `${play.col},${play.row}` : null;
     const playWasBlocked = playKey ? this.blockedTiles.delete(playKey) : false;
+    const brk = ch.breakSpotId ? this.breakSpots.get(ch.breakSpotId) : undefined;
+    const breakKey = brk ? `${brk.col},${brk.row}` : null;
+    const breakWasBlocked = breakKey ? this.blockedTiles.delete(breakKey) : false;
     const pairKey = ch.workSpot?.seatUid ? `${ch.workSpot.col},${ch.workSpot.row}` : null;
     const pairWasBlocked = pairKey ? this.blockedTiles.delete(pairKey) : false;
     if (key) this.blockedTiles.delete(key);
@@ -396,6 +408,7 @@ export class OfficeState {
     if (key) this.blockedTiles.add(key);
     if (restKey && restWasBlocked) this.blockedTiles.add(restKey);
     if (playKey && playWasBlocked) this.blockedTiles.add(playKey);
+    if (breakKey && breakWasBlocked) this.blockedTiles.add(breakKey);
     if (pairKey && pairWasBlocked) this.blockedTiles.add(pairKey);
     return result;
   }
@@ -683,6 +696,29 @@ export class OfficeState {
       if (!this.walkableTiles.some((t) => t.col === col && t.row === row)) continue;
       if (isNearArea(areaTiles, cols, rows, col, row)) continue;
       this.playSpots.set(`play:${item.uid}`, { col, row, dir });
+    }
+    this.breakSpots = new Map();
+    const walkable = new Set(this.walkableTiles.map((t) => `${t.col},${t.row}`));
+    const free = (col: number, row: number) =>
+      walkable.has(`${col},${row}`) && !isNearArea(areaTiles, cols, rows, col, row);
+    for (const item of this.layout.furniture) {
+      if (!BREAK_FURNITURE_TYPE_PATTERN.test(item.type)) continue;
+      const entry = getCatalogEntry(item.type);
+      if (!entry) continue;
+      if (/^VENDING/i.test(item.type)) {
+        // Stands like the arcade: in front of it, facing it
+        const { col, row, dir } = arcadePlaySpot(entry, item.col, item.row);
+        if (free(col, row)) this.breakSpots.set(`break:${item.uid}`, { col, row, dir });
+        continue;
+      }
+      // A mug on a desk or table: any free tile beside it, facing it
+      const beside = [
+        { col: item.col, row: item.row + 1, dir: Direction.UP },
+        { col: item.col, row: item.row - 1, dir: Direction.DOWN },
+        { col: item.col - 1, row: item.row, dir: Direction.RIGHT },
+        { col: item.col + 1, row: item.row, dir: Direction.LEFT },
+      ].find((t) => free(t.col, t.row));
+      if (beside) this.breakSpots.set(`break:${item.uid}`, beside);
     }
     const clear = this.walkableTiles.filter(
       (t) => !isNearArea(areaTiles, cols, rows, t.col, t.row),
@@ -1242,6 +1278,7 @@ export class OfficeState {
     if (!ch) return;
     ch.restSeatId = null;
     ch.playSpotId = null;
+    ch.breakSpotId = null;
     // Unassign old seat
     if (ch.seatId) {
       const old = this.seats.get(ch.seatId);
@@ -1315,6 +1352,7 @@ export class OfficeState {
     if (!seat) return;
     ch.restSeatId = null;
     ch.playSpotId = null;
+    ch.breakSpotId = null;
     const path = this.withOwnSeatUnblocked(ch, () =>
       findPath(ch.tileCol, ch.tileRow, seat.seatCol, seat.seatRow, this.tileMap, this.blockedTiles),
     );
@@ -1894,6 +1932,37 @@ export class OfficeState {
     ch.maxContextTokens = maxContextTokens;
   }
 
+  /**
+   * Tiredness: work since the last break piles up; a long stretch, or a nearly
+   * full context after a shorter one, wears the agent out. Recovery happens in
+   * the FSM (a drink, a bench, the arcade) or after a long idle with nowhere
+   * to go. Sub-agents have no gauge and never tire.
+   */
+  private updateFatigue(ch: Character, dt: number): void {
+    if (ch.isSubagent) return;
+    if (ch.isActive) {
+      ch.activeSec = (ch.activeSec ?? 0) + dt;
+      ch.tiredIdleSec = 0;
+    }
+    const activeSec = ch.activeSec ?? 0;
+    const window = ch.maxContextTokens > 0 ? ch.maxContextTokens : 1;
+    const contextFull = ch.contextTokens / window >= TIRED_CONTEXT_FRACTION;
+    const worn =
+      activeSec >= TIRED_ACTIVE_SEC || (contextFull && activeSec >= TIRED_CONTEXT_MIN_ACTIVE_SEC);
+    if (worn && !ch.tired) ch.tiredClock = Math.random() * 3; // yawns out of step
+    if (worn) ch.tired = true;
+    if (!ch.tired) return;
+    ch.tiredClock = (ch.tiredClock ?? 0) + dt;
+    if (!ch.isActive) {
+      ch.tiredIdleSec = (ch.tiredIdleSec ?? 0) + dt;
+      if (ch.tiredIdleSec >= TIRED_IDLE_RECOVER_SEC) {
+        ch.activeSec = 0;
+        ch.tired = false;
+        ch.tiredIdleSec = 0;
+      }
+    }
+  }
+
   update(dt: number): void {
     // Furniture animation cycling
     const prevFrame = Math.floor(this.furnitureAnimTimer / FURNITURE_ANIM_INTERVAL_SEC);
@@ -1919,9 +1988,11 @@ export class OfficeState {
       if (!this.seats.get(uid)?.assigned) freeRestSeats.add(uid);
     }
     const freePlaySpots = new Set(this.playSpots.keys());
+    const freeBreakSpots = new Set(this.breakSpots.keys());
     for (const ch of this.characters.values()) {
       if (ch.restSeatId) freeRestSeats.delete(ch.restSeatId);
       if (ch.playSpotId) freePlaySpots.delete(ch.playSpotId);
+      if (ch.breakSpotId) freeBreakSpots.delete(ch.breakSpotId);
     }
 
     this.updateTableGames(dt);
@@ -1933,6 +2004,8 @@ export class OfficeState {
         if (effect === 'despawned') toDelete.push(ch.id);
         continue; // skip normal FSM while the effect is (or just was) active
       }
+
+      this.updateFatigue(ch, dt);
 
       // Temporarily unblock own seat so character can pathfind to it
       this.withOwnSeatUnblocked(ch, () =>
@@ -1950,6 +2023,8 @@ export class OfficeState {
           ch.isSubagent ? undefined : this.claimTable,
           this.playSpots,
           freePlaySpots,
+          this.breakSpots,
+          freeBreakSpots,
         ),
       );
 

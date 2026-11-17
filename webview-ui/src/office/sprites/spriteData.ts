@@ -256,6 +256,69 @@ function addPhoneSprites(base: BaseSprites): CharacterSprites {
   };
 }
 
+// ── Tired agents ────────────────────────────────────────────────
+
+/** Height of a character's head in sprite rows (hair and face). */
+const HEAD_ROWS = 15;
+/** Rows the head sinks into the shoulders when tired. */
+const SLUMP_ROWS = 2;
+/** Columns the head droops forward on a side view. */
+const SLUMP_FORWARD_COLS = 1;
+const YAWN_MOUTH_COLOR = '#3a1c24';
+
+const tiredCache = new WeakMap<SpriteData, [SpriteData, SpriteData]>();
+
+/**
+ * A worn-out version of a character frame: the head sinks two rows into the
+ * shoulders (and droops forward on a side view); with `yawn` the mouth opens.
+ * Works on any frame (walk, typing, reading, standing) since the head is the
+ * same 15 rows from the first non-empty row; memoized per source sprite.
+ */
+export function tiredSprite(sprite: SpriteData, dir: Direction, yawn: boolean): SpriteData {
+  let pair = tiredCache.get(sprite);
+  if (!pair) {
+    const top = sprite.findIndex((row) => row.some((px) => px !== ''));
+    if (top < 0) return sprite;
+    const side = dir === Dir.LEFT || dir === Dir.RIGHT;
+    const forward =
+      dir === Dir.RIGHT ? SLUMP_FORWARD_COLS : dir === Dir.LEFT ? -SLUMP_FORWARD_COLS : 0;
+    const slumped = moveBlock(
+      sprite,
+      top,
+      top + HEAD_ROWS - 1,
+      0,
+      (sprite[0]?.length ?? 16) - 1,
+      SLUMP_ROWS,
+      side ? forward : 0,
+      '',
+    );
+    const yawning = slumped.map((row) => [...row]);
+    if (dir !== Dir.UP) {
+      // Mouth: low on the face, centred (front) or at the nose side (side view)
+      const mouthRow = top + HEAD_ROWS - 2 + SLUMP_ROWS;
+      const width = sprite[0]?.length ?? 16;
+      const cols =
+        dir === Dir.DOWN
+          ? [width / 2 - 1, width / 2]
+          : dir === Dir.RIGHT
+            ? [width / 2 + 3]
+            : [width / 2 - 4];
+      for (const c of cols) {
+        for (const r of [mouthRow - 1, mouthRow]) if (yawning[r]) yawning[r][c] = YAWN_MOUTH_COLOR;
+      }
+    }
+    pair = [slumped, yawning];
+    tiredCache.set(sprite, pair);
+  }
+  return yawn ? pair[1] : pair[0];
+}
+
+/** Tiny pixel "z" letters that float up from a sleepy agent: [big, small]. */
+export const TIRED_Z_SPRITES: [SpriteData, SpriteData] = [
+  ['####', '..#.', '.#..', '####'].map((r) => [...r].map((c) => (c === '#' ? '#c9d4ff' : ''))),
+  ['###', '.#.', '###'].map((r) => [...r].map((c) => (c === '#' ? '#aab8f0' : ''))),
+];
+
 const spriteCache = new Map<string, CharacterSprites>();
 
 /** Apply hue shift to every sprite in a CharacterSprites set */
