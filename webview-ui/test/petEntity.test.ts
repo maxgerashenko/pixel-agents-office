@@ -719,6 +719,55 @@ test('the dog trails the leg it bites as the agent drags it sideways', () => {
   assert.equal(walker.petDragTimer, 0);
 });
 
+test('the dog lies along the screen when the agent drags it up or down', async () => {
+  const { getPetSpriteData } = await import('../src/office/engine/petEntity.js');
+  const { setPetTemplates, getPetSprites } = await import('../src/office/sprites/petSpriteData.js');
+  const tileMap = buildOpenTileMap(10, 10);
+  const walkable = buildWalkableTiles(10, 10);
+  const front = Array.from({ length: 32 }, (_, r) =>
+    Array.from({ length: 16 }, (_, c) => (r >= 11 && c >= 2 && c < 14 ? 'x' : '')),
+  );
+  const blank = Array.from({ length: 32 }, () => Array.from({ length: 16 }, () => ''));
+  const side = Array.from({ length: 32 }, () => Array.from({ length: 32 }, () => ''));
+  setPetTemplates(
+    [
+      {
+        walkDown: [front, front, front],
+        idleDown: [blank, blank, blank],
+        walkUp: [front, front, front],
+        idleUp: [blank, blank, blank],
+        walkRight: [side, side, side],
+      },
+    ],
+    ['Rex'],
+    ['Dog'],
+  );
+  const sprites = getPetSprites(0)!;
+  for (const dir of [Direction.DOWN, Direction.UP]) {
+    const walker = makeChar(1, 5, 5);
+    walker.state = CharacterState.WALK;
+    walker.dir = dir;
+    const pet = createPet('d', 0, 5, 5, PetKind.DOG);
+    pet.state = PetState.BITE;
+    pet.followTargetId = 1;
+    pet.dir = Direction.RIGHT;
+    updatePet(pet, 0.1, walkable, new Map([[1, walker]]), tileMap, new Set());
+    assert.equal(pet.dir, dir, 'faces the way the agent walks');
+    assert.equal(pet.x, walker.x, 'centred on the agent, not off to one side');
+    if (dir === Direction.DOWN) assert.ok(pet.y < walker.y, 'behind (above) the agent');
+    else assert.ok(pet.y > walker.y, 'behind (below) the agent');
+    const pose = getPetSpriteData(pet, sprites)!;
+    const frames = dir === Direction.DOWN ? sprites.biteDown : sprites.biteUp;
+    assert.ok(frames.includes(pose), 'uses the vertical drag frames');
+    const rows = pose.filter((row) => row.some((px) => px !== '')).length;
+    assert.ok(rows < 21, 'flattened shorter than the standing sprite');
+    assert.ok(
+      pose[31].some((px) => px !== ''),
+      'belly on the bottom edge',
+    );
+  }
+});
+
 test('bite frames lay the side sprite on the frame’s bottom and leg edges', async () => {
   const { setPetTemplates, getPetSprites, getPetKind } =
     await import('../src/office/sprites/petSpriteData.js');

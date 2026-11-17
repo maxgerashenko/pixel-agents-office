@@ -439,6 +439,11 @@ export const PET_BITE_FRAME_PX = 32;
 export const PET_BITE_SIDE_OFFSET_PX = 12;
 /** When the agent walks up or down, the dog trails this far (px) behind it. */
 export const PET_BITE_TRAIL_PX = 3;
+/** Dragged up the screen (agent walking up), the dog lies below the agent with
+ *  its head at the top of the sprite: this far (px) below the agent's feet. */
+export const PET_BITE_UP_TRAIL_PX = 9;
+/** Rows of head (ears to chin) kept at full size in the vertical drag poses. */
+export const PET_BITE_VERT_HEAD_ROWS = 5;
 export const PET_HIT_HALF_WIDTH = 8;
 /** Hit-box height (world px) measured upward from the bottom-center anchor. */
 export const PET_HIT_HEIGHT = 16;
