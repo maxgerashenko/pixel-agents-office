@@ -51,6 +51,8 @@ export const TIRED_YAWN_PERIOD_SEC = 7;
 /** Floating Zzz: one letter every this many seconds, each rising for TIRED_Z_RISE_SEC. */
 export const TIRED_Z_RISE_SEC = 2.4;
 export const TIRED_Z_COUNT = 3;
+/** Zzz draws above furniture and walls, not just its agent. */
+export const TIRED_Z_Z_SORT_BOOST = 10000;
 export const TIRED_Z_RISE_PX = 12;
 export const PLAY_MIN_SEC = 60.0;
 export const PLAY_MAX_SEC = 150.0;

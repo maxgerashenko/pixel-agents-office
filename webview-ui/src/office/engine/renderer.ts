@@ -50,6 +50,7 @@ import {
   TIRED_Z_COUNT,
   TIRED_Z_RISE_PX,
   TIRED_Z_RISE_SEC,
+  TIRED_Z_Z_SORT_BOOST,
   VOID_TILE_DASH_PATTERN,
   VOID_TILE_OUTLINE_COLOR,
 } from '../../constants.js';
@@ -519,7 +520,7 @@ export function renderScene(
       const headX = drawX + cached.width / 2 + 3 * zoom;
       const headY = drawY + 3 * zoom;
       drawables.push({
-        zY: charZY + 0.5,
+        zY: charZY + TIRED_Z_Z_SORT_BOOST,
         draw: (c) => {
           c.save();
           for (let i = 0; i < TIRED_Z_COUNT; i++) {

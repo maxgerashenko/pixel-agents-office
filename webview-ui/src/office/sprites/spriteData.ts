@@ -315,8 +315,10 @@ export function tiredSprite(sprite: SpriteData, dir: Direction, yawn: boolean): 
 
 /** Tiny pixel "z" letters that float up from a sleepy agent: [big, small]. */
 export const TIRED_Z_SPRITES: [SpriteData, SpriteData] = [
-  ['####', '..#.', '.#..', '####'].map((r) => [...r].map((c) => (c === '#' ? '#c9d4ff' : ''))),
-  ['###', '.#.', '###'].map((r) => [...r].map((c) => (c === '#' ? '#aab8f0' : ''))),
+  ['#####', '...#.', '..#..', '.#...', '#####'].map((r) =>
+    [...r].map((c) => (c === '#' ? '#e6ecff' : '')),
+  ),
+  ['####', '..#.', '.#..', '####'].map((r) => [...r].map((c) => (c === '#' ? '#b4c2f5' : ''))),
 ];
 
 const spriteCache = new Map<string, CharacterSprites>();
