@@ -28,6 +28,7 @@ import type {
   WorkSpot,
 } from '../types.js';
 import { CharacterState, Direction, TILE_SIZE } from '../types.js';
+import { reactionBodyPose, reactionSprite } from './reactions.js';
 
 /** Whether a tool should show the reading animation (vs typing). Taxonomy comes
  *  from the active HookProvider via the `providerCapabilities` message. */
@@ -794,6 +795,14 @@ function startWork(
 
 /** Get the correct sprite frame for a character's current state and direction */
 export function getCharacterSprite(ch: Character, sprites: CharacterSprites): SpriteData {
+  const base = getBaseCharacterSprite(ch, sprites);
+  // A pass/fail reaction swaps the pose of a character that stays put; one
+  // that is walking keeps its stride (the emote still plays above it).
+  const pose = ch.state === CharacterState.WALK ? null : reactionBodyPose(ch.reaction);
+  return pose === null ? base : reactionSprite(base, pose, sprites);
+}
+
+function getBaseCharacterSprite(ch: Character, sprites: CharacterSprites): SpriteData {
   switch (ch.state) {
     case CharacterState.TYPE:
       // Table tennis: paddle ready, or swinging as the ball arrives

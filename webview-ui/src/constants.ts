@@ -993,3 +993,53 @@ export const MUSIC_BUTTON_NOTE = [
   '.xx...xx',
 ] as const;
 export const MUSIC_BUTTON_SCALE = 3;
+
+// ── Pass / fail reactions ───────────────────────────────────
+/** How long a "tests passed" cheer plays (body animation + emote). */
+export const REACTION_PASS_DURATION_SEC = 2.2;
+/** How long a "command failed" slump plays. */
+export const REACTION_FAIL_DURATION_SEC = 2.8;
+/** The cheering body animation (arms up, hopping) runs for this part of a pass. */
+export const REACTION_CHEER_BODY_SEC = 1.6;
+/** One hop = one arm swing; seconds per hop. */
+export const REACTION_HOP_PERIOD_SEC = 0.3;
+/** Hop height in sprite pixels. */
+export const REACTION_HOP_HEIGHT_PX = 4;
+/** Raised arms: sprite padding either side, arm length in steps, and the
+ *  shoulder row below the head's top row. */
+export const REACTION_ARM_PAD_PX = 6;
+export const REACTION_ARM_STEPS = 9;
+export const REACTION_SHOULDER_BELOW_HEAD_PX = 15;
+/** Slump: the head sinks this many sprite pixels over the shoulders. */
+export const REACTION_SLUMP_HEAD_DROP_PX = 2;
+export const REACTION_HEAD_ROWS = 10;
+/** Slump shake: first seconds of a failure, sprite pixels each way, flips per period. */
+export const REACTION_SHAKE_SEC = 0.6;
+export const REACTION_SHAKE_PERIOD_SEC = 0.08;
+/** Confetti: pieces per burst, burst times, and physics (sprite px, seconds). */
+export const REACTION_CONFETTI_COUNT = 16;
+export const REACTION_CONFETTI_BURSTS_SEC = [0, 0.5];
+export const REACTION_CONFETTI_LIFE_SEC = 1.2;
+export const REACTION_CONFETTI_SPEED_PX = 30;
+export const REACTION_CONFETTI_GRAVITY_PX = 60;
+/** Emote placement above the character's head, sprite pixels. */
+export const REACTION_EMOTE_RISE_PX = 4;
+export const REACTION_BADGE_POP_SEC = 0.25;
+export const REACTION_BADGE_FADE_SEC = 0.4;
+/** Rain cloud over a failure: appears after a beat; drops fall in a loop. */
+export const REACTION_CLOUD_DELAY_SEC = 0.25;
+export const REACTION_DROP_PERIOD_SEC = 0.45;
+export const REACTION_DROP_FALL_PX = 9;
+/** Draw order: emotes sort above everything near the character. */
+export const REACTION_EMOTE_Z_OFFSET = 500;
+export const REACTION_CONFETTI_COLORS = ['#ff5c7a', '#ffd23f', '#3ddc84', '#4cc9f0', '#c77dff'];
+export const REACTION_OUTLINE_FALLBACK_COLOR = '#1b1b24';
+export const REACTION_BADGE_PASS_COLOR = '#2fbf71';
+export const REACTION_BADGE_FAIL_COLOR = '#e5484d';
+export const REACTION_BADGE_RIM_COLOR = '#1b1b24';
+export const REACTION_BADGE_GLYPH_COLOR = '#ffffff';
+export const REACTION_CLOUD_COLOR = '#9aa3b8';
+export const REACTION_CLOUD_SHADE_COLOR = '#5b6275';
+export const REACTION_DROP_COLOR = '#6cb8ff';
+/** Opacity of an agent's activity label while its pass/fail emote plays above it. */
+export const REACTION_LABEL_OPACITY = 0.12;

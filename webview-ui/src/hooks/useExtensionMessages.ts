@@ -614,6 +614,8 @@ export function useExtensionMessages(
         if (subId !== null) {
           os.showPermissionBubble(subId);
         }
+      } else if (msg.type === 'agentReaction') {
+        os.triggerReaction(msg.id as number, msg.reaction as 'pass' | 'fail');
       } else if (msg.type === 'agentToolPermissionClear') {
         const id = msg.id as number;
         setAgentTools((prev) => {

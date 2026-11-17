@@ -538,6 +538,41 @@ describe('HookEventHandler', () => {
     expect(agent.currentHookToolId).toBeUndefined();
   });
 
+  it('a failed shell command broadcasts a fail reaction; a passed check, a pass', () => {
+    agents.set(1, createTestAgent({ id: 1 }));
+    handler.registerAgent('sess-1', 1);
+
+    handler.handleEvent('claude', {
+      hook_event_name: 'PostToolUseFailure',
+      session_id: 'sess-1',
+      tool_name: 'Bash',
+    });
+    handler.handleEvent('claude', {
+      hook_event_name: 'PostToolUse',
+      session_id: 'sess-1',
+      tool_name: 'Bash',
+      tool_input: { command: 'npm test' },
+    });
+
+    const reactions = mockWebview.messages.filter((m) => m.type === 'agentReaction');
+    expect(reactions.map((m) => [m.id, m.reaction])).toEqual([
+      [1, 'fail'],
+      [1, 'pass'],
+    ]);
+  });
+
+  it('an ordinary tool end broadcasts no reaction', () => {
+    agents.set(1, createTestAgent({ id: 1 }));
+    handler.registerAgent('sess-1', 1);
+    handler.handleEvent('claude', {
+      hook_event_name: 'PostToolUse',
+      session_id: 'sess-1',
+      tool_name: 'Bash',
+      tool_input: { command: 'ls' },
+    });
+    expect(mockWebview.messages.some((m) => m.type === 'agentReaction')).toBe(false);
+  });
+
   // ── Pending external session confirmation ────────────────────
 
   it('confirmation event creates pending external session and delivers event', () => {

@@ -6,6 +6,12 @@
  * Adding another provider? Create its own `providers/<kind>/<name>/constants.ts`.
  */
 
+/** Shell commands whose success is worth a cheer: a test, build, lint or type
+ *  check run. PostToolUse carries no exit code, only the command, so "passed"
+ *  is a guess from the command name; a miss only means a missed cheer. */
+export const CLAUDE_CHECK_COMMAND_PATTERN =
+  /\b(?:(?:npm|pnpm|yarn|bun)\s+(?:run\s+)?(?:test|build|lint|check|check-types|typecheck|compile|package|e2e)\S*|npx\s+(?:tsc|vitest|jest|eslint|playwright)|vitest|jest|pytest|mocha|tsc|eslint|ruff|mypy|cargo\s+(?:test|build|check|clippy)|go\s+(?:test|build|vet)|mvn|gradle|dotnet\s+(?:test|build)|make)\b/i;
+
 /** Output filename after esbuild compiles claude-hook.ts to CJS (source is .ts, output is .js) */
 export const CLAUDE_HOOK_SCRIPT_NAME = 'claude-hook.js';
 

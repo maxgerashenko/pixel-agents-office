@@ -91,6 +91,7 @@ components:
         - $ref: '#/components/schemas/AgentToolsClear'
         - $ref: '#/components/schemas/AgentToolPermission'
         - $ref: '#/components/schemas/AgentToolPermissionClear'
+        - $ref: '#/components/schemas/AgentReaction'
         # Sub-agent activity
         - $ref: '#/components/schemas/SubagentToolStart'
         - $ref: '#/components/schemas/SubagentToolDone'
@@ -345,6 +346,28 @@ components:
           const: agentToolPermission
         id:
           type: integer
+
+    AgentReaction:
+      description: >-
+        A command the agent ran finished with a clear outcome: a test, build or
+        lint run passed, or a shell command failed. The office plays a short
+        body animation and emote on the character. Hooks mode only (the
+        transcript fallback carries no outcome).
+      type: object
+      additionalProperties: false
+      required: [type, id, reaction]
+      properties:
+        type:
+          const: agentReaction
+        id:
+          type: integer
+        reaction:
+          $ref: '#/components/schemas/AgentReactionKind'
+
+    AgentReactionKind:
+      description: 'pass = a test, build or lint run passed; fail = a shell command failed.'
+      type: string
+      enum: [pass, fail]
 
     AgentToolPermissionClear:
       description: Permission prompt resolved.
