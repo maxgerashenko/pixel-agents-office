@@ -22,7 +22,14 @@ export type AgentEvent =
        *  sub-agent characters for teammate spawns. */
       runInBackground?: boolean;
     }
-  | { kind: 'toolEnd'; toolId: string }
+  | {
+      kind: 'toolEnd';
+      toolId: string;
+      /** How the command ended, when the provider can tell: 'pass' = a test,
+       *  build or lint run succeeded; 'fail' = a shell command failed. Absent
+       *  for everything else (the office stays quiet). */
+      outcome?: 'pass' | 'fail';
+    }
   | {
       kind: 'turnEnd';
       /** True when the turn ended because the agent went idle waiting on the
