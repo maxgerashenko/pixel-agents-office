@@ -1,5 +1,8 @@
 import {
   ARCADE_SIDE_PLAYER_OFFSET_PX,
+  BREAK_MAX_SEC,
+  BREAK_MIN_SEC,
+  BREAK_PERK_UP_SEC,
   CHARACTER_SITTING_OFFSET_PX,
   DEFAULT_MAX_CONTEXT_TOKENS,
   PET_DRAG_SPEED_FACTOR,
@@ -7,6 +10,9 @@ import {
   PLAY_MIN_SEC,
   SEAT_REST_MAX_SEC,
   SEAT_REST_MIN_SEC,
+  TIRED_SPEED_FACTOR,
+  TIRED_YAWN_PERIOD_SEC,
+  TIRED_YAWN_SEC,
   TYPE_FRAME_DURATION_SEC,
   WALK_FRAME_DURATION_SEC,
   WALK_SPEED_PX_PER_SEC,
@@ -18,6 +24,7 @@ import {
 } from '../../constants.js';
 import { findPath } from '../layout/tileMap.js';
 import type { CharacterSprites } from '../sprites/spriteData.js';
+import { tiredSprite } from '../sprites/spriteData.js';
 import { isReadingToolName } from '../toolUtils.js';
 import type {
   Character,
@@ -63,7 +70,7 @@ export interface PlaySpot {
 /** Drawn sitting: on a chair (work seat, pairing seat, rest seat), not standing. */
 export function isSeatedPose(ch: Character): boolean {
   if (ch.state !== CharacterState.TYPE) return false;
-  if (ch.playSlot || ch.playSpotId) return false; // playing stands at the table / machine
+  if (ch.playSlot || ch.playSpotId || ch.breakSpotId) return false; // standing at the table / machine
   if (ch.restSeatId) return true;
   if (ch.workSpot) return ch.workSpot.kind === 'pair';
   return ch.seatId !== null;
@@ -319,6 +326,67 @@ function goPlay(
   return false;
 }
 
+/** Rested: the slump and the Zzz go, and the work clock starts over. */
+export function recoverFromTiredness(ch: Character): void {
+  ch.activeSec = 0;
+  ch.tired = false;
+  ch.tiredIdleSec = 0;
+}
+
+/**
+ * Claim a free break spot (in front of a vending machine / coffee) and walk
+ * there. Same contract as goPlay: claims leave `freeBreakSpots`.
+ */
+function goBreak(
+  ch: Character,
+  breakSpots: Map<string, PlaySpot>,
+  freeBreakSpots: Set<string>,
+  tileMap: TileTypeVal[][],
+  blockedTiles: Set<string>,
+  avoidTiles: ReadonlySet<string>,
+): boolean {
+  const candidates = [...freeBreakSpots];
+  while (candidates.length > 0) {
+    const [id] = candidates.splice(Math.floor(Math.random() * candidates.length), 1);
+    const spot = breakSpots.get(id);
+    if (!spot) continue;
+    if (ch.tileCol === spot.col && ch.tileRow === spot.row) {
+      freeBreakSpots.delete(id);
+      ch.breakSpotId = id;
+      startBreak(ch, spot);
+      return true;
+    }
+    const path = idlePath(ch, spot.col, spot.row, tileMap, blockedTiles, avoidTiles);
+    if (path.length === 0) continue;
+    freeBreakSpots.delete(id);
+    ch.breakSpotId = id;
+    ch.path = path;
+    ch.moveProgress = 0;
+    ch.state = CharacterState.WALK;
+    ch.frame = 0;
+    ch.frameTimer = 0;
+    return true;
+  }
+  return false;
+}
+
+/** Stand at the machine, facing it, for a drink. */
+function startBreak(ch: Character, spot: PlaySpot): void {
+  ch.state = CharacterState.TYPE;
+  ch.dir = spot.dir;
+  ch.seatTimer = randomRange(BREAK_MIN_SEC, BREAK_MAX_SEC);
+  ch.wanderCount = 0;
+  ch.wanderLimit = randomInt(WANDER_MOVES_BEFORE_REST_MIN, WANDER_MOVES_BEFORE_REST_MAX);
+  ch.frame = 0;
+  ch.frameTimer = 0;
+}
+
+/** Whether a tired agent is mid-yawn (a short stretch every few seconds). */
+export function isYawning(ch: Character): boolean {
+  if (!ch.tired) return false;
+  return (ch.tiredClock ?? 0) % TIRED_YAWN_PERIOD_SEC < TIRED_YAWN_SEC;
+}
+
 /** Face the machine and work its buttons (the typing frames, standing). */
 function startPlaying(ch: Character, spot: PlaySpot): void {
   ch.state = CharacterState.TYPE;
@@ -394,8 +462,11 @@ export function updateCharacter(
   claimTable?: ClaimTable,
   playSpots: Map<string, PlaySpot> = new Map(),
   freePlaySpots: Set<string> = new Set(),
+  breakSpots: Map<string, PlaySpot> = new Map(),
+  freeBreakSpots: Set<string> = new Set(),
 ): void {
-  ch.frameTimer += dt;
+  // Tired agents move and type slower
+  ch.frameTimer += ch.tired ? dt * TIRED_SPEED_FACTOR : dt;
 
   // Work beats play too: drop the table claim the moment the agent is active
   if (ch.isActive && ch.playSlot) {
@@ -419,6 +490,13 @@ export function updateCharacter(
   // rest seat / play spot and the normal active path takes over.
   if (ch.isActive && ch.playSpotId) {
     ch.playSpotId = null;
+    if (ch.state === CharacterState.TYPE) {
+      ch.state = CharacterState.IDLE;
+      ch.seatTimer = 0;
+    }
+  }
+  if (ch.isActive && ch.breakSpotId) {
+    ch.breakSpotId = null;
     if (ch.state === CharacterState.TYPE) {
       ch.state = CharacterState.IDLE;
       ch.seatTimer = 0;
@@ -448,10 +526,26 @@ export function updateCharacter(
         }
         ch.seatTimer -= dt;
         if (ch.seatTimer <= 0) {
+          recoverFromTiredness(ch);
           ch.playSpotId = null;
           ch.seatTimer = 0;
           ch.state = CharacterState.IDLE;
           ch.frame = 0;
+          ch.frameTimer = 0;
+          ch.wanderTimer = randomRange(WANDER_PAUSE_MIN_SEC, WANDER_PAUSE_MAX_SEC);
+        }
+        break;
+      }
+      if (ch.breakSpotId) {
+        // A drink at the machine: tired for most of it, perked up for the last
+        // BREAK_PERK_UP_SEC; standing still either way
+        ch.frame = 0;
+        ch.seatTimer -= dt;
+        if (ch.seatTimer <= BREAK_PERK_UP_SEC && ch.tired) recoverFromTiredness(ch);
+        if (ch.seatTimer <= 0) {
+          ch.breakSpotId = null;
+          ch.seatTimer = 0;
+          ch.state = CharacterState.IDLE;
           ch.frameTimer = 0;
           ch.wanderTimer = randomRange(WANDER_PAUSE_MIN_SEC, WANDER_PAUSE_MAX_SEC);
         }
@@ -462,6 +556,7 @@ export function updateCharacter(
         ch.frame = 0;
         ch.seatTimer -= dt;
         if (ch.seatTimer <= 0) {
+          recoverFromTiredness(ch);
           ch.restSeatId = null;
           ch.seatTimer = 0;
           ch.state = CharacterState.IDLE;
@@ -533,6 +628,14 @@ export function updateCharacter(
         // Wandered enough — play table tennis, else play at an arcade machine or
         // rest on a bench/sofa (coin flip, the other as fallback), else back at
         // the work seat
+        // Worn out: straight to a drink (else a bench), without wandering first
+        if (
+          ch.tired &&
+          (goBreak(ch, breakSpots, freeBreakSpots, tileMap, blockedTiles, noIdleTileKeys) ||
+            goRest(ch, seats, freeRestSeats, tileMap, blockedTiles, noIdleTileKeys))
+        ) {
+          break;
+        }
         if (ch.wanderCount >= ch.wanderLimit && claimTable?.(ch)) {
           break;
         }
@@ -629,6 +732,15 @@ export function updateCharacter(
             }
             ch.playSpotId = null; // path ended elsewhere — give the claim up
           }
+          // Arrived at a claimed break spot — stand and have a drink
+          if (ch.breakSpotId) {
+            const spot = breakSpots.get(ch.breakSpotId);
+            if (spot && ch.tileCol === spot.col && ch.tileRow === spot.row) {
+              startBreak(ch, spot);
+              break;
+            }
+            ch.breakSpotId = null; // path ended elsewhere — give the claim up
+          }
           // Arrived at a claimed rest seat — sit down and rest
           if (ch.restSeatId) {
             const restSeat = seats.get(ch.restSeatId);
@@ -678,7 +790,10 @@ export function updateCharacter(
       // A dog hanging on to a leg slows the walk to a drag
       const dragged = (ch.petDragTimer ?? 0) > 0;
       if (dragged) ch.petDragTimer = Math.max(0, (ch.petDragTimer ?? 0) - dt);
-      const speed = WALK_SPEED_PX_PER_SEC * (dragged ? PET_DRAG_SPEED_FACTOR : 1);
+      const speed =
+        WALK_SPEED_PX_PER_SEC *
+        (dragged ? PET_DRAG_SPEED_FACTOR : 1) *
+        (ch.tired ? TIRED_SPEED_FACTOR : 1);
       ch.moveProgress += (speed / TILE_SIZE) * dt;
 
       const fromCenter = tileCenter(ch.tileCol, ch.tileRow);
@@ -799,7 +914,10 @@ export function getCharacterSprite(ch: Character, sprites: CharacterSprites): Sp
   // A pass/fail reaction swaps the pose of a character that stays put; one
   // that is walking keeps its stride (the emote still plays above it).
   const pose = ch.state === CharacterState.WALK ? null : reactionBodyPose(ch.reaction);
-  return pose === null ? base : reactionSprite(base, pose, sprites);
+  if (pose !== null) return reactionSprite(base, pose, sprites);
+  // Worn out: head sunk into the shoulders, mouth open in a yawn now and then.
+  // The agent stands straight again for the last seconds of a break.
+  return ch.tired ? tiredSprite(base, ch.dir, isYawning(ch)) : base;
 }
 
 function getBaseCharacterSprite(ch: Character, sprites: CharacterSprites): SpriteData {
@@ -809,6 +927,8 @@ function getBaseCharacterSprite(ch: Character, sprites: CharacterSprites): Sprit
       if (ch.playSlot) return sprites.paddle[ch.dir][ch.playing ? ch.frame % 2 : 0];
       // Arcade: standing at the machine, hands on the controls
       if (ch.playSpotId) return sprites.arcade[ch.dir][ch.frame % 2];
+      // Vending machine / coffee: standing, facing it
+      if (ch.breakSpotId) return sprites.walk[ch.dir][1];
       if (isOnPhone(ch)) return sprites.phone[ch.dir][ch.frame % 2];
       if (isReadingTool(ch.currentTool)) {
         return sprites.reading[ch.dir][ch.frame % 2];

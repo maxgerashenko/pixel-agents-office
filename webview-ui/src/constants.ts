@@ -27,6 +27,33 @@ export const REST_SEAT_TYPE_PATTERN = /SOFA|BENCH/i;
 /** Furniture an idle agent stands in front of to play (arcade machines). */
 export const PLAY_FURNITURE_TYPE_PATTERN = /ARCADE/i;
 /** How long an idle agent plays at a machine before wandering off. */
+/** Vending machines and coffee: where a tired idle agent goes for a break
+ *  (COFFEE_TABLE is a table, not a drink). */
+export const BREAK_FURNITURE_TYPE_PATTERN = /^(?:VENDING_MACHINE|COFFEE(?!_TABLE))/i;
+/** Seconds of work since the last break before an agent is worn out. */
+export const TIRED_ACTIVE_SEC = 20 * 60;
+/** Share of the context window that makes an agent tired... */
+export const TIRED_CONTEXT_FRACTION = 0.85;
+/** ...once it has also worked this long since its last break. */
+export const TIRED_CONTEXT_MIN_ACTIVE_SEC = 3 * 60;
+/** A tired agent that finds nowhere to recover is rested after this much idling. */
+export const TIRED_IDLE_RECOVER_SEC = 90;
+/** Break length at a vending machine / coffee; the agent perks up for the last
+ *  BREAK_PERK_UP_SEC of it. */
+export const BREAK_MIN_SEC = 14;
+export const BREAK_MAX_SEC = 22;
+export const BREAK_PERK_UP_SEC = 6;
+/** Tired agents walk and type at this share of normal speed. */
+export const TIRED_SPEED_FACTOR = 0.7;
+/** A yawn lasts this long, once every TIRED_YAWN_PERIOD_SEC. */
+export const TIRED_YAWN_SEC = 1.6;
+export const TIRED_YAWN_PERIOD_SEC = 7;
+/** Floating Zzz: one letter every this many seconds, each rising for TIRED_Z_RISE_SEC. */
+export const TIRED_Z_RISE_SEC = 2.4;
+export const TIRED_Z_COUNT = 3;
+/** Zzz draws above furniture and walls, not just its agent. */
+export const TIRED_Z_Z_SORT_BOOST = 10000;
+export const TIRED_Z_RISE_PX = 12;
 export const PLAY_MIN_SEC = 60.0;
 export const PLAY_MAX_SEC = 150.0;
 

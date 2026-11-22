@@ -11,11 +11,8 @@ import path from 'node:path';
 
 import { test } from 'vitest';
 
-import { canPlaceFurniture } from '../src/office/editor/editorActions.js';
-import type { OfficeLayout } from '../src/office/types.js';
-import { TileType } from '../src/office/types.js';
-
 import { loadFurnitureAssets } from '../../server/src/assetLoader.js';
+import { canPlaceFurniture } from '../src/office/editor/editorActions.js';
 import {
   buildDynamicCatalog,
   getAnimationFrames,
@@ -23,6 +20,8 @@ import {
   getOnStateType,
   getRotatedType,
 } from '../src/office/layout/furnitureCatalog.js';
+import type { OfficeLayout } from '../src/office/types.js';
+import { TileType } from '../src/office/types.js';
 
 test('vending machine rotates in 4 directions and lights up with 3 frames', async () => {
   const loaded = await loadFurnitureAssets(path.resolve(__dirname, '../public'));

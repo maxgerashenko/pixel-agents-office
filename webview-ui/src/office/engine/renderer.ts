@@ -48,6 +48,10 @@ import {
   TABLE_TENNIS_SCORE_COLOR,
   TABLE_TENNIS_SCORE_FONT_PX,
   TABLE_TENNIS_SCORE_WIN_COLOR,
+  TIRED_Z_COUNT,
+  TIRED_Z_RISE_PX,
+  TIRED_Z_RISE_SEC,
+  TIRED_Z_Z_SORT_BOOST,
   VOID_TILE_DASH_PATTERN,
   VOID_TILE_OUTLINE_COLOR,
 } from '../../constants.js';
@@ -60,7 +64,11 @@ import {
 } from '../sprites/carpetTiles.js';
 import { getPetSprites } from '../sprites/petSpriteData.js';
 import { getCachedSprite, getOutlineSprite } from '../sprites/spriteCache.js';
-import { BUBBLE_HEART_SPRITE, getCharacterSprites } from '../sprites/spriteData.js';
+import {
+  BUBBLE_HEART_SPRITE,
+  getCharacterSprites,
+  TIRED_Z_SPRITES,
+} from '../sprites/spriteData.js';
 import type {
   AreaDefinition,
   CarpetTile,
@@ -71,7 +79,7 @@ import type {
   SpriteData,
   TileType as TileTypeVal,
 } from '../types.js';
-import { TILE_SIZE, TileType } from '../types.js';
+import { CharacterState, TILE_SIZE, TileType } from '../types.js';
 import { getWallInstances, hasWallSprites, wallColorToHex } from '../wallTiles.js';
 import { characterDrawOffsetY, getCharacterSprite } from './characters.js';
 import { renderMatrixEffect } from './matrixEffect.js';
@@ -512,6 +520,31 @@ export function renderScene(
           c.save();
           c.globalAlpha = outlineAlpha;
           c.drawImage(outlineCached, olDrawX, olDrawY);
+          c.restore();
+        },
+      });
+    }
+
+    // Worn out: Zzz drifts up from the head
+    if (ch.tired && ch.state !== CharacterState.WALK) {
+      const clock = ch.tiredClock ?? 0;
+      const headX = drawX + cached.width / 2 + 3 * zoom;
+      const headY = drawY + 3 * zoom;
+      drawables.push({
+        zY: charZY + TIRED_Z_Z_SORT_BOOST,
+        draw: (c) => {
+          c.save();
+          for (let i = 0; i < TIRED_Z_COUNT; i++) {
+            const t = (clock / TIRED_Z_RISE_SEC + i / TIRED_Z_COUNT) % 1;
+            const fade = t < 0.2 ? t / 0.2 : t > 0.7 ? (1 - t) / 0.3 : 1;
+            const z = getCachedSprite(TIRED_Z_SPRITES[t < 0.45 ? 1 : 0], zoom);
+            c.globalAlpha = alpha * fade;
+            c.drawImage(
+              z,
+              Math.round(headX + (t * 4 + Math.sin(t * Math.PI * 2) * 1.5) * zoom),
+              Math.round(headY - t * TIRED_Z_RISE_PX * zoom - z.height),
+            );
+          }
           c.restore();
         },
       });
