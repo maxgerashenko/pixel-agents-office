@@ -27,6 +27,7 @@ export type ServerMessage =
   | AgentTeamInfo
   | AgentContextUsage
   | UsageUpdate
+  | TasksUpdate
   | LayoutLoaded
   | FurnitureAssetsLoaded
   | CharacterSpritesLoaded
@@ -223,6 +224,20 @@ export interface UsageWindow {
   usedPercentage: number;
   resetsAt: number;
 }
+
+export interface TasksUpdate {
+  type: 'tasksUpdate';
+  tasks: TaskInfo[];
+}
+
+export interface TaskInfo {
+  id: string;
+  title: string;
+  stage: AnonymousSchema_84;
+}
+
+export type AnonymousSchema_84 =
+  'plan' | 'coding' | 'tests' | 'review' | 'ready_to_merge' | 'merged';
 
 export interface LayoutLoaded {
   type: 'layoutLoaded';

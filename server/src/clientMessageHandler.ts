@@ -26,6 +26,7 @@ import type { ConsentEffects } from './providers/hook/consentExecutor.js';
 import { applyConsentChoice } from './providers/hook/consentExecutor.js';
 import { hooksConsentRequest } from './providers/hook/consentGate.js';
 import { claudeProvider, hookProviderById, hookProviders } from './providers/index.js';
+import type { TaskTracker } from './taskTracker.js';
 import type { PtySessionManager } from './terminal/ptySessionManager.js';
 import { launchStandaloneAgent } from './terminal/standaloneAgentLauncher.js';
 import type { UsageTracker } from './usageTracker.js';
@@ -59,6 +60,8 @@ export interface AssetCache {
 export interface ClientMessageContext {
   /** Latest usage snapshots, replayed to each client on webviewReady. Display data, so a read-only client gets it too. */
   usage?: UsageTracker;
+  /** Current task board, replayed on webviewReady (display data). */
+  tasks?: TaskTracker;
   store: AgentStateStore;
   runtime?: AgentRuntime;
   cache: AssetCache | null;
@@ -465,6 +468,8 @@ function handleWebviewReady(send: WsSend, ctx: ClientMessageContext): void {
 
   // 0b. Usage meter data (display only). Nothing is sent while no window is live.
   for (const usageMessage of ctx.usage?.currentMessages() ?? []) send(usageMessage);
+
+  if (ctx.tasks) send(ctx.tasks.currentMessage());
 
   // 1. Provider capabilities (must arrive before any agent messages)
   send({

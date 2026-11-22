@@ -189,3 +189,14 @@ export const PALETTE_COUNT = 6;
  *  clientMessageHandler to guard saveAgentSeats payloads from a remote or
  *  hand-edited source corrupting the stored values with out-of-range values. */
 export const HUE_SHIFT_MAX_DEG = 360;
+
+// ── Task tracker (planes and satellites in the sky) ──────────────────────────
+/** How often GitHub is asked for pull request state while a page is open. */
+export const TASKS_POLL_INTERVAL_MS = 60_000;
+export const TASKS_POLL_TIMEOUT_MS = 20_000;
+/** A merged task keeps flying this long before it leaves the sky. */
+export const TASKS_MERGED_LINGER_MS = 30 * 60_000;
+/** An unmerged task untouched this long is no longer on the board. */
+export const TASKS_STALE_MS = 3 * 24 * 60 * 60_000;
+export const TASKS_MAX = 8;
+export const TASKS_POLL_ENV = 'PIXEL_AGENTS_TASKS_POLL';

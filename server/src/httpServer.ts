@@ -20,6 +20,7 @@ import {
   WS_CLOSE_FORBIDDEN_ORIGIN,
   WS_CLOSE_UNAUTHORIZED,
 } from './constants.js';
+import type { TaskTracker } from './taskTracker.js';
 import type { PtySessionManager } from './terminal/ptySessionManager.js';
 import { registerTerminalRoutes } from './terminal/terminalRoutes.js';
 import type { AgentState } from './types.js';
@@ -52,6 +53,8 @@ export interface HttpServerOptions {
   assetCache?: AssetCache;
   /** Usage (rate-limit) snapshots; absent = POST /api/usage is not served. */
   usage?: UsageTracker;
+  /** Task board for the sky; absent = no tasks are drawn. */
+  tasks?: TaskTracker;
   /** Callback when a hook event is received */
   onHookEvent?: (providerId: string, event: Record<string, unknown>) => void;
   /** Invoked when setHooksEnabled is toggled via WebSocket. Standalone installs/uninstalls hooks here. */
@@ -250,6 +253,7 @@ function registerWebSocketRoute(
     // Display data, so read-only clients count: the usage strip refreshes
     // while any page is open.
     const releaseUsageViewer = options.usage?.addViewer();
+    const releaseTasksViewer = options.tasks?.addViewer();
 
     // Pipe store events to WebSocket client
     const onAgentAdded = (id: number, agent: AgentState) => {
@@ -296,6 +300,7 @@ function registerWebSocketRoute(
           privileged,
           ptyManager: options.ptyManager,
           usage: options.usage,
+          tasks: options.tasks,
         });
       } catch {
         // Malformed JSON, ignore
@@ -307,6 +312,7 @@ function registerWebSocketRoute(
       store.off('agentRemoved', onAgentRemoved);
       store.off('broadcast', onBroadcast);
       releaseUsageViewer?.();
+      releaseTasksViewer?.();
     });
   });
 }

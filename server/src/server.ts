@@ -21,6 +21,7 @@ import { createHttpServer } from './httpServer.js';
 import type { ServerConfig, StandaloneAccess } from './serverConfig.js';
 import { isServerConfig, isServerTarget, sameStandaloneAccess } from './serverConfig.js';
 import { loadOrCreateStandaloneToken } from './serverToken.js';
+import { TaskTracker } from './taskTracker.js';
 import type { PtySessionManager } from './terminal/ptySessionManager.js';
 import { UsageTracker } from './usageTracker.js';
 import { normalizeHostname } from './wsAuth.js';
@@ -55,6 +56,7 @@ export class PixelAgentsServer {
   private ownsServer = false;
   private callback: HookEventCallback | null = null;
   private usageTracker: UsageTracker | null = null;
+  private taskTracker: TaskTracker | null = null;
 
   /** The usage tracker of the server THIS instance started (null when it reused another process's server, which then owns the snapshot). */
   get usage(): UsageTracker | null {
@@ -138,6 +140,7 @@ export class PixelAgentsServer {
       : loadOrCreateStandaloneToken({ rotate: options?.rotateToken ?? false });
     const store = options?.store;
     this.usageTracker = store ? new UsageTracker(store) : null;
+    this.taskTracker = store ? new TaskTracker(store) : null;
 
     const { app, port } = await createHttpServer({
       embedded,
@@ -146,6 +149,7 @@ export class PixelAgentsServer {
       token,
       store: store!,
       usage: this.usageTracker ?? undefined,
+      tasks: this.taskTracker ?? undefined,
       runtime: options?.runtime,
       staticDir: options?.staticDir,
       assetCache: options?.assetCache,
@@ -195,6 +199,8 @@ export class PixelAgentsServer {
     this.ownsServer = false;
     this.usageTracker?.dispose();
     this.usageTracker = null;
+    this.taskTracker?.dispose();
+    this.taskTracker = null;
   }
 
   /** Returns the current server config, or null if not started. */

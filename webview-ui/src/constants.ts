@@ -1075,3 +1075,35 @@ export const REACTION_CLOUD_SHADE_COLOR = '#5b6275';
 export const REACTION_DROP_COLOR = '#6cb8ff';
 /** Opacity of an agent's activity label while its pass/fail emote plays above it. */
 export const REACTION_LABEL_OPACITY = 0.12;
+
+/** Task flyers: one plane (day) or satellite (night) per task, flying left to right. */
+export const SKY_TASK_STAGES = [
+  'plan',
+  'coding',
+  'tests',
+  'review',
+  'ready_to_merge',
+  'merged',
+] as const;
+/** Plane body colour per stage, in stage order. */
+export const SKY_TASK_COLORS = ['#9aa0b4', '#f2c14e', '#f08a3c', '#b48ae8', '#6fd36f', '#ffffff'];
+export const SKY_TASK_TRAIL_COLOR = '#ffffff';
+export const SKY_TASK_WING_COLOR = '#2c3350';
+export const SKY_TASK_PANEL_COLOR = '#4a6fb5';
+export const SKY_TASK_BLINK_ON = '#ff4a4a';
+export const SKY_TASK_BLINK_ALT = '#7dff9a';
+/** Seconds a flyer takes to cross its stage's lane (plan is slowest, merged fastest). */
+export const SKY_TASK_CROSS_SEC_SLOWEST = 36;
+export const SKY_TASK_CROSS_SEC_FASTEST = 14;
+/** Contrail length in sprite pixels. */
+export const SKY_TASK_BLINK_SEC = 0.6;
+/** Planes are drawn this many times the sky's pixel size: 1 makes them as big as the birds. */
+export const SKY_TASK_PLANE_SCALE = 1;
+/** Sprite pixels between a flyer's tail and where its trail begins (measured from the flyer's middle). */
+export const SKY_TASK_PLANE_TRAIL_GAP = 9;
+export const SKY_TASK_SAT_TRAIL_GAP = 6;
+/** Parallel orbits, one per status band, all the same arc, each shifted up by a gap (fractions of the skyline height). */
+export const SKY_TASK_TRACKS = 5;
+export const SKY_TASK_GROUND = 0.97;
+export const SKY_TASK_TRACK_GAP = 0.09;
+export const SKY_TASK_RISE = 0.42;
