@@ -70,6 +70,8 @@ import {
 import { advanceMatrixEffect, startMatrixEffect } from './matrixEffectState.js';
 import type { PetHome, PetSofaSpot, PetTreeSpot } from './petEntity.js';
 import { createPet, findPetHome, isNearPetHome, petClaims, updatePet } from './petEntity.js';
+import type { ReactionKind } from './reactions.js';
+import { advanceReaction, startReaction } from './reactions.js';
 import {
   anchorTile,
   closestFreeSeat,
@@ -1647,6 +1649,12 @@ export class OfficeState {
     }
   }
 
+  /** Play a pass/fail reaction on an agent (a no-op for an unknown id). */
+  triggerReaction(id: number, kind: ReactionKind): void {
+    const ch = this.characters.get(id);
+    if (ch && !ch.isSubagent && !ch.matrixEffect) startReaction(ch, kind);
+  }
+
   showPermissionBubble(id: number): void {
     const ch = this.characters.get(id);
     if (ch) {
@@ -2027,6 +2035,8 @@ export class OfficeState {
           freeBreakSpots,
         ),
       );
+
+      advanceReaction(ch, dt);
 
       // Tick bubble timer for waiting bubbles
       if (ch.bubbleType === 'waiting') {

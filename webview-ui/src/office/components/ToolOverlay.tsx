@@ -19,6 +19,7 @@ import {
   OVERLAY_BUBBLE_Z_INDEX,
   OVERLAY_LABEL_SELECTED_Z_INDEX,
   OVERLAY_LABEL_Z_INDEX,
+  REACTION_LABEL_OPACITY,
   TEAM_LEAD_COLOR,
   TEAM_ROLE_COLOR,
   TOOL_OVERLAY_MAX_WIDTH_PX,
@@ -301,7 +302,14 @@ export function ToolOverlay({
                 left: screenX,
                 top: screenY - (hasExtraLines ? 34 : 28),
                 pointerEvents: isSelected ? 'auto' : 'none',
-                opacity: alwaysShowOverlay && !isWorking && !isSelected ? (isSub ? 0.5 : 0.75) : 1,
+                // The label steps back while a pass/fail emote plays above the head
+                opacity: ch.reaction
+                  ? REACTION_LABEL_OPACITY
+                  : alwaysShowOverlay && !isWorking && !isSelected
+                    ? isSub
+                      ? 0.5
+                      : 0.75
+                    : 1,
                 zIndex: isSelected ? OVERLAY_LABEL_SELECTED_Z_INDEX : OVERLAY_LABEL_Z_INDEX,
               }}
               data-testid="agent-overlay"

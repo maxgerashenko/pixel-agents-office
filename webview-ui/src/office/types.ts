@@ -25,6 +25,7 @@ export type TileType = (typeof TileType)[keyof typeof TileType];
 /** Re-export ColorValue for consumers that import color types from office/types */
 export type { ColorValue } from '../components/ui/types.js';
 import type { ColorValue } from '../components/ui/types.js';
+import type { CharacterReaction } from './engine/reactions.js';
 
 export const CharacterState = {
   IDLE: 'idle',
@@ -263,6 +264,8 @@ export interface Character {
   workSpot?: WorkSpot | null;
   /** Seconds until a pairing / phone agent next looks for a better spot. */
   workSpotRecheck?: number;
+  /** Pass/fail reaction in progress (cheer or slump + emote). Transient. */
+  reaction?: CharacterReaction;
   /** Active speech bubble type, or null if none showing */
   bubbleType: 'permission' | 'waiting' | null;
   /** Only meaningful while bubbleType === 'waiting': true when the agent went

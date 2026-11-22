@@ -18,6 +18,7 @@ import { parseClaudeUsage } from './claudeUsage.js';
 import { fetchClaudeUsage } from './claudeUsagePoll.js';
 import { CONSENT_DISCLOSURE, CONSENT_INSTALL_HEADLINE } from './consentCopy.js';
 import {
+  CLAUDE_CHECK_COMMAND_PATTERN,
   CLAUDE_LARGE_CONTEXT_WINDOW,
   CLAUDE_SMALL_CONTEXT_MODEL_PATTERN,
   CLAUDE_SMALL_CONTEXT_WINDOW,
@@ -128,6 +129,22 @@ function getAllSessionRoots(): string[] {
 // currentHookToolId state. Synthetic hook-* ids are returned for PreToolUse because
 // the real tool id arrives later via JSONL polling.
 
+/** Outcome of a finished tool call, for the office's pass/fail reactions. Only
+ *  shell commands count: a failed Read or Grep is routine, a failed build is not.
+ *  A user interrupt is not a failure. */
+function toolOutcome(eventName: string, raw: Record<string, unknown>): 'pass' | 'fail' | undefined {
+  if (raw.tool_name !== 'Bash') return undefined;
+  if (eventName === 'PostToolUseFailure') return raw.is_interrupt === true ? undefined : 'fail';
+  const input = raw.tool_input;
+  const command =
+    typeof input === 'object' && input !== null
+      ? (input as Record<string, unknown>).command
+      : undefined;
+  return typeof command === 'string' && CLAUDE_CHECK_COMMAND_PATTERN.test(command)
+    ? 'pass'
+    : undefined;
+}
+
 function normalizeHookEvent(
   raw: Record<string, unknown>,
 ): { sessionId: string; event: AgentEvent } | null {
@@ -156,7 +173,10 @@ function normalizeHookEvent(
 
     case 'PostToolUse':
     case 'PostToolUseFailure':
-      return { sessionId, event: { kind: 'toolEnd', toolId: 'current' } };
+      return {
+        sessionId,
+        event: { kind: 'toolEnd', toolId: 'current', outcome: toolOutcome(eventName, raw) },
+      };
 
     case 'Stop':
       return { sessionId, event: { kind: 'turnEnd' } };
