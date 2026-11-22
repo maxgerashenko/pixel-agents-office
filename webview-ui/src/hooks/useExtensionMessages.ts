@@ -9,6 +9,7 @@ import type { ExistingAgentMeta, PendingAgent } from '../office/engine/existingA
 import { reconcileExistingAgents } from '../office/engine/existingAgents.js';
 import type { OfficeState } from '../office/engine/officeState.js';
 import { setGhostHeadlessAgents as setRendererGhostHeadlessAgents } from '../office/engine/renderer.js';
+import { setSkyTasks, type SkyTask } from '../office/engine/skyTasks.js';
 import { setFloorSprites } from '../office/floorTiles.js';
 import { buildDynamicCatalog } from '../office/layout/furnitureCatalog.js';
 import { migrateLayoutColors } from '../office/layout/layoutSerializer.js';
@@ -801,6 +802,8 @@ export function useExtensionMessages(
         if (typeof msg.extensionVersion === 'string') {
           setExtensionVersion(msg.extensionVersion as string);
         }
+      } else if (msg.type === 'tasksUpdate') {
+        if (Array.isArray(msg.tasks)) setSkyTasks(msg.tasks as SkyTask[]);
       } else if (msg.type === 'usageUpdate') {
         if (typeof msg.providerId === 'string') {
           const providerId = msg.providerId;

@@ -67,6 +67,7 @@ import {
   STARS,
   toCss,
 } from './skyCycle.js';
+import { drawDayFlyers, drawNightFlyers } from './skyTasks.js';
 
 function disc(
   ctx: CanvasRenderingContext2D,
@@ -783,6 +784,10 @@ export function drawSky(
     drawGround(ctx, w, h, px, Math.round(horizonY / px) * px, avoid, sky.starAlpha);
   }
 
+  if (sky.starAlpha > 0) {
+    drawNightFlyers(ctx, w, horizonY, px, now.getTime() / 1000, sky.starAlpha);
+  }
+
   if (sky.dayAlpha > 0) {
     const sec = now.getTime() / 1000;
     const warmth = 1;
@@ -833,5 +838,6 @@ export function drawSky(
       }
     }
     ctx.globalAlpha = 1;
+    drawDayFlyers(ctx, w, horizonY, px, sec, sky.dayAlpha);
   }
 }

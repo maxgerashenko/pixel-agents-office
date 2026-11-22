@@ -103,6 +103,8 @@ components:
         - $ref: '#/components/schemas/AgentContextUsage'
         # Provider usage (rate limits)
         - $ref: '#/components/schemas/UsageUpdate'
+        # Tasks (planes and satellites in the sky)
+        - $ref: '#/components/schemas/TasksUpdate'
         # Layout
         - $ref: '#/components/schemas/LayoutLoaded'
         # Assets
@@ -522,6 +524,37 @@ components:
         updatedAt:
           type: number
           description: When the server received this snapshot, Unix epoch milliseconds.
+
+    TasksUpdate:
+      description: |
+        The board of tasks (one per branch + pull request) the sky draws as
+        planes by day and satellites by night. The server asks GitHub through
+        the user's own `gh` while a page is open and sends the whole board when
+        it changes, and during the connect handshake. Display data, so
+        read-only clients get it too.
+      type: object
+      additionalProperties: false
+      required: [type, tasks]
+      properties:
+        type:
+          const: tasksUpdate
+        tasks:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaskInfo'
+
+    TaskInfo:
+      type: object
+      additionalProperties: false
+      required: [id, title, stage]
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        stage:
+          type: string
+          enum: [plan, coding, tests, review, ready_to_merge, merged]
 
     LayoutLoaded:
       description: |
