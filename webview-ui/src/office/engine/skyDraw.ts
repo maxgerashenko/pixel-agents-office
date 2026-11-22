@@ -10,6 +10,7 @@ import {
   SKY_BIRD_COLOR,
   SKY_BIRD_CROSS_SEC,
   SKY_BIRD_FLAP_SEC,
+  SKY_AIRFIELD_VILLAGE_GAP,
   SKY_BODY_RADIUS_SPRITE_PX,
   SKY_CLOUD_COLOR,
   SKY_CLOUD_CROSS_SEC,
@@ -67,7 +68,8 @@ import {
   STARS,
   toCss,
 } from './skyCycle.js';
-import { drawDayFlyers, drawNightFlyers } from './skyTasks.js';
+import { airfieldLayout, drawAirfield } from './skyAirfield.js';
+import { drawDayFlyers, drawGroundPlanes, drawNightFlyers } from './skyTasks.js';
 
 function disc(
   ctx: CanvasRenderingContext2D,
@@ -190,6 +192,7 @@ function drawSkyline(
   px: number,
   horizon: number,
   dusk: number,
+  fieldLeft: number,
 ): void {
   const u = px;
   const base = Math.round(horizon / px) * px;
@@ -274,7 +277,11 @@ function drawSkyline(
   cypress(at(0.61) + 11 * u, 32, 5);
 
   // village: houses, a church with a spire, windows lit after dusk
-  const vx = at(0.74);
+  // the village stands back from the airfield, with a gap
+  const vx = Math.max(
+    at(0.61) + 24 * u,
+    Math.min(at(0.74), fieldLeft - (SKY_AIRFIELD_VILLAGE_GAP + 52) * u),
+  );
   const houses: Array<[number, number, number]> = [
     [0, 8, 6],
     [9, 10, 7],
@@ -779,10 +786,15 @@ export function drawSky(
 
   // Skyline: silhouettes standing on the office's top edge, and the ground around it
   const dusk = 1;
-  drawSkyline(ctx, w, h, px, horizonY, dusk);
+  const field = airfieldLayout(w, horizonY, px);
+  drawSkyline(ctx, w, h, px, horizonY, dusk, field.left);
   if (avoid) {
     drawGround(ctx, w, h, px, Math.round(horizonY / px) * px, avoid, sky.starAlpha);
   }
+  // the airfield at the right, with the planes resting and rolling on it
+  const nowSec = now.getTime() / 1000;
+  drawAirfield(ctx, field, nowSec, sky.starAlpha);
+  drawGroundPlanes(ctx, w, horizonY, px, nowSec);
 
   if (sky.starAlpha > 0) {
     drawNightFlyers(ctx, w, horizonY, px, now.getTime() / 1000, sky.starAlpha);
