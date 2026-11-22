@@ -5,6 +5,7 @@ import {
   PET_BITE_HEAD_NECK_ROWS,
   PET_BITE_LEG_TRAIL_PX_PER_ROW,
   PET_BITE_TILT_DEG,
+  PET_BITE_VERT_HEAD_ROWS,
 } from '../../constants.js';
 import type { PetKind, SpriteData } from '../types.js';
 import { PetKind as PetKinds } from '../types.js';
@@ -28,6 +29,12 @@ export interface PetSpriteFrames {
   biteRight: [SpriteData, SpriteData, SpriteData];
   /** Same, biting a leg on its left. */
   biteLeft: [SpriteData, SpriteData, SpriteData];
+  /** Dragged toward the viewer (agent walking down): front view, head at the
+   *  bottom, flat body stretched behind it (up the screen). */
+  biteDown: [SpriteData, SpriteData, SpriteData];
+  /** Dragged away from the viewer (agent walking up): back view, head at the
+   *  top, flat body and trailing hind legs below it. */
+  biteUp: [SpriteData, SpriteData, SpriteData];
 }
 
 /** Flip a sprite horizontally (used for walkRight → walkLeft). */
@@ -160,6 +167,56 @@ function dragPose(s: SpriteData): SpriteData {
 }
 
 /**
+ * Dragged by the leg along the screen's vertical axis, belly on the floor: the
+ * front (`walkDown`) or back (`walkUp`) walk frame cut into head, trunk and
+ * legs and laid flat on the frame's bottom edge. The head keeps its size; the
+ * trunk is squashed (foreshortened) to PET_BITE_FLAT_SHARE of its height.
+ *
+ * - facing down: the head is nearest the viewer (bottom), the trunk stretches
+ *   up behind it; the legs are hidden behind the trunk.
+ * - facing up: the head is at the top (farthest), the trunk below it and the
+ *   hind legs, squashed, trailing at the bottom.
+ */
+function dragPoseVertical(s: SpriteData, facingDown: boolean): SpriteData {
+  const b = opaqueBounds(s);
+  if (!b) return s;
+  const [, top, , bottom] = b;
+  const h = s.length;
+  const w = s[0].length;
+  const legTop = top + Math.round((bottom - top + 1) * PET_BITE_BODY_SHARE);
+  const headBottom = Math.min(legTop - 1, top + PET_BITE_VERT_HEAD_ROWS - 1);
+  const out: SpriteData = Array.from({ length: h }, () => Array.from({ length: w }, () => ''));
+  const put = (y: number, row: string[], over: boolean) => {
+    if (y < 0 || y >= h) return;
+    for (let x = 0; x < w; x++) if (row[x] !== '' && (over || out[y][x] === '')) out[y][x] = row[x];
+  };
+  const floor = h - 1;
+  const bodyRows = legTop - (headBottom + 1);
+  const flatRows = Math.max(2, Math.round(bodyRows * PET_BITE_FLAT_SHARE));
+  const bodySrc = (i: number) => headBottom + 1 + Math.round((i * (bodyRows - 1)) / (flatRows - 1));
+  const headRows = headBottom - top + 1;
+
+  if (facingDown) {
+    // Head at the bottom (chin on the floor), trunk above, head drawn over it
+    for (let i = 0; i < flatRows; i++)
+      put(floor - headRows - (flatRows - 1 - i) + 1, s[bodySrc(i)], true);
+    for (let r = top; r <= headBottom; r++) put(floor - (headBottom - r), s[r], true);
+  } else {
+    // Legs at the bottom, trunk above them, head on top drawn over the trunk
+    const legRows = bottom - legTop + 1;
+    const legFlat = Math.max(1, Math.ceil(legRows / 2));
+    for (let i = 0; i < legFlat; i++) {
+      put(floor - (legFlat - 1 - i), s[legTop + Math.min(legRows - 1, i * 2)], true);
+    }
+    const bodyBottom = floor - legFlat;
+    for (let i = 0; i < flatRows; i++) put(bodyBottom - (flatRows - 1 - i), s[bodySrc(i)], true);
+    const headTop = bodyBottom - flatRows + 1 - headRows + 1;
+    for (let r = top; r <= headBottom; r++) put(headTop + (r - top), s[r], true);
+  }
+  return out;
+}
+
+/**
  * Bite frames, dragged along by a leg on the dog's right: the side walk frames
  * in the drag pose (dragPose), head dipped to the boot (tipped PET_BITE_TILT_DEG
  * clockwise), then placed in a PET_BITE_FRAME_PX square with the nose against
@@ -247,7 +304,11 @@ export function setPetTemplates(
       flipHorizontal(biteRight[1]),
       flipHorizontal(biteRight[2]),
     ];
+    const biteDown = toTriple(walkDown.map((f) => dragPoseVertical(f, true)));
+    const biteUp = toTriple(walkUp.map((f) => dragPoseVertical(f, false)));
     resolved.push({
+      biteDown,
+      biteUp,
       biteRight,
       biteLeft,
       walkDown,
