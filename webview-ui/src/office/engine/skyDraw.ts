@@ -68,7 +68,7 @@ import {
   STARS,
   toCss,
 } from './skyCycle.js';
-import { airfieldLayout, drawAirfield } from './skyAirfield.js';
+import { airfieldLayout, drawAirfield, setAirfieldSite } from './skyAirfield.js';
 import { drawDayFlyers, drawGroundPlanes, drawNightFlyers } from './skyTasks.js';
 
 function disc(
@@ -280,7 +280,7 @@ function drawSkyline(
   // the village stands back from the airfield, with a gap
   const vx = Math.max(
     at(0.61) + 24 * u,
-    Math.min(at(0.74), fieldLeft - (SKY_AIRFIELD_VILLAGE_GAP + 52) * u),
+    fieldLeft >= w ? at(0.74) : Math.min(at(0.74), fieldLeft - (SKY_AIRFIELD_VILLAGE_GAP + 52) * u),
   );
   const houses: Array<[number, number, number]> = [
     [0, 8, 6],
@@ -786,8 +786,10 @@ export function drawSky(
 
   // Skyline: silhouettes standing on the office's top edge, and the ground around it
   const dusk = 1;
+  setAirfieldSite(avoid ? { h, office: avoid } : null);
   const field = airfieldLayout(w, horizonY, px);
-  drawSkyline(ctx, w, h, px, horizonY, dusk, field.left);
+  // only a field up on the skyline pushes the village aside
+  drawSkyline(ctx, w, h, px, horizonY, dusk, field.top < horizonY ? field.left : w);
   if (avoid) {
     drawGround(ctx, w, h, px, Math.round(horizonY / px) * px, avoid, sky.starAlpha);
   }

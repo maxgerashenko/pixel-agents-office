@@ -26,6 +26,9 @@ import {
   SKY_AIRFIELD_TERMINAL_EDGE,
   SKY_AIRFIELD_TERMINAL_W,
   SKY_AIRFIELD_WIDTH,
+  SKY_AIRFIELD_WOODS_HEIGHT_MAX,
+  SKY_AIRFIELD_WOODS_HEIGHT_SHARE,
+  SKY_AIRFIELD_WOODS_TOP,
 } from '../../constants.js';
 import { mix, parseHex, toCss } from './skyCycle.js';
 
@@ -56,14 +59,45 @@ export interface Airfield {
   slotRows: number;
 }
 
+/** Where the office stands on the canvas, so the field can go in the woods beside it. */
+interface AirfieldSite {
+  h: number;
+  office: { x: number; y: number; w: number; h: number };
+}
+let site: AirfieldSite | null = null;
+export function setAirfieldSite(next: AirfieldSite | null): void {
+  site = next;
+}
+
+/**
+ * The field stands in the woods right of the office, long and thin, when the gap there is wide
+ * enough; otherwise at the right of the sky, on the skyline.
+ */
 export function airfieldLayout(w: number, horizonY: number, px: number): Airfield {
-  const hU = Math.max(
-    SKY_AIRFIELD_HEIGHT_MIN,
-    Math.min(SKY_AIRFIELD_HEIGHT_MAX, Math.floor((horizonY * SKY_AIRFIELD_HEIGHT_SHARE) / px)),
-  );
   const wU = SKY_AIRFIELD_WIDTH;
-  const left = Math.round((w - (wU + SKY_AIRFIELD_MARGIN) * px) / px) * px;
-  const top = Math.round((horizonY - hU * px) / px) * px;
+  const gap = site ? w - (site.office.x + site.office.w) : 0;
+  const inWoods = site !== null && gap >= (wU + 2 * SKY_AIRFIELD_MARGIN) * px;
+  let hU: number;
+  let left: number;
+  let top: number;
+  if (inWoods && site) {
+    hU = Math.max(
+      SKY_AIRFIELD_HEIGHT_MIN,
+      Math.min(
+        SKY_AIRFIELD_WOODS_HEIGHT_MAX,
+        Math.floor(((site.h - horizonY) * SKY_AIRFIELD_WOODS_HEIGHT_SHARE) / px),
+      ),
+    );
+    left = Math.round((w - gap / 2 - (wU * px) / 2) / px) * px;
+    top = Math.round((horizonY + SKY_AIRFIELD_WOODS_TOP * px) / px) * px;
+  } else {
+    hU = Math.max(
+      SKY_AIRFIELD_HEIGHT_MIN,
+      Math.min(SKY_AIRFIELD_HEIGHT_MAX, Math.floor((horizonY * SKY_AIRFIELD_HEIGHT_SHARE) / px)),
+    );
+    left = Math.round((w - (wU + SKY_AIRFIELD_MARGIN) * px) / px) * px;
+    top = Math.round((horizonY - hU * px) / px) * px;
+  }
   const T = SKY_AIRFIELD_TERMINAL_W;
   const L = SKY_AIRFIELD_LOT_W;
   const G = SKY_AIRFIELD_TAXI_W;
@@ -87,8 +121,8 @@ export function airfieldLayout(w: number, horizonY: number, px: number): Airfiel
     runwayTop: top + px,
     runwayBottom: top + (hU - 1) * px,
     taxiY: top + (hU - SKY_AIRFIELD_TAXI_ROW_FROM_BOTTOM) * px,
-    gapL: left + (gapLx + 1) * px,
-    gapR: left + (gapRx + 1) * px,
+    gapL: left + (gapLx + Math.floor(G / 2)) * px,
+    gapR: left + (gapRx + Math.floor(G / 2)) * px,
     lotL: left + (lotLx + Math.floor(L / 2)) * px,
     lotR: left + (lotRx + Math.floor(L / 2)) * px,
     slotTop: top + 6 * px,
@@ -200,7 +234,7 @@ export function drawAirfield(
     for (let y = 6; y < hU - 10; y += 4) {
       rect(
         night > 0.5 ? SKY_AIRFIELD_LIGHT_COLOR : pick(SKY_AIRFIELD_TERMINAL_EDGE),
-        tx + 1,
+        tx + Math.min(1, T - 1),
         y,
         1,
         1,

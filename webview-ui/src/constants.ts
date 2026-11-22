@@ -1112,10 +1112,15 @@ export const SKY_TASK_RISE = 0.42;
 // Plan tasks park in the left lot, take off from the left runway and join their
 // orbit; ready-to-merge tasks come off the orbit onto the right runway and park
 // in the right lot. Sizes are in sprite pixels unless noted.
-export const SKY_AIRFIELD_WIDTH = 64;
+export const SKY_AIRFIELD_WIDTH = 44;
 export const SKY_AIRFIELD_HEIGHT_SHARE = 0.55;
 export const SKY_AIRFIELD_HEIGHT_MIN = 30;
 export const SKY_AIRFIELD_HEIGHT_MAX = 60;
+/** In the woods right of the office (when the gap there is wide enough) the field is long:
+ *  it starts this far below the skyline and takes this share of the height below it. */
+export const SKY_AIRFIELD_WOODS_TOP = 4;
+export const SKY_AIRFIELD_WOODS_HEIGHT_SHARE = 0.68;
+export const SKY_AIRFIELD_WOODS_HEIGHT_MAX = 130;
 /** Gap between the airfield and the right edge of the sky. */
 export const SKY_AIRFIELD_MARGIN = 3;
 /** Gap between the village and the airfield. */
@@ -1124,10 +1129,10 @@ export const SKY_AIRFIELD_VILLAGE_GAP = 8;
 export const SKY_AIRFIELD_CLEARANCE = 5;
 export const SKY_AIRFIELD_LIFT_BLEND = 60;
 /** Column layout, left to right: terminal, lot, taxi gap, runway, middle, runway, taxi gap, lot, terminal. */
-export const SKY_AIRFIELD_TERMINAL_W = 3;
-export const SKY_AIRFIELD_LOT_W = 14;
-export const SKY_AIRFIELD_TAXI_W = 2;
-export const SKY_AIRFIELD_RUNWAY_W = 7;
+export const SKY_AIRFIELD_TERMINAL_W = 1;
+export const SKY_AIRFIELD_LOT_W = 10;
+export const SKY_AIRFIELD_TAXI_W = 1;
+export const SKY_AIRFIELD_RUNWAY_W = 9;
 /** The taxiway along the bottom: rows from the bottom edge. */
 export const SKY_AIRFIELD_TAXI_ROW_FROM_BOTTOM = 6;
 export const SKY_AIRFIELD_TAXI_BAND_H = 6;
