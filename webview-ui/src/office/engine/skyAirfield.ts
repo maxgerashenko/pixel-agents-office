@@ -151,6 +151,8 @@ const PLANE_TOP: string[] = [
   '.wwbww.',
   '...b...',
 ];
+/** Nose to tail, in sprite pixels. */
+export const PLANE_TOP_LENGTH = PLANE_TOP.length;
 const PLANE_MID_X = 3;
 const PLANE_MID_Y = 4;
 

@@ -15,7 +15,6 @@ import {
   SKY_AIRFIELD_CLIMB_DX,
   SKY_AIRFIELD_CLIMB_SEC,
   SKY_AIRFIELD_FADE_FROM,
-  SKY_AIRFIELD_FAR_SCALE,
   SKY_AIRFIELD_FOLD_FROM,
   SKY_AIRFIELD_GLIDE_DX,
   SKY_AIRFIELD_GLIDE_SEC,
@@ -49,6 +48,7 @@ import {
   drawGroundPlane,
   drawTurningPlane,
   type Heading,
+  PLANE_TOP_LENGTH,
   slotPoint,
 } from './skyAirfield.js';
 
@@ -423,12 +423,15 @@ type FlyerState =
       stageIndex: number;
     };
 
+/** The turning plane ends exactly as big as the sky plane, which keeps its original size. */
+const SKY_PLANE_LENGTH = 14;
+const FAR_SCALE = (SKY_PLANE_LENGTH * SKY_TASK_PLANE_SCALE) / PLANE_TOP_LENGTH;
+
 /**
- * A plane between the runway and its track, seen in perspective: the runway is close and the
- * track far away. `k` is 0 on the runway end and 1 on the track. Leaving, it flies straight
- * off the runway into the distance, getting smaller, then banks right onto the track, where
- * the far-off sky flyer takes over; `leaving` false is the same path flown backwards, the
- * plane growing as it comes in.
+ * A plane between the runway and its track. `k` is 0 on the runway end and 1 on the track.
+ * Leaving, it flies straight off the runway, banks right onto the track, folds its wings to the
+ * side view and ends exactly the size of the sky plane, which then takes over; `leaving` false
+ * is the same path flown backwards.
  */
 function turning(
   task: SkyTask,
@@ -451,7 +454,7 @@ function turning(
     y,
     angle: dx === 0 && dy === 0 ? 0 : Math.atan2(dy * way, dx * way),
     wing: 1 - smooth((k - SKY_AIRFIELD_FOLD_FROM) / (1 - SKY_AIRFIELD_FOLD_FROM)),
-    scale: 1 - (1 - SKY_AIRFIELD_FAR_SCALE) * smooth(k / SKY_AIRFIELD_FADE_FROM),
+    scale: 1 + (FAR_SCALE - 1) * smooth(k / SKY_AIRFIELD_FADE_FROM),
     fade: smooth((k - SKY_AIRFIELD_FADE_FROM) / (1 - SKY_AIRFIELD_FADE_FROM)),
     stageIndex: Math.max(0, SKY_TASK_STAGES.indexOf(task.stage)),
   };

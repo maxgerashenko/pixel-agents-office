@@ -1147,10 +1147,9 @@ export const SKY_AIRFIELD_CLIMB_SEC = 3.5;
 /** How far along the orbit (sprite pixels) the climb joins it, past the runway's end. */
 export const SKY_AIRFIELD_CLIMB_DX = 16;
 export const SKY_AIRFIELD_GLIDE_SEC = 3.5;
-/** Perspective between the runway (close) and the track (far): the plane shrinks to this
- *  scale on the way out, folds its wings to the side view from `FOLD_FROM` of the way, and
- *  the far-off sky flyer takes over from `FADE_FROM`. */
-export const SKY_AIRFIELD_FAR_SCALE = 0.5;
+/** Between the runway and the track the plane folds its wings to the side view from
+ *  `FOLD_FROM` of the way (its size grows to the sky plane's, which is unchanged), and the
+ *  sky flyer takes over from `FADE_FROM`. */
 export const SKY_AIRFIELD_FOLD_FROM = 0.45;
 export const SKY_AIRFIELD_FADE_FROM = 0.72;
 /** The glide starts this many sprite pixels before the landing runway's end. */
