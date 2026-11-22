@@ -152,9 +152,9 @@ export const VIEW_FIT_CHECK_MS = 250;
  *  the bottom panels; the spare height stays open above it. */
 export const VIEW_BOTTOM_MARGIN_CSS_PX = 25;
 
-/** View mode keeps at least this fraction of the canvas height open above the
+/** View mode keeps at least this fraction of the canvas height (a quarter: the office takes 3/4) open above the
  *  office (room for the sky); landscape gives up a zoom step for it when needed. */
-export const VIEW_OPEN_TOP_FRACTION = 0.1;
+export const VIEW_OPEN_TOP_FRACTION = 0.25;
 /** View mode's size menu: whole zoom steps it offers bigger than the fitted
  *  size (the office's width and the sky cap it sooner on a narrow screen). */
 export const VIEW_ZOOM_MAX_EXTRA_STEPS = 1;
