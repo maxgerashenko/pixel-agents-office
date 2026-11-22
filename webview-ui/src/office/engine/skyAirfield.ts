@@ -139,18 +139,28 @@ export function slotPoint(f: Airfield, lot: AirfieldLot, slot: number): [number,
   return [x, y];
 }
 
-/** A plane seen from above, nose up, 9 x 9: `b` body (the stage colour), `w` wing. */
+/** A plane seen from above, nose up, long and thin (7 x 17): `b` body (the stage colour), `w` wing. */
 const PLANE_TOP: string[] = [
-  '....b....',
-  '...bbb...',
-  '..wbbbw..',
-  'wwwbbbwww',
-  '.wwbbbww.',
-  '...bbb...',
-  '..wbbbw..',
-  '...bbb...',
-  '....b....',
+  '...b...',
+  '...b...',
+  '...b...',
+  '...b...',
+  '...b...',
+  '..wbw..',
+  '.wwbww.',
+  'wwwbwww',
+  'ww.b.ww',
+  '...b...',
+  '...b...',
+  '...b...',
+  '...b...',
+  '...b...',
+  '..wbw..',
+  '.wwbww.',
+  '...b...',
 ];
+const PLANE_MID_X = 3;
+const PLANE_MID_Y = 8;
 
 /** Draws a top-down plane centred on (cx, cy), nose toward `heading`. */
 export function drawGroundPlane(
@@ -165,8 +175,8 @@ export function drawGroundPlane(
     for (let rx = 0; rx < row.length; rx++) {
       const c = row[rx];
       if (c === '.') continue;
-      const x = rx - 4;
-      const y = ry - 4;
+      const x = rx - PLANE_MID_X;
+      const y = ry - PLANE_MID_Y;
       const [dx, dy] =
         heading === 'up'
           ? [x, y]
@@ -179,6 +189,34 @@ export function drawGroundPlane(
       ctx.fillRect(cx + dx * px, cy + dy * px, px, px);
     }
   });
+}
+
+/**
+ * The plane between its two views: the top-down sprite turned to `angle` (radians, 0 = nose
+ * right, -PI/2 = nose up) with its wings folded to `wing` (1 = seen from above, 0 = seen side on).
+ */
+export function drawTurningPlane(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  px: number,
+  angle: number,
+  wing: number,
+  bodyColor: string,
+): void {
+  ctx.save();
+  ctx.translate(cx + px / 2, cy + px / 2);
+  ctx.rotate(angle + Math.PI / 2);
+  PLANE_TOP.forEach((row, ry) => {
+    for (let rx = 0; rx < row.length; rx++) {
+      const c = row[rx];
+      if (c === '.') continue;
+      const x = (rx - PLANE_MID_X) * (c === 'b' ? 1 : wing);
+      ctx.fillStyle = c === 'b' ? bodyColor : SKY_AIRFIELD_PLANE_WING_COLOR;
+      ctx.fillRect((x - 0.5) * px, (ry - PLANE_MID_Y - 0.5) * px, px, px);
+    }
+  });
+  ctx.restore();
 }
 
 /** The field itself: grass, lots, terminals, taxiways and the two runways. `night` is 0..1. */

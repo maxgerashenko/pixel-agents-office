@@ -1,6 +1,8 @@
 /** Canvas painting for the day/night sky (state lives in skyCycle.ts, which stays DOM-free). */
 
 import {
+  SKY_AIRFIELD_TREE_STEP,
+  SKY_AIRFIELD_VILLAGE_GAP,
   SKY_BAND_SPRITE_PX,
   SKY_BIG_STAR_BODY_COLOR,
   SKY_BIG_STAR_DASH_COLORS,
@@ -10,7 +12,6 @@ import {
   SKY_BIRD_COLOR,
   SKY_BIRD_CROSS_SEC,
   SKY_BIRD_FLAP_SEC,
-  SKY_AIRFIELD_VILLAGE_GAP,
   SKY_BODY_RADIUS_SPRITE_PX,
   SKY_CLOUD_COLOR,
   SKY_CLOUD_CROSS_SEC,
@@ -57,6 +58,7 @@ import {
   SKY_WINDOW_COLOR,
   SKY_WIPE_BAND_SPRITE_PX,
 } from '../../constants.js';
+import { airfieldLayout, drawAirfield, setAirfieldSite } from './skyAirfield.js';
 import {
   BIRDS,
   CLOUDS,
@@ -68,7 +70,6 @@ import {
   STARS,
   toCss,
 } from './skyCycle.js';
-import { airfieldLayout, drawAirfield, setAirfieldSite } from './skyAirfield.js';
 import { drawDayFlyers, drawGroundPlanes, drawNightFlyers } from './skyTasks.js';
 
 function disc(
@@ -309,6 +310,90 @@ function drawSkyline(
   }
 }
 
+/** One tree of the woods, standing on `foot`: a pine or a cypress. */
+function drawWoodTree(
+  ctx: CanvasRenderingContext2D,
+  u: number,
+  cx: number,
+  foot: number,
+  size: number,
+  phase: number,
+  pine: boolean,
+  c: { dark: string; lit: string; trunk: string },
+): void {
+  if (pine) {
+    // pine: a spike over ragged tiers that widen downwards, on a short trunk
+    const tiers = 3 + Math.floor(size / 3);
+    const tierH = 5;
+    const top = foot - (tiers * tierH + 5) * u;
+    ctx.fillStyle = c.dark;
+    ctx.fillRect(cx, top, u, 3 * u);
+    for (let t = 0; t < tiers; t++) {
+      const wide = 3 + t * 1.6;
+      for (let i = 0; i < tierH + 1; i++) {
+        const half = Math.max(1, Math.round(wide * (0.3 + (0.7 * i) / tierH)));
+        const y = top + (2 + t * tierH + i) * u;
+        ctx.fillStyle = c.dark;
+        ctx.fillRect(cx - half * u, y, (2 * half + 1) * u, u);
+        if (i === tierH) {
+          ctx.fillStyle = c.lit;
+          ctx.fillRect(cx - half * u, y, u, u);
+        }
+      }
+    }
+    ctx.fillStyle = c.trunk;
+    ctx.fillRect(cx, foot - 3 * u, u, 3 * u);
+  } else {
+    // cypress: a tall dark flame, swaying to a point
+    const hgt = size * 4;
+    const wide = Math.max(3, size * 0.55);
+    for (let i = 0; i < hgt; i++) {
+      const s = i / hgt;
+      const body = s < 0.65 ? Math.pow(s / 0.65, 0.75) : 1 - 0.3 * ((s - 0.65) / 0.35);
+      const half = Math.max(0, Math.round(wide * body + Math.sin(i * 0.8 + phase) * 0.7));
+      const sway = Math.round(Math.sin(i * 0.22 + phase) * (1 - s) * 2);
+      const y = foot - (hgt - i) * u;
+      ctx.fillStyle = c.dark;
+      ctx.fillRect(cx + (sway - half) * u, y, (2 * half + 1) * u, u);
+      if (i % 6 === 3 && half > 1) {
+        ctx.fillStyle = c.lit;
+        ctx.fillRect(cx + (sway - half) * u, y, u, u);
+      }
+    }
+  }
+}
+
+/** Trees standing round the airfield in the woods, so it sits in a clearing. */
+function drawAirfieldTrees(
+  ctx: CanvasRenderingContext2D,
+  f: { left: number; top: number; width: number; height: number; px: number },
+  night: number,
+): void {
+  const u = f.px;
+  const blend = (day: string, dark: string): string =>
+    toCss(mix(parseHex(day), parseHex(dark), night));
+  const c = {
+    dark: blend(SKY_TREE_DAY_COLORS.dark, SKY_TREE_NIGHT_COLORS.dark),
+    lit: blend(SKY_TREE_DAY_COLORS.lit, SKY_TREE_NIGHT_COLORS.lit),
+    trunk: blend(SKY_TREE_DAY_COLORS.trunk, SKY_TREE_NIGHT_COLORS.trunk),
+  };
+  let seed = 4242;
+  const r = (): number => {
+    seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+    return seed / 0x7fffffff;
+  };
+  const step = SKY_AIRFIELD_TREE_STEP * u;
+  // down both sides, each tree's crown leaning over the edge
+  for (let y = f.top + step * 0.6; y <= f.top + f.height + step * 0.5; y += step) {
+    for (const side of [-1, 1]) {
+      const edge = side < 0 ? f.left : f.left + f.width;
+      const cx = Math.round((edge + side * (3 + r() * 3) * u) / u) * u;
+      const foot = Math.round((y + (r() - 0.5) * step * 0.4) / u) * u;
+      drawWoodTree(ctx, u, cx, foot, 3 + Math.floor(r() * 3), r() * Math.PI * 2, r() < 0.6, c);
+    }
+  }
+}
+
 /**
  * The land round the office: banded ground, round trees and pines filling the gaps
  * to its left and right, and plain ground below it.
@@ -360,46 +445,7 @@ function drawGround(
         const foot = Math.round((y + (tr() - 0.5) * spacing * 0.3) / px) * px;
         const size = 7 + Math.floor(tr() * 4) + Math.min(3, row);
         const phase = tr() * Math.PI * 2;
-        if (tr() < 0.62) {
-          // pine: a spike over ragged tiers that widen downwards, on a short trunk
-          const tiers = 3 + Math.floor(size / 3);
-          const tierH = 5;
-          const top = foot - (tiers * tierH + 5) * u;
-          ctx.fillStyle = dark;
-          ctx.fillRect(cx, top, u, 3 * u);
-          for (let t = 0; t < tiers; t++) {
-            const wide = 3 + t * 1.6;
-            for (let i = 0; i < tierH + 1; i++) {
-              const half = Math.max(1, Math.round(wide * (0.3 + (0.7 * i) / tierH)));
-              const y = top + (2 + t * tierH + i) * u;
-              ctx.fillStyle = dark;
-              ctx.fillRect(cx - half * u, y, (2 * half + 1) * u, u);
-              if (i === tierH) {
-                ctx.fillStyle = lit;
-                ctx.fillRect(cx - half * u, y, u, u);
-              }
-            }
-          }
-          ctx.fillStyle = trunk;
-          ctx.fillRect(cx, foot - 3 * u, u, 3 * u);
-        } else {
-          // cypress: a tall dark flame, swaying to a point
-          const hgt = size * 4;
-          const wide = Math.max(3, size * 0.55);
-          for (let i = 0; i < hgt; i++) {
-            const s = i / hgt;
-            const body = s < 0.65 ? Math.pow(s / 0.65, 0.75) : 1 - 0.3 * ((s - 0.65) / 0.35);
-            const half = Math.max(0, Math.round(wide * body + Math.sin(i * 0.8 + phase) * 0.7));
-            const sway = Math.round(Math.sin(i * 0.22 + phase) * (1 - s) * 2);
-            const y = foot - (hgt - i) * u;
-            ctx.fillStyle = dark;
-            ctx.fillRect(cx + (sway - half) * u, y, (2 * half + 1) * u, u);
-            if (i % 6 === 3 && half > 1) {
-              ctx.fillStyle = lit;
-              ctx.fillRect(cx + (sway - half) * u, y, u, u);
-            }
-          }
-        }
+        drawWoodTree(ctx, u, cx, foot, size, phase, tr() < 0.62, { dark, lit, trunk });
       }
     }
   }
@@ -796,6 +842,7 @@ export function drawSky(
   // the airfield at the right, with the planes resting and rolling on it
   const nowSec = now.getTime() / 1000;
   drawAirfield(ctx, field, nowSec, sky.starAlpha);
+  if (field.top >= horizonY) drawAirfieldTrees(ctx, field, sky.starAlpha);
   drawGroundPlanes(ctx, w, horizonY, px, nowSec);
 
   if (sky.starAlpha > 0) {

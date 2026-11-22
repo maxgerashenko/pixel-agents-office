@@ -75,7 +75,7 @@ test('a cruising task that becomes ready lands on the right runway and parks rig
   at(0);
   assert.equal(skyMotionKind('a'), 'cruise');
   setSkyTasks([{ id: 'a', title: 'a', stage: 'ready_to_merge' }]);
-  let sec = 0;
+  let sec: number;
   let landed = false;
   for (sec = 0; sec < 120 && !landed; sec += 0.25) {
     at(sec);

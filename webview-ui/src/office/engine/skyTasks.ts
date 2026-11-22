@@ -41,9 +41,10 @@ import {
 } from '../../constants.js';
 import {
   type Airfield,
-  type AirfieldLot,
   airfieldLayout,
+  type AirfieldLot,
   drawGroundPlane,
+  drawTurningPlane,
   type Heading,
   slotPoint,
 } from './skyAirfield.js';
@@ -405,46 +406,29 @@ function syncSkyMotion(sec: number, g: Geo): void {
 
 type FlyerState =
   | { mode: 'ground'; x: number; y: number; heading: Heading; stageIndex: number }
-  | { mode: 'air'; pose: FlyerPose; trail: boolean };
+  | { mode: 'air'; pose: FlyerPose; trail: boolean }
+  | { mode: 'turn'; x: number; y: number; angle: number; wing: number; stageIndex: number };
 
-function airPose(
+/**
+ * A plane easing from `from` to `to` over progress s (0..1) while it turns between its two
+ * views: `up` true climbs out (nose up and seen from above, to nose right and side on), false
+ * comes in to land (the reverse, ending nose down the runway).
+ */
+function turning(
   task: SkyTask,
-  at: (k: number) => [number, number],
-  x: number,
-  y: number,
-  slope: number,
-): FlyerPose {
-  return {
-    x,
-    y,
-    alpha: 1,
-    stageIndex: Math.max(0, SKY_TASK_STAGES.indexOf(task.stage)),
-    slope: Math.max(-0.5, Math.min(0.5, slope)),
-    at,
-  };
-}
-
-/** A flyer easing from `from` to `to` over progress s (0..1), with its tilt. */
-function glide(
-  task: SkyTask,
-  at: (k: number) => [number, number],
   from: [number, number],
   to: [number, number],
   s: number,
-  px: number,
+  up: boolean,
 ): FlyerState {
-  const pos = (k: number): [number, number] => [
-    from[0] + (to[0] - from[0]) * smooth(k),
-    from[1] + (to[1] - from[1]) * smooth(k),
-  ];
-  const [x, y] = pos(s);
-  const [x1, y1] = pos(s + 0.05);
-  const [x0, y0] = pos(s - 0.05);
-  const slope = x1 === x0 ? 0 : -(y1 - y0) / (x1 - x0);
+  const k = smooth(s);
   return {
-    mode: 'air',
-    pose: airPose(task, at, Math.round(x / px) * px, Math.round(y / px) * px, slope),
-    trail: false,
+    mode: 'turn',
+    x: from[0] + (to[0] - from[0]) * k,
+    y: from[1] + (to[1] - from[1]) * k,
+    angle: up ? (-Math.PI / 2) * (1 - k) : (Math.PI / 2) * k,
+    wing: up ? 1 - k : k,
+    stageIndex: Math.max(0, SKY_TASK_STAGES.indexOf(task.stage)),
   };
 }
 
@@ -469,24 +453,22 @@ function stateOf(task: SkyTask, m: Motion, sec: number, g: Geo): FlyerState {
       const r = followLegs(start, legs, dt, g.px);
       return { mode: 'ground', ...r, stageIndex };
     }
-    return glide(
+    return turning(
       task,
-      at,
       [f.runwayL, f.runwayTop],
       at(uJoin(g)),
       (dt - groundSec) / SKY_AIRFIELD_CLIMB_SEC,
-      g.px,
+      true,
     );
   }
   // landing
   if (dt < SKY_AIRFIELD_GLIDE_SEC) {
-    return glide(
+    return turning(
       task,
-      at,
       at(uGlide(g)),
       [f.runwayR, f.runwayTop],
       dt / SKY_AIRFIELD_GLIDE_SEC,
-      g.px,
+      false,
     );
   }
   const { start, legs } = landingLegs(f, m.slot);
@@ -521,7 +503,8 @@ export function skyStateForTest(
   const hit = statesNow(sec, w, horizonY, px).find(([t]) => t.id === id);
   if (!hit) return null;
   const s = hit[1];
-  return s.mode === 'ground' ? s : { mode: 'air', x: s.pose.x, y: s.pose.y };
+  if (s.mode === 'air') return { mode: 'air', x: s.pose.x, y: s.pose.y };
+  return { mode: s.mode === 'turn' ? 'air' : 'ground', x: s.x, y: s.y };
 }
 
 /** The planes that are on the airfield (parked, taxiing, rolling): drawn above the field, whatever the hour. */
@@ -533,8 +516,10 @@ export function drawGroundPlanes(
   sec: number,
 ): void {
   for (const [, s] of statesNow(sec, w, horizonY, px)) {
-    if (s.mode !== 'ground') continue;
-    drawGroundPlane(ctx, s.x, s.y, px, s.heading, SKY_TASK_COLORS[s.stageIndex]);
+    if (s.mode === 'air') continue;
+    const colour = SKY_TASK_COLORS[s.stageIndex];
+    if (s.mode === 'ground') drawGroundPlane(ctx, s.x, s.y, px, s.heading, colour);
+    else if (s.mode === 'turn') drawTurningPlane(ctx, s.x, s.y, px, s.angle, s.wing, colour);
   }
 }
 

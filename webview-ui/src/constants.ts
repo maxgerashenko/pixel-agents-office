@@ -1118,8 +1118,10 @@ export const SKY_AIRFIELD_HEIGHT_MIN = 30;
 export const SKY_AIRFIELD_HEIGHT_MAX = 60;
 /** In the woods right of the office (when the gap there is wide enough) the field is long:
  *  it starts this far below the skyline and takes this share of the height below it. */
-export const SKY_AIRFIELD_WOODS_TOP = 4;
-export const SKY_AIRFIELD_WOODS_HEIGHT_SHARE = 0.68;
+export const SKY_AIRFIELD_WOODS_TOP = 18;
+export const SKY_AIRFIELD_WOODS_HEIGHT_SHARE = 0.58;
+/** Sprite pixels between the trees standing down each side of the field. */
+export const SKY_AIRFIELD_TREE_STEP = 20;
 export const SKY_AIRFIELD_WOODS_HEIGHT_MAX = 130;
 /** Gap between the airfield and the right edge of the sky. */
 export const SKY_AIRFIELD_MARGIN = 3;
