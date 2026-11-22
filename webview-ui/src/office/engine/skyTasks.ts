@@ -23,6 +23,15 @@ import {
   SKY_AIRFIELD_LIFT_BLEND,
   SKY_AIRFIELD_TAKEOFF_ROLL_SEC,
   SKY_AIRFIELD_TAKEOFF_TAXI_SEC,
+  SKY_ROCKET_DESCENT_SEC,
+  SKY_ROCKET_FADE_FROM,
+  SKY_ROCKET_FAR_SCALE,
+  SKY_ROCKET_HOLD_SEC,
+  SKY_ROCKET_NIGHT_MIN,
+  SKY_ROCKET_PITCH_FROM,
+  SKY_ROCKET_RISE_SEC,
+  SKY_ROCKET_SETTLE_SEC,
+  SKY_ROCKET_TRACK_DX,
   SKY_TASK_BLINK_ALT,
   SKY_TASK_BLINK_ON,
   SKY_TASK_BLINK_SEC,
@@ -46,6 +55,7 @@ import {
   airfieldLayout,
   type AirfieldLot,
   drawGroundPlane,
+  drawRocket,
   drawTurningPlane,
   type Heading,
   PLANE_TOP_LENGTH,
@@ -201,9 +211,9 @@ function slopeAt(at: (k: number) => [number, number], u: number): number {
 
 type Motion =
   | { kind: 'parked'; lot: AirfieldLot; slot: number }
-  | { kind: 'takeoff'; t0: number; slot: number; orbit: number }
-  | { kind: 'cruise'; orbit: number; phase: number; landAt?: number }
-  | { kind: 'landing'; t0: number; slot: number; orbit: number };
+  | { kind: 'takeoff'; t0: number; slot: number; orbit: number; rocket: boolean }
+  | { kind: 'cruise'; orbit: number; phase: number; landAt?: number; landRocket?: boolean }
+  | { kind: 'landing'; t0: number; slot: number; orbit: number; rocket: boolean };
 
 export type SkyMotionKind = Motion['kind'];
 
@@ -301,16 +311,39 @@ function landingLegs(f: Airfield, slot: number): { start: [number, number]; legs
   };
 }
 
-const takeoffSec = (g: Geo, slot: number): number =>
-  sum(takeoffLegs(g.field, slot).legs) + SKY_AIRFIELD_CLIMB_SEC;
-const landingSec = (g: Geo, slot: number): number =>
-  SKY_AIRFIELD_GLIDE_SEC + sum(landingLegs(g.field, slot).legs);
+/** 0..1: how dark the sky is now. A flight that starts at night is a rocket's. */
+let night = 0;
+export function setSkyNight(next: number): void {
+  night = next;
+}
+const isNight = (): boolean => night >= SKY_ROCKET_NIGHT_MIN;
+
+const takeoffSec = (g: Geo, m: { slot: number; rocket: boolean }): number =>
+  m.rocket
+    ? SKY_ROCKET_HOLD_SEC + SKY_ROCKET_RISE_SEC
+    : sum(takeoffLegs(g.field, m.slot).legs) + SKY_AIRFIELD_CLIMB_SEC;
+const landingSec = (g: Geo, m: { slot: number; rocket: boolean }): number =>
+  m.rocket
+    ? SKY_ROCKET_DESCENT_SEC + SKY_ROCKET_SETTLE_SEC
+    : SKY_AIRFIELD_GLIDE_SEC + sum(landingLegs(g.field, m.slot).legs);
 
 /** Progress along the orbit where the climb ends / the glide starts. */
-const uJoin = (g: Geo): number =>
-  mod1((g.field.runwayL + SKY_AIRFIELD_CLIMB_DX * g.px + 8 * g.px) / g.span);
-const uGlide = (g: Geo): number =>
-  mod1((g.field.runwayR - SKY_AIRFIELD_GLIDE_DX * g.px + 8 * g.px) / g.span);
+const uJoin = (g: Geo, rocket: boolean): number =>
+  mod1(
+    ((rocket
+      ? g.field.lotL + SKY_ROCKET_TRACK_DX * g.px
+      : g.field.runwayL + SKY_AIRFIELD_CLIMB_DX * g.px) +
+      8 * g.px) /
+      g.span,
+  );
+const uGlide = (g: Geo, rocket: boolean): number =>
+  mod1(
+    ((rocket
+      ? g.field.lotR - SKY_ROCKET_TRACK_DX * g.px
+      : g.field.runwayR - SKY_AIRFIELD_GLIDE_DX * g.px) +
+      8 * g.px) /
+      g.span,
+  );
 
 function freeSlot(lot: AirfieldLot, except?: string): number {
   const used = new Set<number>();
@@ -350,12 +383,16 @@ function syncSkyMotion(sec: number, g: Geo): void {
       );
       return;
     }
-    if (m.kind === 'takeoff' && sec >= m.t0 + takeoffSec(g, m.slot)) {
-      const end = m.t0 + takeoffSec(g, m.slot);
-      m = { kind: 'cruise', orbit: m.orbit, phase: mod1(uJoin(g) - end / orbitCrossSec(m.orbit)) };
+    if (m.kind === 'takeoff' && sec >= m.t0 + takeoffSec(g, m)) {
+      const end = m.t0 + takeoffSec(g, m);
+      m = {
+        kind: 'cruise',
+        orbit: m.orbit,
+        phase: mod1(uJoin(g, m.rocket) - end / orbitCrossSec(m.orbit)),
+      };
       motions.set(t.id, m);
     }
-    if (m.kind === 'landing' && sec >= m.t0 + landingSec(g, m.slot) && ready) {
+    if (m.kind === 'landing' && sec >= m.t0 + landingSec(g, m) && ready) {
       m = { kind: 'parked', lot: 'ready', slot: m.slot };
       motions.set(t.id, m);
     }
@@ -369,15 +406,20 @@ function syncSkyMotion(sec: number, g: Geo): void {
       } else if (m.kind === 'cruise') {
         const cross = orbitCrossSec(m.orbit);
         const u = mod1(sec / cross + m.phase);
-        const landAt = m.landAt ?? sec + mod1(uGlide(g) - u) * cross;
+        const rocket = m.landAt !== undefined ? !!m.landRocket : isNight();
+        const landAt = m.landAt ?? sec + mod1(uGlide(g, rocket) - u) * cross;
         if (sec >= landAt) {
           motions.set(t.id, {
             kind: 'landing',
             t0: landAt,
             slot: freeSlot('ready', t.id),
             orbit: m.orbit,
+            rocket,
           });
-        } else m.landAt = landAt;
+        } else {
+          m.landAt = landAt;
+          m.landRocket = rocket;
+        }
       }
       // a take-off in progress climbs out first and lands on its first lap
       return;
@@ -390,6 +432,7 @@ function syncSkyMotion(sec: number, g: Geo): void {
         t0: sec,
         slot: m.lot === 'plan' ? m.slot : freeSlot('plan', t.id),
         orbit,
+        rocket: isNight(),
       });
     } else if (m.kind === 'takeoff') {
       m.orbit = orbit;
@@ -397,6 +440,7 @@ function syncSkyMotion(sec: number, g: Geo): void {
       motions.set(t.id, { kind: 'cruise', orbit, phase: places[i].phase });
     } else {
       m.landAt = undefined;
+      m.landRocket = undefined;
       if (m.orbit !== orbit) {
         // change orbit without jumping along it
         const u = sec / orbitCrossSec(m.orbit) + m.phase;
@@ -408,6 +452,21 @@ function syncSkyMotion(sec: number, g: Geo): void {
 }
 
 type FlyerState =
+  | {
+      mode: 'rocket';
+      x: number;
+      y: number;
+      /** Radians, -PI/2 = nose up. */
+      angle: number;
+      scale: number;
+      flame: number;
+      dust: number;
+      /** Standing on its pad (not yet lifted off / already down). */
+      onPad: boolean;
+      /** 0..1: how far the sky satellite has taken over. */
+      fade: number;
+      stageIndex: number;
+    }
   | { mode: 'ground'; x: number; y: number; heading: Heading; stageIndex: number }
   | { mode: 'air'; pose: FlyerPose; trail: boolean }
   | {
@@ -460,10 +519,42 @@ function turning(
   };
 }
 
+/**
+ * A rocket between its pad and its track. `k` is 0 on the pad and 1 on the track. The field is
+ * close to the viewer and the track far away, so it climbs with perspective: the farther it is,
+ * the smaller it is and the slower it seems to rise. It leaves the pad upright, pitches over
+ * towards the track's direction late in the flight and ends as small as the satellite that takes over.
+ */
+function rocketAt(
+  task: SkyTask,
+  pad: [number, number],
+  track: [number, number],
+  k: number,
+  burn: { flame: number; dust: number; onPad: boolean },
+): FlyerState {
+  const far = SKY_ROCKET_FAR_SCALE;
+  const depth = 1 + (1 / far - 1) * k;
+  const near = (1 / depth - far) / (1 - far);
+  const side = k * k;
+  const pitch = smooth((k - SKY_ROCKET_PITCH_FROM) / (1 - SKY_ROCKET_PITCH_FROM));
+  return {
+    mode: 'rocket',
+    x: pad[0] + (track[0] - pad[0]) * side,
+    y: track[1] + (pad[1] - track[1]) * near,
+    angle: (-Math.PI / 2) * (1 - pitch),
+    scale: 1 / depth,
+    flame: burn.flame * (1 - smooth((k - 0.8) / 0.2)),
+    dust: burn.dust,
+    onPad: burn.onPad,
+    fade: smooth((k - SKY_ROCKET_FADE_FROM) / (1 - SKY_ROCKET_FADE_FROM)),
+    stageIndex: Math.max(0, SKY_TASK_STAGES.indexOf(task.stage)),
+  };
+}
+
 /** The sky flyer to draw for a state: the cruising one, or the one fading in as a plane turns. */
 function skyPose(s: FlyerState, at: (k: number) => [number, number], px: number): FlyerPose | null {
   if (s.mode === 'air') return s.pose;
-  if (s.mode !== 'turn' || s.fade <= 0) return null;
+  if ((s.mode !== 'turn' && s.mode !== 'rocket') || s.fade <= 0) return null;
   return {
     x: Math.round(s.x / px) * px,
     y: Math.round(s.y / px) * px,
@@ -488,6 +579,38 @@ function stateOf(task: SkyTask, m: Motion, sec: number, g: Geo): FlyerState {
   }
   const at = orbitArc(m.orbit, g.w, g.horizonY, g.px, f);
   const dt = sec - m.t0;
+  if (m.kind === 'takeoff' && m.rocket) {
+    const pad = slotPoint(f, 'plan', m.slot);
+    const track = at(uJoin(g, true));
+    if (dt < SKY_ROCKET_HOLD_SEC) {
+      const burn = smooth(dt / SKY_ROCKET_HOLD_SEC);
+      return rocketAt(task, pad, track, 0, { flame: burn, dust: burn, onPad: true });
+    }
+    const s = (dt - SKY_ROCKET_HOLD_SEC) / SKY_ROCKET_RISE_SEC;
+    return rocketAt(task, pad, track, EASE.in(Math.min(1, s)), {
+      flame: 1,
+      dust: 1 - smooth(s * 4),
+      onPad: false,
+    });
+  }
+  if (m.kind === 'landing' && m.rocket) {
+    const pad = slotPoint(f, 'ready', m.slot);
+    const track = at(uGlide(g, true));
+    if (dt < SKY_ROCKET_DESCENT_SEC) {
+      const s = dt / SKY_ROCKET_DESCENT_SEC;
+      return rocketAt(task, pad, track, 1 - EASE.out(s), {
+        flame: 1,
+        dust: smooth((s - 0.8) / 0.2),
+        onPad: false,
+      });
+    }
+    const settle = Math.min(1, (dt - SKY_ROCKET_DESCENT_SEC) / SKY_ROCKET_SETTLE_SEC);
+    return rocketAt(task, pad, track, 0, {
+      flame: 1 - smooth(settle * 2),
+      dust: 1 - smooth(settle),
+      onPad: true,
+    });
+  }
   if (m.kind === 'takeoff') {
     const { start, legs } = takeoffLegs(f, m.slot);
     const groundSec = sum(legs);
@@ -498,7 +621,7 @@ function stateOf(task: SkyTask, m: Motion, sec: number, g: Geo): FlyerState {
     return turning(
       task,
       [f.runwayL, f.runwayTop],
-      at(uJoin(g)),
+      at(uJoin(g, false)),
       smooth((dt - groundSec) / SKY_AIRFIELD_CLIMB_SEC),
       true,
     );
@@ -508,7 +631,7 @@ function stateOf(task: SkyTask, m: Motion, sec: number, g: Geo): FlyerState {
     return turning(
       task,
       [f.runwayR, f.runwayTop],
-      at(uGlide(g)),
+      at(uGlide(g, false)),
       1 - smooth(dt / SKY_AIRFIELD_GLIDE_SEC),
       false,
     );
@@ -541,11 +664,12 @@ export function skyStateForTest(
   w: number,
   horizonY: number,
   px: number,
-): { mode: 'ground' | 'air'; x: number; y: number } | null {
+): { mode: 'ground' | 'air' | 'rocket'; x: number; y: number } | null {
   const hit = statesNow(sec, w, horizonY, px).find(([t]) => t.id === id);
   if (!hit) return null;
   const s = hit[1];
   if (s.mode === 'air') return { mode: 'air', x: s.pose.x, y: s.pose.y };
+  if (s.mode === 'rocket') return { mode: s.onPad ? 'ground' : 'rocket', x: s.x, y: s.y };
   return { mode: s.mode === 'turn' ? 'air' : 'ground', x: s.x, y: s.y };
 }
 
@@ -561,7 +685,11 @@ export function drawGroundPlanes(
     if (s.mode === 'air') continue;
     const colour = SKY_TASK_COLORS[s.stageIndex];
     if (s.mode === 'ground') drawGroundPlane(ctx, s.x, s.y, px, s.heading, colour);
-    else if (s.mode === 'turn') {
+    else if (s.mode === 'rocket') {
+      ctx.globalAlpha = 1 - s.fade;
+      drawRocket(ctx, s.x, s.y, px, s.angle, s.scale, colour, s.flame, s.dust, sec);
+      ctx.globalAlpha = 1;
+    } else if (s.mode === 'turn') {
       ctx.globalAlpha = 1 - s.fade;
       drawTurningPlane(ctx, s.x, s.y, px, s.angle, s.wing, colour, s.scale);
       ctx.globalAlpha = 1;

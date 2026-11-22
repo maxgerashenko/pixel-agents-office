@@ -70,7 +70,7 @@ import {
   STARS,
   toCss,
 } from './skyCycle.js';
-import { drawDayFlyers, drawGroundPlanes, drawNightFlyers } from './skyTasks.js';
+import { drawDayFlyers, drawGroundPlanes, drawNightFlyers, setSkyNight } from './skyTasks.js';
 
 function disc(
   ctx: CanvasRenderingContext2D,
@@ -843,6 +843,7 @@ export function drawSky(
   const nowSec = now.getTime() / 1000;
   drawAirfield(ctx, field, nowSec, sky.starAlpha);
   if (field.top >= horizonY) drawAirfieldTrees(ctx, field, sky.starAlpha);
+  setSkyNight(sky.starAlpha);
   drawGroundPlanes(ctx, w, horizonY, px, nowSec);
 
   if (sky.starAlpha > 0) {
