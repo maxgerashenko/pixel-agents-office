@@ -14,6 +14,9 @@ import {
   SKY_AIRFIELD_CLEARANCE,
   SKY_AIRFIELD_CLIMB_DX,
   SKY_AIRFIELD_CLIMB_SEC,
+  SKY_AIRFIELD_FADE_FROM,
+  SKY_AIRFIELD_FAR_SCALE,
+  SKY_AIRFIELD_FOLD_FROM,
   SKY_AIRFIELD_GLIDE_DX,
   SKY_AIRFIELD_GLIDE_SEC,
   SKY_AIRFIELD_LANDING_ROLL_SEC,
@@ -407,28 +410,64 @@ function syncSkyMotion(sec: number, g: Geo): void {
 type FlyerState =
   | { mode: 'ground'; x: number; y: number; heading: Heading; stageIndex: number }
   | { mode: 'air'; pose: FlyerPose; trail: boolean }
-  | { mode: 'turn'; x: number; y: number; angle: number; wing: number; stageIndex: number };
+  | {
+      mode: 'turn';
+      x: number;
+      y: number;
+      angle: number;
+      wing: number;
+      /** 1 on the runway, smaller the farther away. */
+      scale: number;
+      /** 0..1: how far the far-off sky flyer has taken over from the turning plane. */
+      fade: number;
+      stageIndex: number;
+    };
 
 /**
- * A plane easing from `from` to `to` over progress s (0..1) while it turns between its two
- * views: `up` true climbs out (nose up and seen from above, to nose right and side on), false
- * comes in to land (the reverse, ending nose down the runway).
+ * A plane between the runway and its track, seen in perspective: the runway is close and the
+ * track far away. `k` is 0 on the runway end and 1 on the track. Leaving, it flies straight
+ * off the runway into the distance, getting smaller, then banks right onto the track, where
+ * the far-off sky flyer takes over; `leaving` false is the same path flown backwards, the
+ * plane growing as it comes in.
  */
 function turning(
   task: SkyTask,
-  from: [number, number],
-  to: [number, number],
-  s: number,
-  up: boolean,
+  runway: [number, number],
+  track: [number, number],
+  k: number,
+  leaving: boolean,
 ): FlyerState {
-  const k = smooth(s);
+  // a curve that leaves the runway along its line and meets the track level
+  const c: [number, number] = [runway[0], track[1]];
+  const q = 1 - k;
+  const x = q * q * runway[0] + 2 * q * k * c[0] + k * k * track[0];
+  const y = q * q * runway[1] + 2 * q * k * c[1] + k * k * track[1];
+  const dx = 2 * q * (c[0] - runway[0]) + 2 * k * (track[0] - c[0]);
+  const dy = 2 * q * (c[1] - runway[1]) + 2 * k * (track[1] - c[1]);
+  const way = leaving ? 1 : -1;
   return {
     mode: 'turn',
-    x: from[0] + (to[0] - from[0]) * k,
-    y: from[1] + (to[1] - from[1]) * k,
-    angle: up ? (-Math.PI / 2) * (1 - k) : (Math.PI / 2) * k,
-    wing: up ? 1 - k : k,
+    x,
+    y,
+    angle: dx === 0 && dy === 0 ? 0 : Math.atan2(dy * way, dx * way),
+    wing: 1 - smooth((k - SKY_AIRFIELD_FOLD_FROM) / (1 - SKY_AIRFIELD_FOLD_FROM)),
+    scale: 1 - (1 - SKY_AIRFIELD_FAR_SCALE) * smooth(k / SKY_AIRFIELD_FADE_FROM),
+    fade: smooth((k - SKY_AIRFIELD_FADE_FROM) / (1 - SKY_AIRFIELD_FADE_FROM)),
     stageIndex: Math.max(0, SKY_TASK_STAGES.indexOf(task.stage)),
+  };
+}
+
+/** The sky flyer to draw for a state: the cruising one, or the one fading in as a plane turns. */
+function skyPose(s: FlyerState, at: (k: number) => [number, number], px: number): FlyerPose | null {
+  if (s.mode === 'air') return s.pose;
+  if (s.mode !== 'turn' || s.fade <= 0) return null;
+  return {
+    x: Math.round(s.x / px) * px,
+    y: Math.round(s.y / px) * px,
+    alpha: s.fade,
+    stageIndex: s.stageIndex,
+    slope: 0,
+    at,
   };
 }
 
@@ -457,7 +496,7 @@ function stateOf(task: SkyTask, m: Motion, sec: number, g: Geo): FlyerState {
       task,
       [f.runwayL, f.runwayTop],
       at(uJoin(g)),
-      (dt - groundSec) / SKY_AIRFIELD_CLIMB_SEC,
+      smooth((dt - groundSec) / SKY_AIRFIELD_CLIMB_SEC),
       true,
     );
   }
@@ -465,9 +504,9 @@ function stateOf(task: SkyTask, m: Motion, sec: number, g: Geo): FlyerState {
   if (dt < SKY_AIRFIELD_GLIDE_SEC) {
     return turning(
       task,
-      at(uGlide(g)),
       [f.runwayR, f.runwayTop],
-      dt / SKY_AIRFIELD_GLIDE_SEC,
+      at(uGlide(g)),
+      1 - smooth(dt / SKY_AIRFIELD_GLIDE_SEC),
       false,
     );
   }
@@ -519,9 +558,15 @@ export function drawGroundPlanes(
     if (s.mode === 'air') continue;
     const colour = SKY_TASK_COLORS[s.stageIndex];
     if (s.mode === 'ground') drawGroundPlane(ctx, s.x, s.y, px, s.heading, colour);
-    else if (s.mode === 'turn') drawTurningPlane(ctx, s.x, s.y, px, s.angle, s.wing, colour);
+    else if (s.mode === 'turn') {
+      ctx.globalAlpha = 1 - s.fade;
+      drawTurningPlane(ctx, s.x, s.y, px, s.angle, s.wing, colour, s.scale);
+      ctx.globalAlpha = 1;
+    }
   }
 }
+
+const NO_ARC = (): [number, number] => [0, 0];
 
 /** Plane facing right as [dx, dy, width] rows in sprite pixels; tilted by shearing rows along the slope. */
 const PLANE: [number, number, number, boolean][] = [
@@ -569,10 +614,11 @@ export function drawDayFlyers(
   alpha: number,
 ): void {
   for (const [, s] of statesNow(sec, w, horizonY, px)) {
-    if (s.mode !== 'air') continue;
-    const p = s.pose;
+    const p = skyPose(s, NO_ARC, px);
+    if (!p) continue;
     const u0 = (p.x + 8 * px) / (w + 16 * px);
-    if (s.trail) trail(ctx, p, u0, px, alpha * p.alpha, false, SKY_TASK_PLANE_TRAIL_GAP);
+    if (s.mode === 'air' && s.trail)
+      trail(ctx, p, u0, px, alpha * p.alpha, false, SKY_TASK_PLANE_TRAIL_GAP);
     ctx.globalAlpha = alpha * p.alpha;
     const u = px * SKY_TASK_PLANE_SCALE;
     for (const [dx, dy, ww, wing] of PLANE) {
@@ -595,11 +641,11 @@ export function drawNightFlyers(
   alpha: number,
 ): void {
   for (const [task, s] of statesNow(sec, w, horizonY, px)) {
-    if (s.mode !== 'air') continue;
-    const p = s.pose;
+    const p = skyPose(s, NO_ARC, px);
+    if (!p) continue;
     const a = alpha * p.alpha;
     const u0 = (p.x + 8 * px) / (w + 16 * px);
-    if (s.trail) trail(ctx, p, u0, px, a, true, SKY_TASK_SAT_TRAIL_GAP);
+    if (s.mode === 'air' && s.trail) trail(ctx, p, u0, px, a, true, SKY_TASK_SAT_TRAIL_GAP);
     ctx.globalAlpha = a;
     // two solar panels either side of a body tinted by stage
     ctx.fillStyle = SKY_TASK_PANEL_COLOR;

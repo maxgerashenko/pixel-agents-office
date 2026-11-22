@@ -185,7 +185,8 @@ export function drawGroundPlane(
 
 /**
  * The plane between its two views: the top-down sprite turned to `angle` (radians, 0 = nose
- * right, -PI/2 = nose up) with its wings folded to `wing` (1 = seen from above, 0 = seen side on).
+ * right, -PI/2 = nose up) with its wings folded to `wing` (1 = seen from above, 0 = seen side on), drawn at `scale`
+ * (1 on the runway, smaller far away).
  */
 export function drawTurningPlane(
   ctx: CanvasRenderingContext2D,
@@ -195,10 +196,12 @@ export function drawTurningPlane(
   angle: number,
   wing: number,
   bodyColor: string,
+  scale = 1,
 ): void {
   ctx.save();
   ctx.translate(cx + px / 2, cy + px / 2);
   ctx.rotate(angle + Math.PI / 2);
+  ctx.scale(scale, scale);
   PLANE_TOP.forEach((row, ry) => {
     for (let rx = 0; rx < row.length; rx++) {
       const c = row[rx];
