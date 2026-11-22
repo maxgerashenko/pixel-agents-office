@@ -32,6 +32,7 @@ import {
   HEADLESS_CHARACTER_ALPHA,
   HOVERED_OUTLINE_ALPHA,
   OUTLINE_Z_SORT_OFFSET,
+  REACTION_EMOTE_Z_OFFSET,
   ROTATE_BUTTON_BG,
   SEAT_AVAILABLE_COLOR,
   SEAT_BUSY_COLOR,
@@ -75,6 +76,8 @@ import { getWallInstances, hasWallSprites, wallColorToHex } from '../wallTiles.j
 import { characterDrawOffsetY, getCharacterSprite } from './characters.js';
 import { renderMatrixEffect } from './matrixEffect.js';
 import { getPetSpriteData } from './petEntity.js';
+import { drawReactionEmote } from './reactionEmote.js';
+import { headTopRowOf, reactionHopPx, reactionShakePx } from './reactions.js';
 import { drawSky } from './skyDraw.js';
 import type { TableBall, TableScore } from './tableTennis.js';
 
@@ -456,8 +459,8 @@ export function renderScene(
     // Sitting offset: shift character down when seated so they visually sit in the chair
     const sittingOffset = characterDrawOffsetY(ch);
     // Anchor at bottom-center of character — round to integer device pixels
-    const drawX = Math.round(offsetX + ch.x * zoom - cached.width / 2);
-    const drawY = Math.round(offsetY + (ch.y + sittingOffset) * zoom - cached.height);
+    let drawX = Math.round(offsetX + ch.x * zoom - cached.width / 2);
+    let drawY = Math.round(offsetY + (ch.y + sittingOffset) * zoom - cached.height);
 
     // Sort characters by bottom of their tile (not center) so they render
     // in front of same-row furniture (e.g. chairs) but behind furniture
@@ -467,6 +470,14 @@ export function renderScene(
     // Headless agents (adopted, no terminal to focus) render translucent while
     // the "Display headless as ghosts" setting is on.
     const alpha = ch.isHeadless && ghostHeadlessAgents ? HEADLESS_CHARACTER_ALPHA : 1;
+
+    // Pass/fail reaction: hop (cheer) or shake (slump) the body, then an emote above it
+    const hop = reactionHopPx(ch.reaction);
+    const shake = reactionShakePx(ch.reaction);
+    if (hop || shake) {
+      drawX += shake * zoom;
+      drawY -= hop * zoom;
+    }
 
     // Matrix spawn/despawn effect — skip outline, use per-pixel rendering
     if (ch.matrixEffect) {
@@ -503,6 +514,17 @@ export function renderScene(
           c.drawImage(outlineCached, olDrawX, olDrawY);
           c.restore();
         },
+      });
+    }
+
+    const reaction = ch.reaction;
+    if (reaction) {
+      // The emote hangs over the head (the sprite's first drawn row), above everything near it
+      const headY = drawY + headTopRowOf(spriteData) * zoom;
+      const centreX = Math.round(offsetX + ch.x * zoom);
+      drawables.push({
+        zY: charZY + REACTION_EMOTE_Z_OFFSET,
+        draw: (c) => drawReactionEmote(c, reaction, ch.id, centreX, headY, zoom),
       });
     }
 

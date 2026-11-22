@@ -95,6 +95,65 @@ describe('claudeProvider', () => {
       expect(result?.event.kind).toBe('toolEnd');
     });
 
+    describe('toolEnd outcome (pass/fail reactions)', () => {
+      const outcome = (raw: Record<string, unknown>) => {
+        const result = claudeProvider.normalizeHookEvent({ session_id: 'sess-1', ...raw });
+        return result?.event.kind === 'toolEnd' ? result.event.outcome : 'not-toolEnd';
+      };
+
+      it('a failed Bash command is a fail', () => {
+        expect(
+          outcome({ hook_event_name: 'PostToolUseFailure', tool_name: 'Bash', tool_input: {} }),
+        ).toBe('fail');
+      });
+
+      it('an interrupted Bash command and a failed non-shell tool are neither', () => {
+        expect(
+          outcome({
+            hook_event_name: 'PostToolUseFailure',
+            tool_name: 'Bash',
+            is_interrupt: true,
+          }),
+        ).toBeUndefined();
+        expect(
+          outcome({ hook_event_name: 'PostToolUseFailure', tool_name: 'Read', tool_input: {} }),
+        ).toBeUndefined();
+      });
+
+      it.each([
+        'npm test',
+        'npm run build && echo done',
+        'cd server && npx vitest run',
+        'pytest -q tests/',
+        'cargo build --release',
+        'npx tsc --noEmit',
+        'npm run check-types',
+      ])('a succeeded check command passes: %s', (command) => {
+        expect(
+          outcome({
+            hook_event_name: 'PostToolUse',
+            tool_name: 'Bash',
+            tool_input: { command },
+          }),
+        ).toBe('pass');
+      });
+
+      it.each(['ls -la', 'git status', 'cat package.json', 'echo build'])(
+        'an ordinary succeeded command stays quiet: %s',
+        (command) => {
+          expect(
+            outcome({ hook_event_name: 'PostToolUse', tool_name: 'Bash', tool_input: { command } }),
+          ).toBeUndefined();
+        },
+      );
+
+      it('a succeeded non-shell tool stays quiet', () => {
+        expect(
+          outcome({ hook_event_name: 'PostToolUse', tool_name: 'Edit', tool_input: {} }),
+        ).toBeUndefined();
+      });
+    });
+
     it('normalizes Stop to turnEnd without awaitingInput (Done, not waiting)', () => {
       const result = claudeProvider.normalizeHookEvent({
         hook_event_name: 'Stop',
