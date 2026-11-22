@@ -139,28 +139,20 @@ export function slotPoint(f: Airfield, lot: AirfieldLot, slot: number): [number,
   return [x, y];
 }
 
-/** A plane seen from above, nose up, long and thin (7 x 17): `b` body (the stage colour), `w` wing. */
+/** A plane seen from above, nose up, short and thin (7 x 9): `b` body (the stage colour), `w` wing. */
 const PLANE_TOP: string[] = [
   '...b...',
   '...b...',
-  '...b...',
-  '...b...',
-  '...b...',
   '..wbw..',
-  '.wwbww.',
   'wwwbwww',
   'ww.b.ww',
   '...b...',
   '...b...',
-  '...b...',
-  '...b...',
-  '...b...',
-  '..wbw..',
   '.wwbww.',
   '...b...',
 ];
 const PLANE_MID_X = 3;
-const PLANE_MID_Y = 8;
+const PLANE_MID_Y = 4;
 
 /** Draws a top-down plane centred on (cx, cy), nose toward `heading`. */
 export function drawGroundPlane(
