@@ -152,9 +152,9 @@ export const VIEW_FIT_CHECK_MS = 250;
  *  the bottom panels; the spare height stays open above it. */
 export const VIEW_BOTTOM_MARGIN_CSS_PX = 25;
 
-/** View mode keeps at least this fraction of the canvas height open above the
+/** View mode keeps at least this fraction of the canvas height (a quarter: the office takes 3/4) open above the
  *  office (room for the sky); landscape gives up a zoom step for it when needed. */
-export const VIEW_OPEN_TOP_FRACTION = 0.1;
+export const VIEW_OPEN_TOP_FRACTION = 0.25;
 /** View mode's size menu: whole zoom steps it offers bigger than the fitted
  *  size (the office's width and the sky cap it sooner on a narrow screen). */
 export const VIEW_ZOOM_MAX_EXTRA_STEPS = 1;
@@ -1102,8 +1102,72 @@ export const SKY_TASK_PLANE_SCALE = 1;
 /** Sprite pixels between a flyer's tail and where its trail begins (measured from the flyer's middle). */
 export const SKY_TASK_PLANE_TRAIL_GAP = 9;
 export const SKY_TASK_SAT_TRAIL_GAP = 6;
-/** Parallel orbits, one per status band, all the same arc, each shifted up by a gap (fractions of the skyline height). */
-export const SKY_TASK_TRACKS = 5;
+/** Parallel orbits, one per flying status (coding, tests, review), all the same arc, each shifted up by a gap (fractions of the skyline height). Plan and ready-to-merge tasks sit on the airfield instead. */
+export const SKY_TASK_TRACKS = 3;
 export const SKY_TASK_GROUND = 0.97;
 export const SKY_TASK_TRACK_GAP = 0.09;
 export const SKY_TASK_RISE = 0.42;
+
+// ── Airfield at the right of the sky ────────────────────────────────────────
+// Plan tasks park in the left lot, take off from the left runway and join their
+// orbit; ready-to-merge tasks come off the orbit onto the right runway and park
+// in the right lot. Sizes are in sprite pixels unless noted.
+export const SKY_AIRFIELD_WIDTH = 44;
+export const SKY_AIRFIELD_HEIGHT_SHARE = 0.55;
+export const SKY_AIRFIELD_HEIGHT_MIN = 30;
+export const SKY_AIRFIELD_HEIGHT_MAX = 60;
+/** In the woods right of the office (when the gap there is wide enough) the field is long:
+ *  it starts this far below the skyline and takes this share of the height below it. */
+export const SKY_AIRFIELD_WOODS_TOP = 18;
+export const SKY_AIRFIELD_WOODS_HEIGHT_SHARE = 0.58;
+/** Sprite pixels between the trees standing down each side of the field. */
+export const SKY_AIRFIELD_TREE_STEP = 20;
+export const SKY_AIRFIELD_WOODS_HEIGHT_MAX = 130;
+/** Gap between the airfield and the right edge of the sky. */
+export const SKY_AIRFIELD_MARGIN = 3;
+/** Gap between the village and the airfield. */
+export const SKY_AIRFIELD_VILLAGE_GAP = 8;
+/** Orbits lift to this far above the airfield, easing in over `SKY_AIRFIELD_LIFT_BLEND` before it. */
+export const SKY_AIRFIELD_CLEARANCE = 5;
+export const SKY_AIRFIELD_LIFT_BLEND = 60;
+/** Column layout, left to right: terminal, lot, taxi gap, runway, middle, runway, taxi gap, lot, terminal. */
+export const SKY_AIRFIELD_TERMINAL_W = 1;
+export const SKY_AIRFIELD_LOT_W = 10;
+export const SKY_AIRFIELD_TAXI_W = 1;
+export const SKY_AIRFIELD_RUNWAY_W = 9;
+/** The taxiway along the bottom: rows from the bottom edge. */
+export const SKY_AIRFIELD_TAXI_ROW_FROM_BOTTOM = 6;
+export const SKY_AIRFIELD_TAXI_BAND_H = 6;
+/** Parked planes are this far apart (a plane is 9 long). */
+export const SKY_AIRFIELD_SLOT_PITCH = 11;
+/** Seconds each leg of a take-off and a landing takes. */
+export const SKY_AIRFIELD_TAKEOFF_TAXI_SEC = [0.5, 0.7, 0.6] as const;
+export const SKY_AIRFIELD_TAKEOFF_ROLL_SEC = 1.8;
+export const SKY_AIRFIELD_CLIMB_SEC = 3.5;
+/** How far along the orbit (sprite pixels) the climb joins it, past the runway's end. */
+export const SKY_AIRFIELD_CLIMB_DX = 16;
+export const SKY_AIRFIELD_GLIDE_SEC = 3.5;
+/** Between the runway and the track the plane folds its wings to the side view from
+ *  `FOLD_FROM` of the way (its size grows to the sky plane's, which is unchanged), and the
+ *  sky flyer takes over from `FADE_FROM`. */
+export const SKY_AIRFIELD_FOLD_FROM = 0.45;
+export const SKY_AIRFIELD_FADE_FROM = 0.72;
+/** The glide starts this many sprite pixels before the landing runway's end. */
+export const SKY_AIRFIELD_GLIDE_DX = 20;
+export const SKY_AIRFIELD_LANDING_ROLL_SEC = 1.6;
+export const SKY_AIRFIELD_LANDING_TAXI_SEC = [0.6, 0.7, 0.5] as const;
+/** Day / night colours. */
+export const SKY_AIRFIELD_GRASS_COLORS = [
+  { day: '#5a9a3f', night: '#1a3a2a' },
+  { day: '#4c8636', night: '#142e22' },
+] as const;
+export const SKY_AIRFIELD_TARMAC = { day: '#7a7d86', night: '#2a2d3c' } as const;
+export const SKY_AIRFIELD_RUNWAY = { day: '#3b3d46', night: '#14151e' } as const;
+export const SKY_AIRFIELD_MARKING = { day: '#f2f2f2', night: '#9aa0c0' } as const;
+export const SKY_AIRFIELD_TAXI_LINE = { day: '#e8c02e', night: '#8a7420' } as const;
+export const SKY_AIRFIELD_TERMINAL = { day: '#c9ccd6', night: '#4a4f68' } as const;
+export const SKY_AIRFIELD_TERMINAL_EDGE = { day: '#8a8ea0', night: '#2c3048' } as const;
+export const SKY_AIRFIELD_LIGHT_COLOR = '#ffd84a';
+export const SKY_AIRFIELD_PLANE_WING_COLOR = '#e8eaf2';
+/** Runway lights chase along the edges at this rate (steps per second). */
+export const SKY_AIRFIELD_LIGHT_RATE = 3;
