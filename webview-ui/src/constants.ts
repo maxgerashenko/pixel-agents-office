@@ -888,6 +888,9 @@ export const SKY_VORTICES = [
 /** Canvas device pixels per brushstroke, in sprite-pixel area (lower = denser). */
 export const SKY_STROKE_AREA_SPRITE_PX = 30;
 export const SKY_STROKE_MAX = 14000;
+/** A brushstroke is one sprite pixel thick (hairline); it advances one pixel a step, so it stays unbroken. */
+export const SKY_STROKE_THICKNESS_SPRITE_PX = 1;
+export const SKY_STROKE_STEP_SPRITE_PX = 1;
 /** The big stars, placed by hand: x across the canvas, y as a share of the sky above the
  *  skyline, size in sprite pixels (the star's outer rings reach 2 x size + 2). */
 export const SKY_BIG_STARS = [

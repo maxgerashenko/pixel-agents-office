@@ -47,6 +47,8 @@ import {
   SKY_STAR_FADE,
   SKY_STROKE_AREA_SPRITE_PX,
   SKY_STROKE_MAX,
+  SKY_STROKE_STEP_SPRITE_PX,
+  SKY_STROKE_THICKNESS_SPRITE_PX,
   SKY_SUN_CORE_COLOR,
   SKY_SWIRL_COLORS,
   SKY_TREE_DAY_COLORS,
@@ -466,7 +468,7 @@ let nightCache: {
  * streamline, so over `SKY_NIGHT_FRAMES` frames the paint flows round the
  * spirals and the loop closes seamlessly.
  */
-function paintNightFrame(
+export function paintNightFrame(
   pw: number,
   ph: number,
   frame: number,
@@ -503,13 +505,19 @@ function paintNightFrame(
     c.fillStyle = inBand
       ? SKY_NIGHT_BAND_COLOR
       : SKY_SWIRL_COLORS[Math.min(last, Math.floor(rnd() * 3.4 + near * 2.4))];
-    const len = 8 + Math.floor(rnd() * 8);
+    const len = Math.round((8 + Math.floor(rnd() * 8)) * (2 / SKY_STROKE_STEP_SPRITE_PX));
     // the stroke is a `len`-step window on a loop twice as long, starting at
     // its own phase and advancing one loop per animation cycle
     const loop = len * 2;
     const head = (Math.floor(rnd() * loop) + Math.floor((frame * loop) / SKY_NIGHT_FRAMES)) % loop;
     for (let s = 0; s < loop; s++) {
-      if ((s - head + loop) % loop < len) c.fillRect(Math.round(x), Math.round(y), 3, 2);
+      if ((s - head + loop) % loop < len)
+        c.fillRect(
+          Math.round(x),
+          Math.round(y),
+          SKY_STROKE_THICKNESS_SPRITE_PX,
+          SKY_STROKE_THICKNESS_SPRITE_PX,
+        );
       // flow: gentle rolling waves, bent into a spiral near each vortex
       const wave = Math.sin(((x + ox) / sw) * 7 + ((y + oy) / sh) * 4) * 0.5;
       let fx = Math.cos(wave) * 0.5;
@@ -524,8 +532,8 @@ function paintNightFrame(
         fy += pull * (dx / dist - (0.3 * dy) / dist);
       }
       const mag = Math.hypot(fx, fy) || 1;
-      x += (fx / mag) * 2;
-      y += (fy / mag) * 2;
+      x += (fx / mag) * SKY_STROKE_STEP_SPRITE_PX;
+      y += (fy / mag) * SKY_STROKE_STEP_SPRITE_PX;
     }
   }
   return canvas;
