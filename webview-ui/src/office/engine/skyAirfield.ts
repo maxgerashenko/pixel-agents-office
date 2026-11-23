@@ -104,7 +104,7 @@ export function airfieldLayout(w: number, horizonY: number, px: number): Airfiel
     SKY_AIRFIELD_STRIP_LOT_W +
     SKY_AIRFIELD_TERMINAL_W;
   const strip = !inWoods && site !== null && gap >= (stripW + SKY_AIRFIELD_STRIP_GAP + 1) * px;
-  if (strip && site) return stripLayout(w, horizonY, px, stripW, site);
+  if (strip && site) return stripLayout(horizonY, px, stripW, site);
   let hU: number;
   let left: number;
   let top: number;
@@ -160,13 +160,7 @@ export function airfieldLayout(w: number, horizonY: number, px: number): Airfiel
 }
 
 /** The strip: a long thin field in the woods, a tiny gap right of the office, its parking on the right. */
-function stripLayout(
-  w: number,
-  horizonY: number,
-  px: number,
-  wU: number,
-  s: AirfieldSite,
-): Airfield {
+function stripLayout(horizonY: number, px: number, wU: number, s: AirfieldSite): Airfield {
   const hU = Math.max(
     SKY_AIRFIELD_HEIGHT_MIN,
     Math.min(
