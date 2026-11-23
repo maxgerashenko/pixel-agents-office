@@ -62,10 +62,12 @@ import {
   type AirfieldLot,
   drawGroundCrew,
   drawGroundPlane,
+  drawPrNumber,
   drawRocket,
   drawTurningPlane,
   type Heading,
   PLANE_TOP_LENGTH,
+  prNumberOfTaskId,
   slotPoint,
 } from './skyAirfield.js';
 
@@ -790,9 +792,11 @@ export function drawGroundPlanes(
       }
       ctx.globalAlpha = 1;
     } else if (s.mode === 'ground') drawGroundPlane(ctx, s.x, s.y, px, s.heading, colour);
-    if (s.mode === 'ground' && s.parked)
+    if (s.mode === 'ground' && s.parked) {
       drawGroundCrew(ctx, s.x, s.y, px, SKY_TASK_STAGES[s.stageIndex], sec, s.seed);
-    else if (s.mode === 'rocket') {
+      const num = prNumberOfTaskId(task.id);
+      if (num !== null) drawPrNumber(ctx, s.x, s.y, px, num);
+    } else if (s.mode === 'rocket') {
       ctx.globalAlpha = 1 - s.fade;
       drawRocket(ctx, s.x, s.y, px, s.angle, s.scale, colour, s.flame, s.dust, sec);
       ctx.globalAlpha = 1;

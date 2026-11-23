@@ -36,6 +36,11 @@ import {
   SKY_BEACON_GLOW_ALPHA,
   SKY_BEACON_RIM_COLOR,
   SKY_BEACON_SWEEP_RATE,
+  SKY_PR_NUMBER_COLOR,
+  SKY_PR_NUMBER_MIN_FONT_PX,
+  SKY_PR_NUMBER_OFFSET_UNITS,
+  SKY_PR_NUMBER_SHADOW_COLOR,
+  SKY_PR_NUMBER_SIZE_UNITS,
   SKY_ROCKET_BODY_COLOR,
   SKY_ROCKET_DARK_COLOR,
   SKY_ROCKET_DUST_COLOR,
@@ -466,6 +471,31 @@ export function drawGroundCrew(
       ctx.fillRect(x + (4 + rx) * px, y + (2 + ry - (c === 't' ? 1 : 0)) * px, px, px);
     }
   });
+}
+
+/** The pull request number a task id ends in (`branch#12` -> 12), or null. */
+export function prNumberOfTaskId(id: string): number | null {
+  const m = /#(\d+)$/.exec(id);
+  return m ? Number(m[1]) : null;
+}
+
+/** "#N" centred under a parked plane or rocket at (x, y). */
+export function drawPrNumber(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  px: number,
+  num: number,
+): void {
+  const size = Math.max(SKY_PR_NUMBER_MIN_FONT_PX, SKY_PR_NUMBER_SIZE_UNITS * px);
+  ctx.font = `${size}px 'FS Pixel Sans'`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+  const ty = y + SKY_PR_NUMBER_OFFSET_UNITS * px;
+  ctx.fillStyle = SKY_PR_NUMBER_SHADOW_COLOR;
+  ctx.fillText(`#${num}`, x + 1, ty + 1);
+  ctx.fillStyle = SKY_PR_NUMBER_COLOR;
+  ctx.fillText(`#${num}`, x, ty);
 }
 
 /** The field itself: grass, lots, terminals, taxiways and the two runways. `night` is 0..1. */
