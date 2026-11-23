@@ -555,6 +555,9 @@ components:
         stage:
           type: string
           enum: [plan, coding, tests, review, ready_to_merge, merged]
+        url:
+          type: string
+          description: The pull request's web page; a tap on a ready-to-merge task's plane opens it.
 
     LayoutLoaded:
       description: |

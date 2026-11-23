@@ -43,3 +43,15 @@ describe('tasksFromPrs', () => {
     expect(tasks.map((t) => t.id)).toEqual(['b#1', 'b#4']);
   });
 });
+
+describe('tasksFromPrs url', () => {
+  it('carries the pull request link along', () => {
+    const [t] = tasksFromPrs(
+      [pr({ url: 'https://github.com/o/r/pull/1' } as Partial<GhPr>)],
+      Date.now(),
+    );
+    expect(t.url).toBe('https://github.com/o/r/pull/1');
+    const [u] = tasksFromPrs([pr({})], Date.now());
+    expect('url' in u).toBe(false);
+  });
+});
