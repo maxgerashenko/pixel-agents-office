@@ -34,7 +34,7 @@ export function mergeOrder(saved: readonly number[], live: readonly number[]): n
 /** Whether a card's status counts as active for the desktop row's order:
  *  working, or waiting on the user (permission / input). */
 export function isActiveCardStatus(status: string | null): boolean {
-  return status === 'working' || status === 'attention';
+  return status === 'working' || status === 'attention' || status === 'permission';
 }
 
 /**
