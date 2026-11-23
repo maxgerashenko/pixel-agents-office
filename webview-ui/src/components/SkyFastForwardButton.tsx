@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 
 import {
   SKY_BUTTON_BALLOON,
@@ -7,6 +7,7 @@ import {
   SKY_BUTTON_PALETTE,
   SKY_BUTTON_SCALE,
 } from '../constants.js';
+import { isCelebrating, subscribeCelebrating } from '../office/engine/mergeCelebrationEvents.js';
 import {
   holdSkyFastForward,
   skyAt,
@@ -68,6 +69,9 @@ export function SkyFastForwardButton({ className = '' }: { className?: string })
     return () => clearInterval(id);
   }, []);
 
+  // a merge celebration draws the sprite itself, so the button's own steps aside
+  const celebrating = useSyncExternalStore(subscribeCelebrating, isCelebrating);
+
   return (
     <button
       data-testid="sky-fast-forward"
@@ -89,7 +93,9 @@ export function SkyFastForwardButton({ className = '' }: { className?: string })
       onBlur={() => set(false)}
       onContextMenu={(e) => e.preventDefault()}
     >
-      <PixelSprite rows={night ? SKY_BUTTON_ISS : SKY_BUTTON_BALLOON} />
+      <span className={celebrating ? 'invisible' : ''}>
+        <PixelSprite rows={night ? SKY_BUTTON_ISS : SKY_BUTTON_BALLOON} />
+      </span>
     </button>
   );
 }

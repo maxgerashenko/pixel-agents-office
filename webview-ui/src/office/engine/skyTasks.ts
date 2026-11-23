@@ -8,7 +8,7 @@
  * sky from left to right, the same arc shifted up one gap each, and the orbit is the status,
  * low to high. A task that moves to tests or ready to merge stays on its orbit until it comes
  * round to the airfield, glides down onto the right runway, lands and parks (tests taxies on
- * across to the left lot). A merged task leaves the sky. Tasks on one orbit are spread round it with a gap
+ * across to the left lot). A merged task leaves the sky (with a celebration at the sky button). Tasks on one orbit are spread round it with a gap
  * between them. The trail is a white line (solid by day, dashed by night).
  */
 import {
@@ -55,6 +55,7 @@ import {
   SKY_TASK_TRAIL_COLOR,
   SKY_TASK_WING_COLOR,
 } from '../../constants.js';
+import { announceSkyMerge } from './mergeCelebrationEvents.js';
 import {
   type Airfield,
   airfieldLayout,
@@ -81,7 +82,11 @@ export interface SkyTask {
 let tasks: SkyTask[] = [];
 
 export function setSkyTasks(next: SkyTask[]): void {
+  // a task that was in the sky and now arrives merged has just merged: celebrate it at the sky button
+  const known = new Set(tasks.map((t) => t.id));
+  const justMerged = next.filter((t) => t.stage === 'merged' && known.has(t.id)).length;
   tasks = next.filter((t) => t.stage !== 'merged');
+  announceSkyMerge(justMerged);
 }
 export function getSkyTasks(): SkyTask[] {
   return tasks;
