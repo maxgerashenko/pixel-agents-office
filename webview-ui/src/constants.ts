@@ -1219,6 +1219,17 @@ export const SKY_TECH_SKIN_COLOR = '#e8b88a';
 export const SKY_TECH_VEST_COLOR = '#ff8a1f';
 export const SKY_TECH_LEGS_COLOR = '#3a4a78';
 export const SKY_TECH_TOOL_COLOR = '#c9ccd6';
+/** The "#N" pull request number under each parked plane or rocket: text colour, shadow, size in sprite pixels, gap below the bay centre. */
+export const SKY_PR_NUMBER_COLOR = 'rgba(255, 255, 255, 0.95)';
+export const SKY_PR_NUMBER_SHADOW_COLOR = 'rgba(10, 10, 20, 0.85)';
+export const SKY_PR_NUMBER_SIZE_UNITS = 3;
+export const SKY_PR_NUMBER_MIN_FONT_PX = 8;
+/** Ready to merge: the number stands this far outside the field edge, if at least ROOM units remain to the sky's edge. */
+export const SKY_PR_NUMBER_EDGE_GAP_UNITS = 1;
+export const SKY_PR_NUMBER_ROOM_UNITS = 5;
+/** With no room outside: the number's near edge, from the plane's centre (negative = to its left, away from the siren). */
+export const SKY_PR_NUMBER_FREE_SIDE_UNITS = -4;
+export const SKY_PR_NUMBER_OFFSET_UNITS = 6;
 /** Seconds per technician work cycle (the tool arm goes up and down). */
 export const SKY_TECH_WORK_SEC = 0.7;
 /** Runway lights chase along the edges at this rate (steps per second). */
@@ -1327,3 +1338,14 @@ export const MONITOR_GLOW_PALETTES: Record<'edit' | 'shell' | 'read', Record<str
     '#60c677': '#4a525c',
   },
 };
+
+// ── Wall clock (the CLOCK item shows the device's local time) ──
+/** The CLOCK sprite pixel the hands turn about (a face pixel, so a hand starts on it). */
+export const CLOCK_PIVOT_COL = 7;
+export const CLOCK_PIVOT_ROW = 16;
+/** Hand lengths in sprite pixels from the pivot (the face has 3 pixels of room each way). */
+export const CLOCK_HOUR_HAND_LENGTH = 2;
+export const CLOCK_MINUTE_HAND_LENGTH = 3;
+export const CLOCK_HAND_COLOR = '#394449';
+/** The catalog type of the wall clock. */
+export const CLOCK_TYPE = 'CLOCK';

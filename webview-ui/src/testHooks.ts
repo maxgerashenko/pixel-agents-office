@@ -1,4 +1,5 @@
 import type { ColorValue } from './components/ui/types.js';
+import { setClockTime } from './office/engine/clockHands.js';
 import { OfficeState } from './office/engine/officeState.js';
 import { isGhostHeadlessAgentsEnabled } from './office/engine/renderer.js';
 import { setSkyHourFraction } from './office/engine/skyCycle.js';
@@ -11,6 +12,8 @@ declare global {
       playedSounds?: Array<{ kind: string; at: number }>;
       /** Pin the sky to a fraction of the hour (null = real clock). */
       setSkyHourFraction?: (t: number | null) => void;
+      /** Pin the wall clock to a moment (null = the device's local time). */
+      setClockTime?: (date: Date | null) => void;
       setSkyTasks?: typeof setSkyTasks;
       getCharacters?: () => Array<{
         id: number;
@@ -147,6 +150,7 @@ export function installTestHooks(officeStateRef: { current: OfficeState | null }
   if (!hooks.addAgentLog) hooks.addAgentLog = [];
 
   hooks.setSkyHourFraction = setSkyHourFraction;
+  hooks.setClockTime = setClockTime;
   hooks.setSkyTasks = setSkyTasks;
   hooks.getCharacters = () => {
     const os = officeStateRef.current;
