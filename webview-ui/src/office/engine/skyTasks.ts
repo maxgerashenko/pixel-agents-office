@@ -467,7 +467,15 @@ type FlyerState =
       fade: number;
       stageIndex: number;
     }
-  | { mode: 'ground'; x: number; y: number; heading: Heading; stageIndex: number }
+  | {
+      mode: 'ground';
+      x: number;
+      y: number;
+      heading: Heading;
+      stageIndex: number;
+      /** Resting in a lot (as opposed to taxiing): a rocket at night, a plane by day. */
+      parked?: boolean;
+    }
   | { mode: 'air'; pose: FlyerPose; trail: boolean }
   | {
       mode: 'turn';
@@ -571,7 +579,7 @@ function stateOf(task: SkyTask, m: Motion, sec: number, g: Geo): FlyerState {
   const stageIndex = Math.max(0, SKY_TASK_STAGES.indexOf(task.stage));
   if (m.kind === 'parked') {
     const [x, y] = slotPoint(f, m.lot, m.slot);
-    return { mode: 'ground', x, y, heading: 'up', stageIndex };
+    return { mode: 'ground', x, y, heading: 'up', stageIndex, parked: true };
   }
   if (m.kind === 'cruise') {
     const pose = flyerPose(task, sec, g.w, g.horizonY, g.px, m, f);
@@ -684,7 +692,9 @@ export function drawGroundPlanes(
   for (const [, s] of statesNow(sec, w, horizonY, px)) {
     if (s.mode === 'air') continue;
     const colour = SKY_TASK_COLORS[s.stageIndex];
-    if (s.mode === 'ground') drawGroundPlane(ctx, s.x, s.y, px, s.heading, colour);
+    if (s.mode === 'ground' && s.parked && isNight())
+      drawRocket(ctx, s.x, s.y, px, -Math.PI / 2, 1, colour, 0, 0, sec);
+    else if (s.mode === 'ground') drawGroundPlane(ctx, s.x, s.y, px, s.heading, colour);
     else if (s.mode === 'rocket') {
       ctx.globalAlpha = 1 - s.fade;
       drawRocket(ctx, s.x, s.y, px, s.angle, s.scale, colour, s.flame, s.dust, sec);
