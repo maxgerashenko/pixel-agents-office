@@ -67,6 +67,8 @@ export interface FurnitureInstance {
   zY: number;
   /** Render-time horizontal flip flag (for mirrored side variants) */
   mirrored?: boolean;
+  /** The wall CLOCK: the renderer draws the current time's hands over its sprite */
+  clock?: boolean;
 }
 
 export interface ToolActivity {

@@ -18,6 +18,7 @@ import {
   CARPET_DEFAULT_ACCENT_COLOR,
   CARPET_DEFAULT_COLOR,
   CHARACTER_Z_SORT_OFFSET,
+  CLOCK_HAND_COLOR,
   DELETE_BUTTON_BG,
   ERASE_TARGET_COLOR,
   FALLBACK_FLOOR_COLOR,
@@ -82,6 +83,7 @@ import type {
 import { CharacterState, TILE_SIZE, TileType } from '../types.js';
 import { getWallInstances, hasWallSprites, wallColorToHex } from '../wallTiles.js';
 import { characterDrawOffsetY, getCharacterSprite } from './characters.js';
+import { clockHands, currentClockTime } from './clockHands.js';
 import { renderMatrixEffect } from './matrixEffect.js';
 import { getPetSpriteData } from './petEntity.js';
 import { drawReactionEmote } from './reactionEmote.js';
@@ -403,6 +405,15 @@ function renderTableScores(
   ctx.restore();
 }
 
+/** The hands of the wall CLOCK for the device's local time, one sprite pixel per cell. */
+function drawClockHands(c: CanvasRenderingContext2D, fx: number, fy: number, zoom: number): void {
+  const hands = clockHands(currentClockTime());
+  c.fillStyle = CLOCK_HAND_COLOR;
+  for (const cell of [...hands.hour, ...hands.minute]) {
+    c.fillRect(fx + cell.col * zoom, fy + cell.row * zoom, zoom, zoom);
+  }
+}
+
 export function renderScene(
   ctx: CanvasRenderingContext2D,
   furniture: FurnitureInstance[],
@@ -454,6 +465,7 @@ export function renderScene(
         zY: f.zY,
         draw: (c) => {
           c.drawImage(cached, fx, fy);
+          if (f.clock) drawClockHands(c, fx, fy, zoom);
         },
       });
     }
