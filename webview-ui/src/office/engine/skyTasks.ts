@@ -766,9 +766,20 @@ export function drawGroundPlanes(
       });
     }
     const colour = SKY_TASK_COLORS[s.stageIndex];
-    if (s.mode === 'ground' && s.parked && isNight())
-      drawRocket(ctx, s.x, s.y, px, -Math.PI / 2, 1, colour, 0, 0, sec);
-    else if (s.mode === 'ground') drawGroundPlane(ctx, s.x, s.y, px, s.heading, colour);
+    if (s.mode === 'ground' && s.parked) {
+      // a parked plane and rocket trade places over the same dusk and dawn window as the
+      // sky flyers morph, so the airfield and the sky change together
+      const m = smooth(night);
+      if (m < 1) {
+        ctx.globalAlpha = 1 - m;
+        drawGroundPlane(ctx, s.x, s.y, px, s.heading, colour);
+      }
+      if (m > 0) {
+        ctx.globalAlpha = m;
+        drawRocket(ctx, s.x, s.y, px, -Math.PI / 2, 1, colour, 0, 0, sec);
+      }
+      ctx.globalAlpha = 1;
+    } else if (s.mode === 'ground') drawGroundPlane(ctx, s.x, s.y, px, s.heading, colour);
     if (s.mode === 'ground' && s.parked)
       drawGroundCrew(ctx, s.x, s.y, px, SKY_TASK_STAGES[s.stageIndex], sec, s.seed);
     else if (s.mode === 'rocket') {
@@ -822,58 +833,76 @@ function trail(
   }
 }
 
-export function drawDayFlyers(
+/**
+ * The task flyers in the sky. A plane and a satellite are the same task at two hours, so as the
+ * night comes in over dusk (and goes out over dawn) one turns into the other: the fuselage draws
+ * in to the body while the solar panels unfold, the contrail breaks into dashes and the lights
+ * start to blink. By day (night 0) it is a plane, by night (night 1) a satellite.
+ */
+export function drawSkyFlyers(
   ctx: CanvasRenderingContext2D,
   w: number,
   horizonY: number,
   px: number,
   sec: number,
-  alpha: number,
 ): void {
-  for (const [, s] of statesNow(sec, w, horizonY, px)) {
-    const p = skyPose(s, NO_ARC, px);
-    if (!p) continue;
-    const u0 = (p.x + 8 * px) / (w + 16 * px);
-    if (s.mode === 'air' && s.trail)
-      trail(ctx, p, u0, px, alpha * p.alpha, false, SKY_TASK_PLANE_TRAIL_GAP);
-    ctx.globalAlpha = alpha * p.alpha;
-    const u = px * SKY_TASK_PLANE_SCALE;
-    for (const [dx, dy, ww, wing] of PLANE) {
-      ctx.fillStyle = wing ? SKY_TASK_WING_COLOR : SKY_TASK_COLORS[p.stageIndex];
-      for (let k = 0; k < ww; k++) {
-        const sx = dx + k - 7;
-        ctx.fillRect(p.x + sx * u, p.y + (dy + Math.round(sx * p.slope)) * u, u, u);
-      }
-    }
-  }
-  ctx.globalAlpha = 1;
-}
-
-export function drawNightFlyers(
-  ctx: CanvasRenderingContext2D,
-  w: number,
-  horizonY: number,
-  px: number,
-  sec: number,
-  alpha: number,
-): void {
+  const m = smooth(night);
   for (const [task, s] of statesNow(sec, w, horizonY, px)) {
     const p = skyPose(s, NO_ARC, px);
     if (!p) continue;
-    const a = alpha * p.alpha;
     const u0 = (p.x + 8 * px) / (w + 16 * px);
-    if (s.mode === 'air' && s.trail) trail(ctx, p, u0, px, a, true, SKY_TASK_SAT_TRAIL_GAP);
-    ctx.globalAlpha = a;
-    // two solar panels either side of a body tinted by stage
-    ctx.fillStyle = SKY_TASK_PANEL_COLOR;
-    ctx.fillRect(p.x - 4 * px, p.y, 3 * px, 2 * px);
-    ctx.fillRect(p.x + 2 * px, p.y, 3 * px, 2 * px);
-    ctx.fillStyle = SKY_TASK_COLORS[p.stageIndex];
-    ctx.fillRect(p.x - px, p.y - px, 3 * px, 3 * px);
-    // two lights alternate on and off
-    const on = Math.floor(sec / SKY_TASK_BLINK_SEC + hash01(task.id) * 5) % 2 === 0;
-    ctx.fillStyle = on ? SKY_TASK_BLINK_ON : SKY_TASK_BLINK_ALT;
-    ctx.fillRect(on ? p.x - px : p.x + px, p.y - px, px, px);
+    if (s.mode === 'air' && s.trail) {
+      if (m < 1)
+        trail(
+          ctx,
+          p,
+          u0,
+          px,
+          (1 - m) * p.alpha,
+          false,
+          SKY_TASK_PLANE_TRAIL_GAP * (1 - m) + SKY_TASK_SAT_TRAIL_GAP * m,
+        );
+      if (m > 0)
+        trail(
+          ctx,
+          p,
+          u0,
+          px,
+          m * p.alpha,
+          true,
+          SKY_TASK_PLANE_TRAIL_GAP * (1 - m) + SKY_TASK_SAT_TRAIL_GAP * m,
+        );
+    }
+    if (m < 1) {
+      ctx.globalAlpha = p.alpha * (1 - m * m);
+      const u = px * SKY_TASK_PLANE_SCALE;
+      // the plane shortens towards its middle as the night comes in
+      const reach = Math.round(7 * (1 - m)) + 1;
+      for (const [dx, dy, ww, wing] of PLANE) {
+        ctx.fillStyle = wing ? SKY_TASK_WING_COLOR : SKY_TASK_COLORS[p.stageIndex];
+        for (let k = 0; k < ww; k++) {
+          const sx = dx + k - 7;
+          if (Math.abs(sx) > reach) continue;
+          ctx.fillRect(p.x + sx * u, p.y + (dy + Math.round(sx * p.slope)) * u, u, u);
+        }
+      }
+    }
+    if (m > 0) {
+      ctx.globalAlpha = p.alpha * Math.min(1, m * 1.5);
+      // two solar panels either side of a body tinted by stage; the panels unfold from the body
+      const pw = Math.max(1, Math.ceil(3 * m));
+      ctx.fillStyle = SKY_TASK_PANEL_COLOR;
+      ctx.fillRect(p.x - (1 + pw) * px, p.y, pw * px, 2 * px);
+      ctx.fillRect(p.x + 2 * px, p.y, pw * px, 2 * px);
+      ctx.fillStyle = SKY_TASK_COLORS[p.stageIndex];
+      ctx.fillRect(p.x - px, p.y - px, 3 * px, 3 * px);
+      // two lights alternate on and off
+      if (m > 0.5) {
+        const on = Math.floor(sec / SKY_TASK_BLINK_SEC + hash01(task.id) * 5) % 2 === 0;
+        ctx.fillStyle = on ? SKY_TASK_BLINK_ON : SKY_TASK_BLINK_ALT;
+        ctx.fillRect(on ? p.x - px : p.x + px, p.y - px, px, px);
+      }
+    }
   }
   ctx.globalAlpha = 1;
 }
