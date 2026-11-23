@@ -12,6 +12,7 @@ import { beforeEach, test } from 'vitest';
 import { SKY_TASK_MIN_GAP } from '../src/constants.js';
 import {
   flyerPose,
+  fuselageRise,
   minGapU,
   resetSkyMotion,
   separateFlyers,
@@ -174,4 +175,27 @@ test('a flyer tilts smoothly along its orbit: the slope never flickers between f
     prev = p;
   }
   assert.ok(worst < 0.02, `slope jumped by ${worst} between frames`);
+});
+
+test('the body lies on the same path as its trail: its ends sit on the orbit', () => {
+  const task = t('a', 'coding');
+  const place = { orbit: 0, phase: 0.3 };
+  const p = flyerPose(task, 5, W, H, PX, place);
+  for (const sx of [-7, -3, 0, 4, 7]) {
+    const along = sx * PX;
+    const [, onOrbit] = p.at((p.x + along + 8 * PX) / (p.at(1)[0] - p.at(0)[0]));
+    assert.equal(p.y + fuselageRise(p, along, PX), onOrbit);
+  }
+});
+
+test('a flyer with no orbit path keeps the plain tilt', () => {
+  const flat = {
+    x: 0,
+    y: 0,
+    alpha: 1,
+    stageIndex: 0,
+    slope: 0.25,
+    at: () => [0, 0] as [number, number],
+  };
+  assert.equal(fuselageRise(flat, 8, PX), Math.round(8 * 0.25));
 });

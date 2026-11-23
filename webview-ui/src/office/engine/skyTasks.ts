@@ -1003,6 +1003,19 @@ const PLANE: [number, number, number, boolean][] = [
   [8, 1, 3, true],
 ];
 
+/**
+ * Vertical offset (canvas pixels) of the plane's body `along` canvas pixels from its middle, so the
+ * body lies on the same path as its trail: the nose and tail sit on the orbit itself rather than on
+ * a straight line at the tilt, and the trail continues from the tail without a kink. Flyers off the
+ * orbit (turning, rising) have no path and keep the plain tilt.
+ */
+export function fuselageRise(p: FlyerPose, along: number, px: number): number {
+  const span = p.at(1)[0] - p.at(0)[0];
+  if (p.at === NO_ARC || span <= 0) return Math.round(along * p.slope);
+  const [, y] = p.at((p.x + along + 8 * px) / span);
+  return y - p.y;
+}
+
 const TRAIL_SPAN = 0.22;
 
 function trail(
@@ -1078,7 +1091,7 @@ export function drawSkyFlyers(
         for (let k = 0; k < ww; k++) {
           const sx = dx + k - 7;
           if (Math.abs(sx) > reach) continue;
-          ctx.fillRect(p.x + sx * u, p.y + (dy + Math.round(sx * p.slope)) * u, u, u);
+          ctx.fillRect(p.x + sx * u, p.y + dy * u + fuselageRise(p, sx * u, px), u, u);
         }
       }
     }
