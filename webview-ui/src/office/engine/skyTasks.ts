@@ -803,13 +803,20 @@ export function drawGroundPlanes(
         // plane), plan and tests on the left edge. With no room there the number takes the free
         // side of a ready plane, or goes under any other.
         const f = airfieldLayout(w, horizonY, px);
-        const gap = SKY_PR_NUMBER_EDGE_GAP_UNITS * px;
         const need = SKY_PR_NUMBER_ROOM_UNITS * px;
-        const rightEdge = f.left + f.width + gap;
+        // the same distance from the plane's centre to the number on both sides: enough to clear
+        // whichever lot's plane sits nearer its field edge
+        const dist =
+          Math.max(
+            slotPoint(f, 'plan', 0)[0] - f.left,
+            f.left + f.width - slotPoint(f, 'ready', 0)[0],
+          ) +
+          SKY_PR_NUMBER_EDGE_GAP_UNITS * px;
         let outside: number | undefined;
         if (task.stage === 'ready_to_merge')
-          outside = w - rightEdge >= need ? rightEdge : s.x + SKY_PR_NUMBER_FREE_SIDE_UNITS * px;
-        else if (!f.strip && f.left - gap >= need) outside = f.left - gap;
+          outside =
+            w - (s.x + dist) >= need ? s.x + dist : s.x + SKY_PR_NUMBER_FREE_SIDE_UNITS * px;
+        else if (!f.strip && s.x - dist >= need) outside = s.x - dist;
         drawPrNumber(ctx, s.x, s.y, px, num, outside);
       }
     } else if (s.mode === 'rocket') {
