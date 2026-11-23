@@ -24,7 +24,8 @@ import type {
   SelectionRenderState,
 } from '../engine/renderer.js';
 import { renderFrame } from '../engine/renderer.js';
-import { skyLinkAt } from '../engine/skyTasks.js';
+import { getSkyTasks, skyLinkAt } from '../engine/skyTasks.js';
+import { isWhiteboard, whiteboardPlates } from '../engine/whiteboard.js';
 import { EditTool, TILE_SIZE } from '../types.js';
 import { computeNormalModeCursor } from './officeCanvasCursor.js';
 import { useCanvasTouchGestures } from './useCanvasTouchGestures.js';
@@ -76,6 +77,8 @@ interface OfficeCanvasProps {
    *  character fires onClick (opens its terminal). Desktop keeps single-click
    *  focus with tap-again-to-deselect. */
   tapSelectsFirst?: boolean;
+  /** A tap on a whiteboard (view mode): App lists the active tasks. */
+  onWhiteboardTap?: () => void;
 }
 
 export function OfficeCanvas({
@@ -97,6 +100,7 @@ export function OfficeCanvas({
   showAreas,
   activeAreaLabel,
   tapSelectsFirst = false,
+  onWhiteboardTap,
 }: OfficeCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -232,6 +236,7 @@ export function OfficeCanvas({
           officeState.pets,
           officeState.getTableTennisBalls(),
           officeState.getTableTennisScores(),
+          whiteboardPlates(layout, getSkyTasks().filter((t) => t.stage !== 'merged').length),
         );
         offsetRef.current = { x: offsetX, y: offsetY };
 
@@ -670,6 +675,18 @@ export function OfficeCanvas({
         return;
       }
 
+      // A whiteboard: list the active tasks
+      if (onWhiteboardTap) {
+        const wbTile = screenToTile(clientX, clientY);
+        if (
+          wbTile &&
+          isWhiteboard(furnitureAt(officeState.getLayout(), wbTile.col, wbTile.row)?.type)
+        ) {
+          onWhiteboardTap();
+          return;
+        }
+      }
+
       // A ready-to-merge plane, rocket or its lot: open the task's pull request
       const link = skyLinkAt(pos.deviceX, pos.deviceY);
       if (link) {
@@ -714,7 +731,7 @@ export function OfficeCanvas({
         officeState.cameraFollowId = null;
       }
     },
-    [officeState, onClick, screenToWorld, screenToTile, tapSelectsFirst],
+    [officeState, onClick, screenToWorld, screenToTile, tapSelectsFirst, onWhiteboardTap],
   );
 
   const handleClick = useCallback(
