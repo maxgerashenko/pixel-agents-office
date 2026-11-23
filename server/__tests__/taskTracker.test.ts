@@ -16,6 +16,12 @@ describe('stageOfPr', () => {
   it('maps PR state to a stage', () => {
     expect(stageOfPr(pr({ isDraft: true, changedFiles: 0 }))).toBe('plan');
     expect(stageOfPr(pr({ isDraft: true, changedFiles: 3 }))).toBe('coding');
+    // a plan stays the plan until it is merged: documents only, draft or not
+    const docs = [{ path: 'docs/plans/x.md' }];
+    expect(stageOfPr(pr({ isDraft: true, changedFiles: 1, files: docs }))).toBe('plan');
+    expect(stageOfPr(pr({ files: docs, statusCheckRollup: ok }))).toBe('plan');
+    expect(stageOfPr(pr({ state: 'MERGED', files: docs }))).toBe('merged');
+    expect(stageOfPr(pr({ isDraft: true, files: [...docs, { path: 'src/a.ts' }] }))).toBe('coding');
     expect(stageOfPr(pr({ isDraft: true, statusCheckRollup: ok }))).toBe('tests');
     expect(stageOfPr(pr({ statusCheckRollup: [{ status: 'IN_PROGRESS' }] }))).toBe('tests');
     expect(stageOfPr(pr({ statusCheckRollup: ok, reviewRequests: [{}] }))).toBe('review');
@@ -53,5 +59,17 @@ describe('tasksFromPrs url', () => {
     expect(t.url).toBe('https://github.com/o/r/pull/1');
     const [u] = tasksFromPrs([pr({})], Date.now());
     expect('url' in u).toBe(false);
+  });
+});
+
+describe('tasksFromPrs plan link', () => {
+  it('a plan opens the PR files, other stages the PR', () => {
+    const url = 'https://github.com/o/r/pull/1';
+    const [plan] = tasksFromPrs(
+      [pr({ url, files: [{ path: 'docs/a.md' }] } as Partial<GhPr>)],
+      Date.now(),
+    );
+    expect(plan.stage).toBe('plan');
+    expect(plan.url).toBe(`${url}/files`);
   });
 });
