@@ -311,6 +311,7 @@ export function skyMotionKind(id: string): SkyMotionKind | undefined {
 }
 export function resetSkyMotion(): void {
   motions.clear();
+  border = null;
   lastSyncSec = null;
 }
 
@@ -417,6 +418,28 @@ let night = 0;
 export function setSkyNight(next: number): void {
   night = next;
 }
+/**
+ * The day/night border while it sweeps the sky: day inside `open`, night beyond `open + band`,
+ * dithered between. Null when the sky is all day or all night.
+ */
+export interface SkyBorder {
+  cx: number;
+  cy: number;
+  open: number;
+  band: number;
+}
+let border: SkyBorder | null = null;
+export function setSkyBorder(next: SkyBorder | null): void {
+  border = next;
+}
+
+/** 0 = day, 1 = night, for a flyer at (x, y): it turns as it crosses the border band. */
+function nightAt(x: number, y: number): number {
+  if (!border) return night;
+  const d = Math.hypot(x - border.cx, y - border.cy);
+  return Math.max(0, Math.min(1, (d - border.open) / border.band));
+}
+
 const isNight = (): boolean => night >= SKY_ROCKET_NIGHT_MIN;
 
 const takeoffSec = (g: Geo, m: { slot: number; rocket: boolean }): number =>
@@ -1070,7 +1093,7 @@ function trail(
 
 /**
  * The task flyers in the sky. A plane and a satellite are the same task at two hours, so as the
- * night comes in over dusk (and goes out over dawn) one turns into the other: the fuselage draws
+ * border between day and night sweeps over it (dusk, dawn) it turns into the other: the fuselage draws
  * in to the body while the solar panels unfold, the contrail breaks into dashes and the lights
  * start to blink. By day (night 0) it is a plane, by night (night 1) a satellite.
  */
@@ -1081,10 +1104,11 @@ export function drawSkyFlyers(
   px: number,
   sec: number,
 ): void {
-  const m = smooth(night);
   for (const [task, s] of statesNow(sec, w, horizonY, px)) {
     const p = skyPose(s, NO_ARC, px);
     if (!p) continue;
+    // each flyer turns when the day/night border passes over it, not all at once
+    const m = smooth(nightAt(p.x, p.y));
     const u0 = (p.x + 8 * px) / (w + 16 * px);
     if (s.mode === 'air' && s.trail) {
       if (m < 1)

@@ -72,7 +72,7 @@ import {
   STARS,
   toCss,
 } from './skyCycle.js';
-import { drawGroundPlanes, drawSkyFlyers, setSkyNight } from './skyTasks.js';
+import { drawGroundPlanes, drawSkyFlyers, setSkyBorder, setSkyNight } from './skyTasks.js';
 
 function disc(
   ctx: CanvasRenderingContext2D,
@@ -676,6 +676,7 @@ export function drawSky(
   // Night follows the sun's last rays: at dusk it closes in round the setting sun
   // along a curved, dithered edge; at dawn it opens the same way round the rising sun.
   const bandW = SKY_WIPE_BAND_SPRITE_PX * px;
+  setSkyBorder(null);
   if (sky.starAlpha > 0) {
     const sec0 = now.getTime() / 1000;
     // The whole night rides the moon's arc in one piece: the plane's corner is
@@ -716,6 +717,7 @@ export function drawSky(
     if (sky.starAlpha >= 1 || open + bandW <= 0) {
       ctx.drawImage(backdrop, 0, 0);
     } else {
+      setSkyBorder({ cx, cy, open: Math.max(0, open), band: bandW });
       const cut = nightAroundSun(backdrop, w, h, px, cx, cy, Math.max(0, open), bandW);
       if (cut) ctx.drawImage(cut, 0, 0);
     }
