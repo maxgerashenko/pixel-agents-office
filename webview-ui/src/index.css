@@ -58,6 +58,8 @@
 
   /* Status */
   --color-status-permission: #cca700;
+  /* "Needs you" alert: purple by day, pink at night (data-needs-you-sky on <html>) */
+  --pixel-needs-you: #a35cff;
   --color-status-active: #3794ff;
   --color-status-success: #89d185;
   --color-status-error: var(--color-danger);
@@ -438,6 +440,58 @@
       'opsz' 24;
     font-size: 1em;
     line-height: 1;
+  }
+}
+
+/* "Needs you": a soft glow hugging the screen edge while any agent has an
+   open permission prompt, and the waiting agent's card pulsing the same colour (purple by day, pink at night).
+   Slow and low-contrast on purpose; reduced-motion gets a steady glow. */
+:root[data-needs-you-sky='night'] {
+  --pixel-needs-you: #ff5fb0;
+}
+
+.needs-you-edge {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+  box-shadow: inset 0 0 28px 6px var(--pixel-needs-you);
+  animation: needs-you-pulse 2s ease-in-out infinite;
+}
+
+.needs-you-card {
+  animation: needs-you-card-flash 1.2s steps(2, jump-none) infinite;
+}
+
+@keyframes needs-you-pulse {
+  0%,
+  100% {
+    opacity: 0.15;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+
+@keyframes needs-you-card-flash {
+  0% {
+    border-color: var(--pixel-needs-you);
+  }
+  100% {
+    border-color: transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .needs-you-edge,
+  .needs-you-card {
+    animation: none;
+  }
+  .needs-you-edge {
+    opacity: 0.35;
+  }
+  .needs-you-card {
+    border-color: var(--pixel-needs-you);
   }
 }
 

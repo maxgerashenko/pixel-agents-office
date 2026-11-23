@@ -13,6 +13,8 @@ import { IntroBubble } from './components/IntroBubble.js';
 import { MergeCelebration } from './components/MergeCelebration.js';
 import { MigrationNotice } from './components/MigrationNotice.js';
 import { MusicButton } from './components/MusicButton.js';
+import { agentsNeedingPermission } from './components/needsYou.js';
+import { NeedsYouEdge } from './components/NeedsYouEdge.js';
 import { SettingsModal } from './components/SettingsModal.js';
 import { SkyFastForwardButton } from './components/SkyFastForwardButton.js';
 import { TerminalDrawer } from './components/TerminalDrawer.js';
@@ -571,6 +573,8 @@ function App() {
   // Merged set of Directories the Areas dropdown can map: host-contributed ones plus
   // every distinct Directory an agent has run in this session (deduped by name; name
   // is the areaMappings key / seat-bias identity, path is only the React list key).
+  const needsYouIds = useMemo(() => agentsNeedingPermission(agentTools), [agentTools]);
+
   const areaDirectories = useMemo(() => {
     const byName = new Map<string, { name: string; path: string }>();
     for (const f of directories) byName.set(f.name, f);
@@ -942,6 +946,7 @@ function App() {
         isMobile && keyboard.clampHeight !== null ? { height: keyboard.clampHeight } : undefined
       }
     >
+      <NeedsYouEdge agentIds={needsYouIds} />
       {/* Usage strip: a full-width row at the top that TAKES layout space (it is
           nothing, and takes none, until a status-line tap reports a live
           window). Mobile stacks it above the sliding track, so it stays put
