@@ -54,6 +54,9 @@ import {
   TIRED_Z_Z_SORT_BOOST,
   VOID_TILE_DASH_PATTERN,
   VOID_TILE_OUTLINE_COLOR,
+  WHITEBOARD_COUNT_COLOR,
+  WHITEBOARD_PLATE_BORDER_COLOR,
+  WHITEBOARD_PLATE_COLOR,
 } from '../../constants.js';
 import { getColorizedFloorSprite, hasFloorSprites, WALL_COLOR } from '../floorTiles.js';
 import { mapOffset } from '../projection.js';
@@ -88,6 +91,7 @@ import { drawReactionEmote } from './reactionEmote.js';
 import { headTopRowOf, reactionHopPx, reactionShakePx } from './reactions.js';
 import { drawSky } from './skyDraw.js';
 import type { TableBall, TableScore } from './tableTennis.js';
+import type { WhiteboardPlate } from './whiteboard.js';
 
 // ── Settings ────────────────────────────────────────────────────
 
@@ -399,6 +403,37 @@ function renderTableScores(
     ctx.fillRect(left, top, w, h);
     ctx.fillStyle = s.winner === null ? TABLE_TENNIS_SCORE_COLOR : TABLE_TENNIS_SCORE_WIN_COLOR;
     ctx.fillText(text, cx, top + pad * 2 + ascent);
+  }
+  ctx.restore();
+}
+
+/** Whiteboard plates: the active-task count in blue on a white plate, centred on each board. */
+function renderWhiteboardPlates(
+  ctx: CanvasRenderingContext2D,
+  plates: WhiteboardPlate[],
+  offsetX: number,
+  offsetY: number,
+  zoom: number,
+): void {
+  ctx.save();
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'alphabetic';
+  for (const p of plates) {
+    const w = Math.round(p.w * zoom);
+    const h = Math.round(p.h * zoom);
+    const left = Math.round(offsetX + p.x * zoom - w / 2);
+    const top = Math.round(offsetY + p.y * zoom - h / 2);
+    ctx.fillStyle = WHITEBOARD_PLATE_BORDER_COLOR;
+    ctx.fillRect(left - zoom, top - zoom, w + zoom * 2, h + zoom * 2);
+    ctx.fillStyle = WHITEBOARD_PLATE_COLOR;
+    ctx.fillRect(left, top, w, h);
+    ctx.font = `${Math.round(h * 0.8)}px 'FS Pixel Sans'`;
+    const text = String(p.count);
+    const m = ctx.measureText(text);
+    const ascent = Math.ceil(m.actualBoundingBoxAscent);
+    const ink = ascent + Math.ceil(m.actualBoundingBoxDescent);
+    ctx.fillStyle = WHITEBOARD_COUNT_COLOR;
+    ctx.fillText(text, left + w / 2, top + (h - ink) / 2 + ascent);
   }
   ctx.restore();
 }
@@ -1051,6 +1086,7 @@ export function renderFrame(
   pets?: Pet[],
   balls?: TableBall[],
   scores?: TableScore[],
+  whiteboards?: WhiteboardPlate[],
 ): { offsetX: number; offsetY: number } {
   // Clear, then the day/night sky (visible wherever the layout doesn't cover)
   ctx.clearRect(0, 0, canvasWidth, canvasHeight);
@@ -1122,6 +1158,9 @@ export function renderFrame(
 
   if (scores && scores.length > 0) {
     renderTableScores(ctx, scores, offsetX, offsetY, zoom);
+  }
+  if (whiteboards && whiteboards.length > 0) {
+    renderWhiteboardPlates(ctx, whiteboards, offsetX, offsetY, zoom);
   }
 
   // Character speech bubbles render in ToolOverlay (DOM, above the labels).

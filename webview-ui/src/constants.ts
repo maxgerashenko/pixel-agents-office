@@ -1301,3 +1301,15 @@ export const SKY_MERGE_DAY = {
   spinTurns: 2,
   total: 10.4,
 } as const;
+
+// ── Live whiteboard ──────────────────────────────────────────
+export const WHITEBOARD_FURNITURE_TYPE = 'WHITEBOARD';
+/** The count's plate, as a fraction of the board's footprint. */
+export const WHITEBOARD_PLATE_FRAC_W = 0.5;
+export const WHITEBOARD_PLATE_FRAC_H = 0.34;
+export const WHITEBOARD_COUNT_COLOR = '#2b6cdf';
+export const WHITEBOARD_PLATE_COLOR = '#f4f6f4';
+export const WHITEBOARD_PLATE_BORDER_COLOR = '#9aa4ad';
+/** How often the open list re-reads the board, ms. */
+export const WHITEBOARD_REFRESH_MS = 1000;
+export const WHITEBOARD_MODAL_Z_INDEX = 52;
