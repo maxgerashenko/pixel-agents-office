@@ -152,3 +152,11 @@ test('the gap holds at night too, where a rocket climbs to the track', () => {
   }
   assert.ok(worst >= MIN_PX - 2 * PX, `closest was ${worst}px`);
 });
+
+test('a lone flyer is never moved', () => {
+  assert.deepEqual(separateFlyers([0.3], [false], 0.1, 0.01), [0]);
+});
+
+test('two pinned flyers too close stay put rather than moving either', () => {
+  assert.deepEqual(separateFlyers([0.5, 0.51], [true, true], 0.1, 0.05), [0, 0]);
+});
