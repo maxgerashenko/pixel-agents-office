@@ -1156,6 +1156,28 @@ export const SKY_AIRFIELD_FADE_FROM = 0.72;
 export const SKY_AIRFIELD_GLIDE_DX = 20;
 export const SKY_AIRFIELD_LANDING_ROLL_SEC = 1.6;
 export const SKY_AIRFIELD_LANDING_TAXI_SEC = [0.6, 0.7, 0.5] as const;
+/** Night: tasks leave and return on rockets from the lots instead of planes down the runways.
+ *  The rocket stands on its pad, lights up, climbs straight up and shrinks into the distance
+ *  (the field is close, the tracks far away), pitching over onto its track as the satellite
+ *  takes over; a landing is the same flight backwards, ending in a burn onto the pad. */
+export const SKY_ROCKET_HOLD_SEC = 1;
+export const SKY_ROCKET_RISE_SEC = 4.6;
+export const SKY_ROCKET_DESCENT_SEC = 4.6;
+export const SKY_ROCKET_SETTLE_SEC = 0.8;
+/** The rocket's size when it reaches the track, as a share of its size on the pad. */
+export const SKY_ROCKET_FAR_SCALE = 0.3;
+/** Sprite pixels the track point lies along the orbit from the lot (past it leaving, before it landing). */
+export const SKY_ROCKET_TRACK_DX = 8;
+/** Share of the flight after which the rocket pitches over, and after which the satellite fades in. */
+export const SKY_ROCKET_PITCH_FROM = 0.55;
+export const SKY_ROCKET_FADE_FROM = 0.72;
+/** A flight is a rocket's when the sky is at least this dark as it starts. */
+export const SKY_ROCKET_NIGHT_MIN = 0.5;
+export const SKY_ROCKET_BODY_COLOR = '#f2f2f2';
+export const SKY_ROCKET_DARK_COLOR = '#1c1c24';
+export const SKY_ROCKET_LEG_COLOR = '#5d6070';
+export const SKY_ROCKET_FLAME_COLORS = ['#ffd84a', '#ff8a2a'] as const;
+export const SKY_ROCKET_DUST_COLOR = '#aab0bd';
 /** Day / night colours. */
 export const SKY_AIRFIELD_GRASS_COLORS = [
   { day: '#5a9a3f', night: '#1a3a2a' },

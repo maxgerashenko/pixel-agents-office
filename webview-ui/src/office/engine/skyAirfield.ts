@@ -29,6 +29,11 @@ import {
   SKY_AIRFIELD_WOODS_HEIGHT_MAX,
   SKY_AIRFIELD_WOODS_HEIGHT_SHARE,
   SKY_AIRFIELD_WOODS_TOP,
+  SKY_ROCKET_BODY_COLOR,
+  SKY_ROCKET_DARK_COLOR,
+  SKY_ROCKET_DUST_COLOR,
+  SKY_ROCKET_FLAME_COLORS,
+  SKY_ROCKET_LEG_COLOR,
 } from '../../constants.js';
 import { mix, parseHex, toCss } from './skyCycle.js';
 
@@ -213,6 +218,95 @@ export function drawTurningPlane(
       ctx.fillRect((x - 0.5) * px, (ry - PLANE_MID_Y - 0.5) * px, px, px);
     }
   });
+  ctx.restore();
+}
+
+/** A rocket standing on its pad, nose up (5 x 11): `k` dark, `w` white, `s` the stage band, `g` leg. */
+const ROCKET: string[] = [
+  '..k..',
+  '.kkk.',
+  '.www.',
+  '.www.',
+  '.sss.',
+  '.www.',
+  '.www.',
+  '.kkk.',
+  '.www.',
+  'gwwwg',
+  'g.k.g',
+];
+const ROCKET_MID_X = 2;
+const ROCKET_MID_Y = 5;
+/** Flame length below the nozzle at full burn, in sprite pixels. */
+const ROCKET_FLAME_LEN = 5;
+
+/**
+ * A rocket centred on (cx, cy), turned to `angle` (radians, -PI/2 = nose up, 0 = nose right) and
+ * drawn at `scale`. `flame` 0..1 is the burn; `dust` 0..1 the cloud kicked up round the pad
+ * (only drawn when the rocket stands upright). `sec` makes the flame flicker.
+ */
+export function drawRocket(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  px: number,
+  angle: number,
+  scale: number,
+  bandColor: string,
+  flame: number,
+  dust: number,
+  sec: number,
+): void {
+  ctx.save();
+  ctx.translate(cx + px / 2, cy + px / 2);
+  ctx.scale(scale, scale);
+  if (dust > 0) {
+    // a puff either side of the nozzle, spreading and thinning
+    const a = ctx.globalAlpha;
+    ctx.fillStyle = SKY_ROCKET_DUST_COLOR;
+    for (let i = 0; i < 6; i++) {
+      const side = i % 2 === 0 ? -1 : 1;
+      const reach = 3 + Math.floor(i / 2) * 2;
+      ctx.globalAlpha = a * dust * (1 - Math.floor(i / 2) * 0.25);
+      ctx.fillRect(
+        (side * reach * (0.6 + 0.4 * dust) - 0.5) * px,
+        (ROCKET.length - ROCKET_MID_Y - 1.5 - (i % 3)) * px,
+        px,
+        px,
+      );
+    }
+    ctx.globalAlpha = a;
+  }
+  ctx.rotate(angle + Math.PI / 2);
+  ROCKET.forEach((row, ry) => {
+    for (let rx = 0; rx < row.length; rx++) {
+      const c = row[rx];
+      if (c === '.') continue;
+      ctx.fillStyle =
+        c === 'k'
+          ? SKY_ROCKET_DARK_COLOR
+          : c === 'w'
+            ? SKY_ROCKET_BODY_COLOR
+            : c === 's'
+              ? bandColor
+              : SKY_ROCKET_LEG_COLOR;
+      ctx.fillRect((rx - ROCKET_MID_X - 0.5) * px, (ry - ROCKET_MID_Y - 0.5) * px, px, px);
+    }
+  });
+  if (flame > 0) {
+    const flick = Math.floor(sec * 14) % 2;
+    const len = Math.max(1, Math.round(ROCKET_FLAME_LEN * flame) - flick);
+    for (let i = 0; i < len; i++) {
+      ctx.fillStyle = SKY_ROCKET_FLAME_COLORS[i < len / 2 ? 0 : 1];
+      const wide = i < 2 && flame > 0.5 ? 3 : 1;
+      ctx.fillRect(
+        (-Math.floor(wide / 2) - 0.5) * px,
+        (ROCKET.length - ROCKET_MID_Y + i - 0.5) * px,
+        wide * px,
+        px,
+      );
+    }
+  }
   ctx.restore();
 }
 

@@ -13,6 +13,7 @@ import { airfieldLayout } from '../src/office/engine/skyAirfield.js';
 import {
   orbitOfStage,
   resetSkyMotion,
+  setSkyNight,
   setSkyTasks,
   skyMotionKind,
   skyStateForTest,
@@ -27,7 +28,10 @@ const field = airfieldLayout(W, H, PX);
 const task = (stage: SkyTask['stage']): SkyTask => ({ id: 'a', title: 'a', stage });
 const at = (sec: number) => skyStateForTest('a', sec, W, H, PX);
 
-beforeEach(() => resetSkyMotion());
+beforeEach(() => {
+  resetSkyMotion();
+  setSkyNight(0);
+});
 
 test('only coding, tests and review fly an orbit', () => {
   assert.equal(orbitOfStage('plan'), null);
@@ -95,4 +99,35 @@ test('a merged task leaves the airfield', () => {
   setSkyTasks([{ id: 'a', title: 'a', stage: 'merged' }]);
   assert.equal(at(1), null);
   assert.equal(skyMotionKind('a'), undefined);
+});
+
+test('at night a take-off is a rocket: it climbs straight up from the left lot, not down a runway', () => {
+  setSkyNight(1);
+  setSkyTasks([task('plan')]);
+  const pad = at(0);
+  setSkyTasks([task('coding')]);
+  assert.equal(at(10)?.mode, 'ground');
+  // the lights come on, then it lifts off and rises above the pad
+  const up = at(10 + 3);
+  assert.equal(up?.mode, 'rocket');
+  assert.ok(pad && up && Math.abs(up.x - pad.x) < 8 * PX, 'it goes straight up');
+  assert.ok(up && pad && up.y < pad.y);
+  assert.ok(up && up.x < field.runwayL, 'never over the runway');
+  for (let sec = 10; sec < 40; sec += 0.25) at(sec);
+  assert.equal(skyMotionKind('a'), 'cruise');
+});
+
+test('at night a landing is a rocket coming down onto the right lot', () => {
+  setSkyNight(1);
+  setSkyTasks([task('review')]);
+  at(0);
+  setSkyTasks([{ id: 'a', title: 'a', stage: 'ready_to_merge' }]);
+  let sec = 0;
+  for (; sec < 120 && skyMotionKind('a') !== 'landing'; sec += 0.25) at(sec);
+  assert.equal(skyMotionKind('a'), 'landing');
+  const down = at(sec + 2);
+  assert.equal(down?.mode, 'rocket');
+  assert.ok(down && down.x > field.runwayR, 'above the right lot, never on the runway');
+  for (; sec < 200 && skyMotionKind('a') !== 'parked'; sec += 0.25) at(sec);
+  assert.equal(skyMotionKind('a'), 'parked');
 });
