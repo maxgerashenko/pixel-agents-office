@@ -41,7 +41,10 @@ export function WhiteboardModal({ isOpen, onClose }: { isOpen: boolean; onClose:
               <li key={e.id} className="mb-6" style={{ lineHeight: 1.3 }}>
                 {e.pr !== null && <span className="text-accent-bright">#{e.pr} </span>}
                 <span>{e.title}</span>
-                <span className="text-text-muted text-sm"> · {STAGE_LABEL[e.stage] ?? e.stage}</span>
+                <span className="text-text-muted text-sm">
+                  {' '}
+                  · {STAGE_LABEL[e.stage] ?? e.stage}
+                </span>
               </li>
             ))}
           </ul>
