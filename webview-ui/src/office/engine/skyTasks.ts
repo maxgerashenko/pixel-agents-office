@@ -9,7 +9,8 @@
  * low to high. A task that moves to tests or ready to merge stays on its orbit until it comes
  * round to the airfield, glides down onto the right runway, lands and parks (tests taxies on
  * across to the left lot). A merged task leaves the sky (with a celebration at the sky button). Tasks on one orbit are spread round it with a gap
- * between them. The trail is a white line (solid by day, dashed by night).
+ * between them, and never closer than SKY_TASK_MIN_GAP: a take-off waits for a clear joining point, a newcomer
+ * is placed in the widest gap, and flyers that still end up too close drift apart slowly. The trail is a white line (solid by day, dashed by night).
  */
 import {
   SKY_AIRFIELD_CLEARANCE,
@@ -44,6 +45,9 @@ import {
   SKY_TASK_CROSS_SEC_SLOWEST,
   SKY_TASK_FLYING_STAGES,
   SKY_TASK_GROUND,
+  SKY_TASK_JOIN_STEP_SEC,
+  SKY_TASK_MIN_GAP,
+  SKY_TASK_NUDGE_PX_PER_SEC,
   SKY_TASK_PANEL_COLOR,
   SKY_TASK_PLANE_SCALE,
   SKY_TASK_PLANE_TRAIL_GAP,
@@ -156,6 +160,54 @@ const smooth = (t: number): number => {
   return c * c * (3 - 2 * c);
 };
 
+/** Shortest distance round the orbit between two progress values, 0..0.5. */
+const circ = (a: number, b: number): number => {
+  const d = mod1(a - b);
+  return Math.min(d, 1 - d);
+};
+
+/** Progress gap that flyers keep: the minimum in pixels, or an even share when the orbit is crowded. */
+export function minGapU(count: number, span: number, px: number): number {
+  const even = count > 0 ? 0.95 / count : 1;
+  return Math.min((SKY_TASK_MIN_GAP * px) / span, even);
+}
+
+/**
+ * Pure: pushes flyers (progress values round an orbit) apart where closer than `gap`, moving each at
+ * most `step` this call. A pinned flyer never moves, its neighbours give way instead. Returns the
+ * progress change of each.
+ */
+export function separateFlyers(
+  us: number[],
+  pinned: boolean[],
+  gap: number,
+  step: number,
+): number[] {
+  const n = us.length;
+  const moved = us.map(() => 0);
+  if (n < 2) return moved;
+  const order = us.map((_, i) => i).sort((a, b) => us[a] - us[b]);
+  for (let k = 0; k < n; k++) {
+    const i = order[k];
+    const j = order[(k + 1) % n];
+    const d = mod1(us[j] + moved[j] - (us[i] + moved[i]));
+    if (d >= gap) continue;
+    const deficit = gap - d;
+    const roomI = pinned[i] ? 0 : step + moved[i];
+    const roomJ = pinned[j] ? 0 : step - moved[j];
+    if (roomI <= 0 && roomJ <= 0) continue;
+    const half = deficit / 2;
+    let backI = Math.min(roomI, pinned[j] ? deficit : half);
+    let fwdJ = Math.min(roomJ, pinned[i] ? deficit : half);
+    // one side out of room: the other takes the rest, still within its own room
+    if (backI < half) fwdJ = Math.min(roomJ, deficit - backI);
+    else if (fwdJ < half) backI = Math.min(roomI, deficit - fwdJ);
+    moved[i] -= Math.max(0, backI);
+    moved[j] += Math.max(0, fwdJ);
+  }
+  return moved;
+}
+
 /** Seconds a flyer takes to go once round the given orbit; the higher the orbit the faster. */
 export function orbitCrossSec(orbit: number): number {
   const speed = orbit / (SKY_TASK_TRACKS - 1);
@@ -244,12 +296,15 @@ type Motion =
 export type SkyMotionKind = Motion['kind'];
 
 const motions = new Map<string, Motion>();
+/** When the motions were last brought up to date, so a nudge is scaled by elapsed time. */
+let lastSyncSec: number | null = null;
 
 export function skyMotionKind(id: string): SkyMotionKind | undefined {
   return motions.get(id)?.kind;
 }
 export function resetSkyMotion(): void {
   motions.clear();
+  lastSyncSec = null;
 }
 
 interface Geo {
@@ -402,6 +457,129 @@ function park(id: string, lot: AirfieldLot): Motion {
   return { kind: 'parked', lot, slot: freeSlot(lot, id) };
 }
 
+/** Where on its orbit a flyer is (or will be, for a take-off still climbing) at `sec`, 0..1; null if it is not on that orbit. */
+function orbitU(m: Motion, orbit: number, sec: number, g: Geo): number | null {
+  if (m.kind === 'cruise' && m.orbit === orbit) return mod1(sec / orbitCrossSec(orbit) + m.phase);
+  if (m.kind === 'takeoff' && m.orbit === orbit) {
+    const end = m.t0 + takeoffSec(g, m);
+    return mod1(uJoin(g, m.rocket) + (sec - end) / orbitCrossSec(orbit));
+  }
+  return null;
+}
+
+/** How many flyers are, or are about to be, on an orbit. */
+function crowd(orbit: number, except: string | undefined, sec: number, g: Geo): number {
+  let n = 0;
+  for (const [id, m] of motions) if (id !== except && orbitU(m, orbit, sec, g) !== null) n++;
+  return n;
+}
+
+/** The closest any other flyer is to progress `u` on an orbit at `sec`, in progress units (1 when alone). */
+function nearestOther(
+  orbit: number,
+  u: number,
+  except: string | undefined,
+  sec: number,
+  g: Geo,
+): number {
+  let best = 1;
+  for (const [id, m] of motions) {
+    if (id === except) continue;
+    const o = orbitU(m, orbit, sec, g);
+    if (o !== null) best = Math.min(best, circ(o, u));
+  }
+  return best;
+}
+
+/** Where a flyer can be put on an orbit now: its even-spread phase if that is clear, else the middle of the widest gap. */
+function freePhase(orbit: number, wanted: number, id: string, sec: number, g: Geo): number {
+  const cross = orbitCrossSec(orbit);
+  const gap = minGapU(crowd(orbit, id, sec, g) + 1, g.span, g.px);
+  const wantedU = mod1(sec / cross + wanted);
+  if (nearestOther(orbit, wantedU, id, sec, g) >= gap) return wanted;
+  const us: number[] = [];
+  for (const [other, m] of motions) {
+    if (other === id) continue;
+    const o = orbitU(m, orbit, sec, g);
+    if (o !== null) us.push(o);
+  }
+  us.sort((a, b) => a - b);
+  let at = wantedU;
+  let widest = -1;
+  us.forEach((o, i) => {
+    const d = mod1((us[(i + 1) % us.length] ?? o) - o) || 1;
+    if (d > widest) {
+      widest = d;
+      at = mod1(o + d / 2);
+    }
+  });
+  return mod1(at - sec / cross);
+}
+
+/**
+ * Seconds a take-off waits on the ground so that it joins its orbit, and climbs onto it, clear of
+ * the flyers already there (or about to be). The wait is the shortest that is clear, or the one
+ * that leaves the most room when the orbit is full.
+ */
+function joinDelay(
+  m: { slot: number; orbit: number; rocket: boolean },
+  id: string,
+  sec: number,
+  g: Geo,
+): number {
+  const cross = orbitCrossSec(m.orbit);
+  const dur = takeoffSec(g, m);
+  const join = uJoin(g, m.rocket);
+  const gap = minGapU(crowd(m.orbit, id, sec, g) + 1, g.span, g.px);
+  // checked as the climb starts to fade in and when it lands on the track
+  const clearance = (wait: number): number => {
+    let c = 1;
+    for (const back of [0, SKY_AIRFIELD_CLIMB_SEC * (1 - SKY_AIRFIELD_FADE_FROM)]) {
+      const t = sec + wait + dur - back;
+      c = Math.min(c, nearestOther(m.orbit, mod1(join - back / cross), id, t, g));
+    }
+    return c;
+  };
+  let best = 0;
+  let bestClear = -1;
+  for (let wait = 0; wait <= cross; wait += SKY_TASK_JOIN_STEP_SEC) {
+    const c = clearance(wait);
+    if (c >= gap) return wait;
+    if (c > bestClear) {
+      bestClear = c;
+      best = wait;
+    }
+  }
+  return best;
+}
+
+/**
+ * Flyers still too close on an orbit (a task changed orbit, a landing came back, the board changed)
+ * drift apart a little each frame instead of jumping. A flyer already committed to a landing stays
+ * put and its neighbours give way.
+ */
+function relaxOrbits(sec: number, g: Geo): void {
+  const dt = lastSyncSec === null ? 0 : Math.max(0, Math.min(0.25, sec - lastSyncSec));
+  lastSyncSec = sec;
+  if (dt === 0) return;
+  const step = ((SKY_TASK_NUDGE_PX_PER_SEC * g.px) / g.span) * dt;
+  for (let orbit = 0; orbit < SKY_TASK_TRACKS; orbit++) {
+    const flyers: Array<Extract<Motion, { kind: 'cruise' }>> = [];
+    for (const m of motions.values()) if (m.kind === 'cruise' && m.orbit === orbit) flyers.push(m);
+    if (flyers.length < 2) continue;
+    const cross = orbitCrossSec(orbit);
+    const moved = separateFlyers(
+      flyers.map((m) => mod1(sec / cross + m.phase)),
+      flyers.map((m) => m.landAt !== undefined),
+      minGapU(flyers.length, g.span, g.px),
+      step,
+    );
+    flyers.forEach((m, i) => {
+      m.phase = mod1(m.phase + moved[i]);
+    });
+  }
+}
+
 /**
  * Brings every task's motion in line with its status at `sec`: the only place a motion changes.
  * Idempotent for one `sec`, so the day and night passes can both call it.
@@ -419,7 +597,7 @@ function syncSkyMotion(sec: number, g: Geo): void {
       motions.set(
         t.id,
         orbit !== null
-          ? { kind: 'cruise', orbit, phase: places[i].phase }
+          ? { kind: 'cruise', orbit, phase: freePhase(orbit, places[i].phase, t.id, sec, g) }
           : park(t.id, lot ?? 'plan'),
       );
       return;
@@ -472,17 +650,21 @@ function syncSkyMotion(sec: number, g: Geo): void {
     if (orbit === null) return;
     // an active status
     if (m.kind === 'parked') {
-      motions.set(t.id, {
-        kind: 'takeoff',
-        t0: sec,
+      const start = {
         slot: m.lot === 'plan' ? m.slot : freeSlot('plan', t.id),
         orbit,
         rocket: isNight(),
-      });
+      };
+      // held on the ground until the orbit is clear where it will join
+      motions.set(t.id, { kind: 'takeoff', t0: sec + joinDelay(start, t.id, sec, g), ...start });
     } else if (m.kind === 'takeoff') {
       m.orbit = orbit;
     } else if (m.kind === 'landing') {
-      motions.set(t.id, { kind: 'cruise', orbit, phase: places[i].phase });
+      motions.set(t.id, {
+        kind: 'cruise',
+        orbit,
+        phase: freePhase(orbit, places[i].phase, t.id, sec, g),
+      });
     } else {
       m.landAt = undefined;
       m.landRocket = undefined;
@@ -495,6 +677,7 @@ function syncSkyMotion(sec: number, g: Geo): void {
       }
     }
   });
+  relaxOrbits(sec, g);
 }
 
 type FlyerState =
