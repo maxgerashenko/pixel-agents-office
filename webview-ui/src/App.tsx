@@ -24,6 +24,7 @@ import { Modal } from './components/ui/Modal.js';
 import { UsageMeter } from './components/UsageMeter.js';
 import { VersionIndicator } from './components/VersionIndicator.js';
 import { ViewZoomMenu } from './components/ViewZoomMenu.js';
+import { WhiteboardModal } from './components/WhiteboardModal.js';
 import { ZoomControls } from './components/ZoomControls.js';
 import {
   FIT_OBSTACLE_ATTR,
@@ -161,6 +162,7 @@ function App() {
   const [isChangelogOpen, setIsChangelogOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isHooksInfoOpen, setIsHooksInfoOpen] = useState(false);
+  const [isWhiteboardOpen, setIsWhiteboardOpen] = useState(false);
   const [hooksTooltipDismissed, setHooksTooltipDismissed] = useState(false);
   const [isDebugMode, setIsDebugMode] = useState(false);
   const [alwaysShowOverlay, setAlwaysShowOverlay] = useState(false);
@@ -696,6 +698,7 @@ function App() {
         showAreas={effectiveShowAreas}
         activeAreaLabel={activeAreaLabel}
         tapSelectsFirst={isMobile}
+        onWhiteboardTap={() => setIsWhiteboardOpen(true)}
       />
 
       {!isDebugMode ? (
@@ -1038,6 +1041,9 @@ function App() {
           </div>
         </div>
       )}
+
+      {/* Whiteboard task list. Top level for the same reason as the modal below. */}
+      <WhiteboardModal isOpen={isWhiteboardOpen} onClose={() => setIsWhiteboardOpen(false)} />
 
       {/* Hooks info modal. Top level, beside the other modals: inside the
           office region it would sit in the mobile shell's transformed track,
