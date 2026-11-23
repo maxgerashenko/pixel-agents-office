@@ -888,9 +888,13 @@ export const SKY_VORTICES = [
 /** Canvas device pixels per brushstroke, in sprite-pixel area (lower = denser). */
 export const SKY_STROKE_AREA_SPRITE_PX = 30;
 export const SKY_STROKE_MAX = 14000;
-/** A brushstroke is one sprite pixel thick (hairline); it advances one pixel a step, so it stays unbroken. */
-export const SKY_STROKE_THICKNESS_SPRITE_PX = 1;
-export const SKY_STROKE_STEP_SPRITE_PX = 1;
+/** The two looks of the night-sky brushstrokes (a tap on the moon switches): a hairline one sprite
+ *  pixel thick advancing one pixel a step (stays unbroken), and the original 3x2 blocks stepping 2. */
+export const SKY_STROKE_STYLES = {
+  thin: { w: 1, h: 1, step: 1 },
+  thick: { w: 3, h: 2, step: 2 },
+} as const;
+export type SkyStrokeStyle = keyof typeof SKY_STROKE_STYLES;
 /** The big stars, placed by hand: x across the canvas, y as a share of the sky above the
  *  skyline, size in sprite pixels (the star's outer rings reach 2 x size + 2). */
 export const SKY_BIG_STARS = [

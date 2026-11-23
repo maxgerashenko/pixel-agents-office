@@ -47,8 +47,7 @@ import {
   SKY_STAR_FADE,
   SKY_STROKE_AREA_SPRITE_PX,
   SKY_STROKE_MAX,
-  SKY_STROKE_STEP_SPRITE_PX,
-  SKY_STROKE_THICKNESS_SPRITE_PX,
+  SKY_STROKE_STYLES,
   SKY_SUN_CORE_COLOR,
   SKY_SWIRL_COLORS,
   SKY_TREE_DAY_COLORS,
@@ -59,6 +58,7 @@ import {
   SKY_VORTICES,
   SKY_WINDOW_COLOR,
   SKY_WIPE_BAND_SPRITE_PX,
+  type SkyStrokeStyle,
 } from '../../constants.js';
 import { airfieldLayout, drawAirfield, setAirfieldSite } from './skyAirfield.js';
 import {
@@ -460,6 +460,25 @@ let nightCache: {
   frames: (HTMLCanvasElement | undefined)[];
 } | null = null;
 
+let nightLineStyle: SkyStrokeStyle = 'thin';
+let moonHit: { x: number; y: number; r: number } | null = null;
+
+/** Switch the night-sky brushstrokes between the thin hairlines and the original thick blocks. */
+export function toggleNightLineStyle(): SkyStrokeStyle {
+  nightLineStyle = nightLineStyle === 'thin' ? 'thick' : 'thin';
+  return nightLineStyle;
+}
+
+export function getNightLineStyle(): SkyStrokeStyle {
+  return nightLineStyle;
+}
+
+/** Whether a device-pixel point lies on the moon as last drawn (false by day). */
+export function skyMoonAt(deviceX: number, deviceY: number): boolean {
+  if (!moonHit) return false;
+  return Math.hypot(deviceX - moonHit.x, deviceY - moonHit.y) <= moonHit.r;
+}
+
 /**
  * One frame of the Starry Night sky at sprite resolution, as the plane
  * (`pw` x `ph`, wider and taller than the canvas) the whole sky travels on: thousands of short brushstrokes
@@ -475,7 +494,9 @@ export function paintNightFrame(
   vortices: ReadonlyArray<{ x: number; y: number; r: number }>,
   /** The canvas the plane is seen through at rest: how big it is, and where the plane's corner sits in it. */
   view: { sw: number; sh: number; ox: number; oy: number },
+  style: SkyStrokeStyle = nightLineStyle,
 ): HTMLCanvasElement {
+  const stroke = SKY_STROKE_STYLES[style];
   const { sw, sh, ox, oy } = view;
   const canvas = document.createElement('canvas');
   canvas.width = pw;
@@ -505,19 +526,14 @@ export function paintNightFrame(
     c.fillStyle = inBand
       ? SKY_NIGHT_BAND_COLOR
       : SKY_SWIRL_COLORS[Math.min(last, Math.floor(rnd() * 3.4 + near * 2.4))];
-    const len = Math.round((8 + Math.floor(rnd() * 8)) * (2 / SKY_STROKE_STEP_SPRITE_PX));
+    const len = Math.round((8 + Math.floor(rnd() * 8)) * (2 / stroke.step));
     // the stroke is a `len`-step window on a loop twice as long, starting at
     // its own phase and advancing one loop per animation cycle
     const loop = len * 2;
     const head = (Math.floor(rnd() * loop) + Math.floor((frame * loop) / SKY_NIGHT_FRAMES)) % loop;
     for (let s = 0; s < loop; s++) {
       if ((s - head + loop) % loop < len)
-        c.fillRect(
-          Math.round(x),
-          Math.round(y),
-          SKY_STROKE_THICKNESS_SPRITE_PX,
-          SKY_STROKE_THICKNESS_SPRITE_PX,
-        );
+        c.fillRect(Math.round(x), Math.round(y), stroke.w, stroke.h);
       // flow: gentle rolling waves, bent into a spiral near each vortex
       const wave = Math.sin(((x + ox) / sw) * 7 + ((y + oy) / sh) * 4) * 0.5;
       let fx = Math.cos(wave) * 0.5;
@@ -532,8 +548,8 @@ export function paintNightFrame(
         fy += pull * (dx / dist - (0.3 * dy) / dist);
       }
       const mag = Math.hypot(fx, fy) || 1;
-      x += (fx / mag) * SKY_STROKE_STEP_SPRITE_PX;
-      y += (fy / mag) * SKY_STROKE_STEP_SPRITE_PX;
+      x += (fx / mag) * stroke.step;
+      y += (fy / mag) * stroke.step;
     }
   }
   return canvas;
@@ -560,7 +576,7 @@ function nightBackdrop(
   const sh = Math.ceil(h / px);
   const travel = Math.ceil(plane.travel / px);
   const rise = Math.ceil(plane.rise / px);
-  const key = `${w}x${h}x${px}x${travel}x${rise}`;
+  const key = `${w}x${h}x${px}x${travel}x${rise}x${nightLineStyle}`;
   if (nightCache?.key !== key) {
     const canvas = document.createElement('canvas');
     canvas.width = w;
@@ -629,6 +645,7 @@ export function drawSky(
 ): void {
   const t = skyOverride() ?? skyFractionNow(now);
   const sky = skyAt(t);
+  moonHit = null;
   const px = Math.max(1, Math.round(zoom));
   const band = SKY_BAND_SPRITE_PX * px;
   const top = parseHex(sky.top);
@@ -785,6 +802,7 @@ export function drawSky(
     const [cx, cy] = arcPosition(sky.moon.p, sky.moon.lift, (moonTrack + 1) * px, w, h, avoid);
     const mx = Math.round(cx / px) * px;
     const my = Math.round(cy / px) * px;
+    moonHit = { x: mx, y: my, r: mr * px };
     const dot = (dx: number, dy: number, sw = 1, sh = 1): void =>
       ctx.fillRect(mx + dx * px, my + dy * px, sw * px, sh * px);
     // soft glow
