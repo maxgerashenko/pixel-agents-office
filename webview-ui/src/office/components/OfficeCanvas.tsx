@@ -10,6 +10,7 @@ import {
   ZOOM_SCROLL_THRESHOLD,
 } from '../../constants.js';
 import { unlockAudio } from '../../notificationSound.js';
+import { terminalLinkOpener } from '../../terminal/terminalLinks.js';
 import { transport } from '../../transport/index.js';
 import { furnitureAt } from '../editor/editorActions.js';
 import { buildEditorRenderState } from '../editor/editorRenderState.js';
@@ -23,9 +24,18 @@ import type {
   SelectionRenderState,
 } from '../engine/renderer.js';
 import { renderFrame } from '../engine/renderer.js';
+import { skyLinkAt } from '../engine/skyTasks.js';
 import { EditTool, TILE_SIZE } from '../types.js';
 import { computeNormalModeCursor } from './officeCanvasCursor.js';
 import { useCanvasTouchGestures } from './useCanvasTouchGestures.js';
+
+/** Opens a task's pull request in a new tab, straight from the tap (iOS only allows it there). */
+function openSkyLink(uri: string): void {
+  terminalLinkOpener((url, target, features) => window.open(url as string, target, features))(
+    null,
+    uri,
+  );
+}
 
 /**
  * Cursor for a furniture drag that has started moving: 'copy' — the platform's
@@ -428,7 +438,7 @@ export function OfficeCanvas({
       officeState.hoveredTile = tile;
       const canvas = canvasRef.current;
       if (canvas) {
-        canvas.style.cursor = computeNormalModeCursor({
+        const cursor = computeNormalModeCursor({
           hitId,
           petId,
           selectedAgentId: officeState.selectedAgentId,
@@ -437,6 +447,10 @@ export function OfficeCanvas({
           getSeat: (seatId) => officeState.seats.get(seatId),
           getCharacter: (id) => officeState.characters.get(id),
         });
+        canvas.style.cursor =
+          hitId === null && petId === null && skyLinkAt(pos.deviceX, pos.deviceY)
+            ? 'pointer'
+            : cursor;
       }
       officeState.hoveredAgentId = hitId;
     },
@@ -653,6 +667,13 @@ export function OfficeCanvas({
         } else {
           officeState.showPetBubble(petId);
         }
+        return;
+      }
+
+      // A ready-to-merge plane, rocket or its lot: open the task's pull request
+      const link = skyLinkAt(pos.deviceX, pos.deviceY);
+      if (link) {
+        openSkyLink(link);
         return;
       }
 

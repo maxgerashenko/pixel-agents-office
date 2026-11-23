@@ -26,12 +26,15 @@ export interface TaskInfo {
   id: string;
   title: string;
   stage: TaskStage;
+  /** The pull request's web page, when `gh` reported one. */
+  url?: string;
 }
 
 /** The fields of `gh pr list --json ...` this reads. */
 export interface GhPr {
   number: number;
   title: string;
+  url?: string;
   headRefName: string;
   state: 'OPEN' | 'MERGED' | 'CLOSED';
   isDraft: boolean;
@@ -84,7 +87,13 @@ export function tasksFromPrs(prs: GhPr[], now: number): TaskInfo[] {
     const stamp = Date.parse((pr.state === 'MERGED' ? pr.mergedAt : pr.updatedAt) ?? '');
     const age = Number.isFinite(stamp) ? now - stamp : 0;
     if (pr.state === 'MERGED' ? age > TASKS_MERGED_LINGER_MS : age > TASKS_STALE_MS) continue;
-    out.push({ id: `${pr.headRefName}#${pr.number}`, title: pr.title, stage: stageOfPr(pr) });
+    const task: TaskInfo = {
+      id: `${pr.headRefName}#${pr.number}`,
+      title: pr.title,
+      stage: stageOfPr(pr),
+    };
+    if (typeof pr.url === 'string' && pr.url) task.url = pr.url;
+    out.push(task);
   }
   return out;
 }
@@ -112,7 +121,7 @@ async function fetchPrs(dir: string): Promise<GhPr[] | null> {
       '--limit',
       '30',
       '--json',
-      'number,title,headRefName,state,isDraft,changedFiles,reviewDecision,reviewRequests,statusCheckRollup,updatedAt,mergedAt',
+      'number,title,url,headRefName,state,isDraft,changedFiles,reviewDecision,reviewRequests,statusCheckRollup,updatedAt,mergedAt',
     ],
     dir,
   );

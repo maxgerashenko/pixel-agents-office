@@ -23,6 +23,8 @@ import {
   SKY_AIRFIELD_LANDING_ROLL_SEC,
   SKY_AIRFIELD_LANDING_TAXI_SEC,
   SKY_AIRFIELD_LIFT_BLEND,
+  SKY_AIRFIELD_LOT_W,
+  SKY_AIRFIELD_SLOT_PITCH,
   SKY_AIRFIELD_TAKEOFF_ROLL_SEC,
   SKY_AIRFIELD_TAKEOFF_TAXI_SEC,
   SKY_ROCKET_DESCENT_SEC,
@@ -71,6 +73,8 @@ export interface SkyTask {
   id: string;
   title: string;
   stage: SkyTaskStage;
+  /** The pull request's web page (ready to merge: a tap on its plane opens it). */
+  url?: string;
 }
 
 /** Merged tasks have left the sky, so only the rest are kept. */
@@ -720,6 +724,24 @@ export function skyStateForTest(
   return { mode: s.mode === 'turn' ? 'air' : 'ground', x: s.x, y: s.y };
 }
 
+interface LinkHit {
+  x0: number;
+  x1: number;
+  y0: number;
+  y1: number;
+  url: string;
+}
+/** Where ready-to-merge planes stand on the canvas as last drawn, in device pixels. */
+let linkHits: LinkHit[] = [];
+
+/** The pull request link of the ready-to-merge plane, rocket or lot at a device-pixel point, if any. */
+export function skyLinkAt(deviceX: number, deviceY: number): string | null {
+  const hit = linkHits.find(
+    (h) => deviceX >= h.x0 && deviceX <= h.x1 && deviceY >= h.y0 && deviceY <= h.y1,
+  );
+  return hit ? hit.url : null;
+}
+
 /** The planes that are on the airfield (parked, taxiing, rolling): drawn above the field, whatever the hour. */
 export function drawGroundPlanes(
   ctx: CanvasRenderingContext2D,
@@ -728,8 +750,21 @@ export function drawGroundPlanes(
   px: number,
   sec: number,
 ): void {
-  for (const [, s] of statesNow(sec, w, horizonY, px)) {
+  linkHits = [];
+  for (const [task, s] of statesNow(sec, w, horizonY, px)) {
     if (s.mode === 'air') continue;
+    if (s.mode === 'ground' && s.parked && task.stage === 'ready_to_merge' && task.url) {
+      // the whole bay is the button: plane (or rocket), beacon and the lot round them
+      const halfW = (SKY_AIRFIELD_LOT_W * px) / 2;
+      const halfH = (SKY_AIRFIELD_SLOT_PITCH * px) / 2;
+      linkHits.push({
+        x0: s.x - halfW,
+        x1: s.x + halfW,
+        y0: s.y - halfH,
+        y1: s.y + halfH,
+        url: task.url,
+      });
+    }
     const colour = SKY_TASK_COLORS[s.stageIndex];
     if (s.mode === 'ground' && s.parked) {
       // a parked plane and rocket trade places over the same dusk and dawn window as the

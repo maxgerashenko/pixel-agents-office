@@ -234,6 +234,7 @@ export interface TaskInfo {
   id: string;
   title: string;
   stage: AnonymousSchema_84;
+  url?: string;
 }
 
 export type AnonymousSchema_84 =

@@ -11,10 +11,12 @@ import { beforeEach, test } from 'vitest';
 
 import { airfieldLayout } from '../src/office/engine/skyAirfield.js';
 import {
+  drawGroundPlanes,
   orbitOfStage,
   resetSkyMotion,
   setSkyNight,
   setSkyTasks,
+  skyLinkAt,
   skyMotionKind,
   skyStateForTest,
   type SkyTask,
@@ -159,4 +161,36 @@ test('at night a landing is a rocket coming down onto the right lot', () => {
   assert.ok(down && down.x > field.runwayR, 'above the right lot, never on the runway');
   for (; sec < 200 && skyMotionKind('a') !== 'parked'; sec += 0.25) at(sec);
   assert.equal(skyMotionKind('a'), 'parked');
+});
+
+test('a ready-to-merge task with a link is a button over its bay, day or night; other tasks are not', () => {
+  const calls: unknown[] = [];
+  const ctx = new Proxy(
+    {},
+    { get: () => () => calls.push(0), set: () => true },
+  ) as unknown as CanvasRenderingContext2D;
+  const url = 'https://github.com/o/r/pull/7';
+  for (const night of [0, 1]) {
+    resetSkyMotion();
+    setSkyNight(night);
+    setSkyTasks([{ id: 'a', title: 'a', stage: 'ready_to_merge', url }]);
+    const p = at(0);
+    assert.ok(p);
+    drawGroundPlanes(ctx, W, H, PX, 0);
+    assert.equal(skyLinkAt(p.x, p.y), url);
+    assert.equal(skyLinkAt(p.x + 5 * PX, p.y + 4 * PX), url);
+    assert.equal(skyLinkAt(p.x - 20 * PX, p.y), null);
+  }
+  // no link, or not ready to merge: nothing to press
+  resetSkyMotion();
+  setSkyNight(0);
+  setSkyTasks([{ id: 'a', title: 'a', stage: 'ready_to_merge' }]);
+  const q = at(0);
+  drawGroundPlanes(ctx, W, H, PX, 0);
+  assert.equal(q && skyLinkAt(q.x, q.y), null);
+  setSkyTasks([{ id: 'a', title: 'a', stage: 'tests', url }]);
+  resetSkyMotion();
+  const t = at(0);
+  drawGroundPlanes(ctx, W, H, PX, 0);
+  assert.equal(t && skyLinkAt(t.x, t.y), null);
 });
