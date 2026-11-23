@@ -557,7 +557,9 @@ components:
           enum: [plan, coding, tests, review, ready_to_merge, merged]
         url:
           type: string
-          description: The pull request's web page; a tap on a ready-to-merge task's plane opens it.
+          description: |
+            The pull request's web page; a tap on a ready-to-merge task's plane opens it.
+            A plan's link is the pull request's files (its documents).
 
     LayoutLoaded:
       description: |

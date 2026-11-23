@@ -39,6 +39,7 @@ export interface GhPr {
   state: 'OPEN' | 'MERGED' | 'CLOSED';
   isDraft: boolean;
   changedFiles?: number;
+  files?: { path: string }[];
   reviewDecision?: string | null;
   reviewRequests?: unknown[];
   statusCheckRollup?: { status?: string; conclusion?: string; state?: string }[] | null;
@@ -64,14 +65,28 @@ function checksState(pr: GhPr): ChecksState {
   return pending ? 'pending' : 'passing';
 }
 
+/** A plan is documents only: markdown, or anything under a docs/ or plans/ folder. */
+const PLAN_DOC_PATTERN = /(\.md$)|(^|\/)(docs?|plans?)\//i;
+
+/**
+ * Pure: a plan that is not on main yet. An open pull request with nothing in it, or with
+ * only documents in it, is still the plan; it ends when that pull request is merged (the
+ * plan is published to main) or code joins the documents.
+ */
+function isUnpublishedPlan(pr: GhPr): boolean {
+  if (pr.isDraft && pr.changedFiles === 0) return true;
+  const files = pr.files ?? [];
+  return files.length > 0 && files.every((f) => PLAN_DOC_PATTERN.test(f.path));
+}
+
 /** Pure: where a pull request is on the way from plan to merged. */
 export function stageOfPr(pr: GhPr): TaskStage {
   if (pr.state === 'MERGED') return 'merged';
+  if (isUnpublishedPlan(pr)) return 'plan';
   const checks = checksState(pr);
   if (pr.isDraft) {
     if (checks !== 'none') return 'tests';
-    // a draft with nothing in it yet is still the plan
-    return pr.changedFiles === 0 ? 'plan' : 'coding';
+    return 'coding';
   }
   if (checks === 'pending' || checks === 'failing') return 'tests';
   if (pr.reviewDecision === 'APPROVED') return 'ready_to_merge';
@@ -87,12 +102,11 @@ export function tasksFromPrs(prs: GhPr[], now: number): TaskInfo[] {
     const stamp = Date.parse((pr.state === 'MERGED' ? pr.mergedAt : pr.updatedAt) ?? '');
     const age = Number.isFinite(stamp) ? now - stamp : 0;
     if (pr.state === 'MERGED' ? age > TASKS_MERGED_LINGER_MS : age > TASKS_STALE_MS) continue;
-    const task: TaskInfo = {
-      id: `${pr.headRefName}#${pr.number}`,
-      title: pr.title,
-      stage: stageOfPr(pr),
-    };
-    if (typeof pr.url === 'string' && pr.url) task.url = pr.url;
+    const stage = stageOfPr(pr);
+    const task: TaskInfo = { id: `${pr.headRefName}#${pr.number}`, title: pr.title, stage };
+    // a plan opens the pull request's files (its documents); the rest open the pull request
+    if (typeof pr.url === 'string' && pr.url)
+      task.url = stage === 'plan' ? `${pr.url}/files` : pr.url;
     out.push(task);
   }
   return out;
@@ -121,7 +135,7 @@ async function fetchPrs(dir: string): Promise<GhPr[] | null> {
       '--limit',
       '30',
       '--json',
-      'number,title,url,headRefName,state,isDraft,changedFiles,reviewDecision,reviewRequests,statusCheckRollup,updatedAt,mergedAt',
+      'number,title,url,headRefName,state,isDraft,changedFiles,files,reviewDecision,reviewRequests,statusCheckRollup,updatedAt,mergedAt',
     ],
     dir,
   );
