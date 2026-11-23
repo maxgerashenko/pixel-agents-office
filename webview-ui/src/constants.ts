@@ -1319,6 +1319,36 @@ export const SKY_MERGE_DAY = {
   total: 10.4,
 } as const;
 
+// ── Live whiteboard ──────────────────────────────────────────
+export const WHITEBOARD_FURNITURE_TYPE = 'WHITEBOARD';
+/** The count's plate, as a fraction of the board's footprint. */
+/** The count is drawn from a 3x5 pixel font, each lit pixel 2 wide so it reads bold. Rows of 3 bits, top first. */
+export const WHITEBOARD_GLYPHS: Record<string, readonly number[]> = {
+  '0': [7, 5, 5, 5, 7],
+  '1': [2, 6, 2, 2, 7],
+  '2': [7, 1, 7, 4, 7],
+  '3': [7, 1, 7, 1, 7],
+  '4': [5, 5, 7, 1, 1],
+  '5': [7, 4, 7, 1, 7],
+  '6': [7, 4, 7, 5, 7],
+  '7': [7, 1, 1, 1, 1],
+  '8': [7, 5, 7, 5, 7],
+  '9': [7, 5, 7, 1, 7],
+};
+export const WHITEBOARD_GLYPH_W = 3;
+export const WHITEBOARD_GLYPH_H = 5;
+/** Each lit pixel is this many world pixels wide (bold). */
+export const WHITEBOARD_GLYPH_STROKE = 2;
+/** Gap between digits, and the plate's margin round the digits, in world pixels. */
+export const WHITEBOARD_GLYPH_GAP = 1;
+export const WHITEBOARD_PLATE_MARGIN = 1;
+export const WHITEBOARD_COUNT_COLOR = '#2b6cdf';
+/** The board sprite's own surface colour, so the patch that clears its scribbles under the count is invisible. */
+export const WHITEBOARD_PLATE_COLOR = '#efebe8';
+/** How often the open list re-reads the board, ms. */
+export const WHITEBOARD_REFRESH_MS = 1000;
+export const WHITEBOARD_MODAL_Z_INDEX = 52;
+
 // ── Wall clock (the CLOCK item shows the device's local time) ──
 /** The CLOCK sprite pixel the hands turn about (a face pixel, so a hand starts on it). */
 export const CLOCK_PIVOT_COL = 7;
