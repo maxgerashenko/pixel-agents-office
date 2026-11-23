@@ -1319,6 +1319,32 @@ export const SKY_MERGE_DAY = {
   total: 10.4,
 } as const;
 
+// ── Monitor glow (PC screen tint by the agent's tool) ────────────────────────
+export const MONITOR_SCREEN_TYPE_PREFIX = 'PC_FRONT_ON';
+export const MONITOR_SHELL_TOOLS: ReadonlySet<string> = new Set(['Bash', 'PowerShell']);
+export const MONITOR_EDIT_TOOLS: ReadonlySet<string> = new Set([
+  'Edit',
+  'MultiEdit',
+  'Write',
+  'NotebookEdit',
+]);
+/** Stock screen colours (lower-case #RRGGBB) → tinted ones. Reading keeps the stock green. */
+export const MONITOR_GLOW_PALETTES: Record<'edit' | 'shell' | 'read', Record<string, string>> = {
+  read: {},
+  edit: {
+    '#41604f': '#2c4a7c',
+    '#4a655d': '#355584',
+    '#548e61': '#4a7fcf',
+    '#60c677': '#7db4ff',
+  },
+  shell: {
+    '#41604f': '#101216',
+    '#4a655d': '#171a1f',
+    '#548e61': '#2a2f36',
+    '#60c677': '#4a525c',
+  },
+};
+
 // ── Live whiteboard ──────────────────────────────────────────
 export const WHITEBOARD_FURNITURE_TYPE = 'WHITEBOARD';
 /** The count's plate, as a fraction of the board's footprint. */
