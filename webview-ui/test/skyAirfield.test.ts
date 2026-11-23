@@ -377,3 +377,33 @@ test('the ready-to-merge number stands outside the field edge beside its plane, 
     setAirfieldSite(null);
   }
 });
+
+test('a plan or tests number stands outside the field edge on the left, level with its plane', () => {
+  for (const stage of ['plan', 'tests'] as const) {
+    resetSkyMotion();
+    setSkyNight(0);
+    setSkyTasks([{ id: 'a#6', title: 'a', stage }]);
+    const p = skyStateForTest('a#6', 0, W, H, PX);
+    assert.ok(p);
+    const seen: { t: string; x: number; y: number; align: string }[] = [];
+    let align = '';
+    const ctx = new Proxy(
+      {},
+      {
+        get: (_t, key) =>
+          key === 'fillText'
+            ? (t: string, x: number, y: number) => seen.push({ t, x, y, align })
+            : () => undefined,
+        set: (_t, key, value) => {
+          if (key === 'textAlign') align = String(value);
+          return true;
+        },
+      },
+    ) as unknown as CanvasRenderingContext2D;
+    drawGroundPlanes(ctx, W, H, PX, 0);
+    const label = seen.filter((s) => s.t === '#6').pop();
+    assert.ok(label, stage);
+    assert.equal(label.align, 'right');
+    assert.ok(label.x <= field.left, 'left of the field edge');
+  }
+});

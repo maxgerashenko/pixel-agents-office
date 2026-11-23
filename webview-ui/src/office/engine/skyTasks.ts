@@ -799,18 +799,17 @@ export function drawGroundPlanes(
       drawGroundCrew(ctx, s.x, s.y, px, SKY_TASK_STAGES[s.stageIndex], sec, s.seed);
       const num = prNumberOfTaskId(task.id);
       if (num !== null) {
-        // ready to merge: the number stands just outside the field's edge, level with the plane; with
-        // no room there (the field touches the sky's edge) it takes the free side where a technician
-        // would stand
+        // beside the plane, outside the field: ready to merge on the right edge (level with the
+        // plane), plan and tests on the left edge. With no room there the number takes the free
+        // side of a ready plane, or goes under any other.
         const f = airfieldLayout(w, horizonY, px);
-        const edge = f.left + f.width + SKY_PR_NUMBER_EDGE_GAP_UNITS * px;
-        const room = w - edge >= SKY_PR_NUMBER_ROOM_UNITS * px;
-        const outside =
-          task.stage !== 'ready_to_merge'
-            ? undefined
-            : room
-              ? edge
-              : s.x + SKY_PR_NUMBER_FREE_SIDE_UNITS * px;
+        const gap = SKY_PR_NUMBER_EDGE_GAP_UNITS * px;
+        const need = SKY_PR_NUMBER_ROOM_UNITS * px;
+        const rightEdge = f.left + f.width + gap;
+        let outside: number | undefined;
+        if (task.stage === 'ready_to_merge')
+          outside = w - rightEdge >= need ? rightEdge : s.x + SKY_PR_NUMBER_FREE_SIDE_UNITS * px;
+        else if (!f.strip && f.left - gap >= need) outside = f.left - gap;
         drawPrNumber(ctx, s.x, s.y, px, num, outside);
       }
     } else if (s.mode === 'rocket') {
