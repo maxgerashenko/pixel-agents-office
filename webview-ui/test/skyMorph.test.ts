@@ -13,6 +13,7 @@ import { SKY_TASK_PANEL_COLOR, SKY_TASK_WING_COLOR } from '../src/constants.js';
 import {
   drawSkyFlyers,
   resetSkyMotion,
+  setSkyBorder,
   setSkyNight,
   setSkyTasks,
 } from '../src/office/engine/skyTasks.js';
@@ -20,12 +21,14 @@ import {
 const W = 1100;
 const H = 260;
 const PX = 3;
+const BAND = 60;
 
 /** The fill colours a draw touched, by how many rects each got. */
-function fillsAt(night: number): Map<string, number> {
+function fillsAt(night: number, open?: number): Map<string, number> {
   resetSkyMotion();
   setSkyTasks([{ id: 'a', title: 'a', stage: 'coding' }]);
   setSkyNight(night);
+  if (open !== undefined) setSkyBorder({ cx: 0, cy: 0, open, band: BAND });
   const seen = new Map<string, number>();
   let style = '';
   const ctx = {
@@ -62,4 +65,30 @@ test('midway through dusk both are on screen, so the plane is turning into the s
   const seen = fillsAt(0.5);
   assert.ok((seen.get(SKY_TASK_WING_COLOR) ?? 0) > 0);
   assert.ok((seen.get(SKY_TASK_PANEL_COLOR) ?? 0) > 0);
+});
+
+test('a flyer turns when the day/night border passes over it, whatever the clock says', () => {
+  // the global night is 0 (day) throughout; only the border decides
+  const dayInside = fillsAt(0, 5000);
+  assert.ok((dayInside.get(SKY_TASK_WING_COLOR) ?? 0) > 0);
+  assert.equal(dayInside.get(SKY_TASK_PANEL_COLOR) ?? 0, 0);
+
+  const nightBeyond = fillsAt(0, -5000);
+  assert.ok((nightBeyond.get(SKY_TASK_PANEL_COLOR) ?? 0) > 0);
+  assert.equal(nightBeyond.get(SKY_TASK_WING_COLOR) ?? 0, 0);
+
+  // sweeping the border over the flyer, it is caught mid-turn at some point
+  let midTurn = false;
+  for (let open = 1500; open > -200; open -= 4) {
+    const seen = fillsAt(0, open);
+    if ((seen.get(SKY_TASK_WING_COLOR) ?? 0) > 0 && (seen.get(SKY_TASK_PANEL_COLOR) ?? 0) > 0) {
+      midTurn = true;
+    }
+  }
+  assert.ok(midTurn);
+});
+
+test('with no border the flyers follow the whole-sky night', () => {
+  setSkyBorder(null);
+  assert.ok((fillsAt(1).get(SKY_TASK_PANEL_COLOR) ?? 0) > 0);
 });

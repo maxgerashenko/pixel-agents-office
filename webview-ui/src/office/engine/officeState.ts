@@ -44,6 +44,12 @@ import {
   layoutToTileMap,
 } from '../layout/layoutSerializer.js';
 import { findPath, getWalkableTiles, isWalkable } from '../layout/tileMap.js';
+import {
+  hasTintableScreen,
+  type MonitorGlow,
+  monitorGlowForTool,
+  tintScreen,
+} from '../monitorGlow.js';
 import { getPetCount, getPetKind, getPetName } from '../sprites/petSpriteData.js';
 import { getLoadedCharacterCount } from '../sprites/spriteData.js';
 import type {
@@ -1537,8 +1543,15 @@ export class OfficeState {
   private rebuildFurnitureInstances(): void {
     // Collect tiles where active agents face desks
     const autoOnTiles = new Set<string>();
+    // The glow of the agent whose desk covers a tile (first agent wins)
+    const glowByTile = new Map<string, MonitorGlow>();
     for (const ch of this.characters.values()) {
       if (!ch.isActive || !ch.seatId) continue;
+      const glow = monitorGlowForTool(ch.currentTool);
+      const markOn = (key: string): void => {
+        autoOnTiles.add(key);
+        if (glow && !glowByTile.has(key)) glowByTile.set(key, glow);
+      };
       const seat = this.seats.get(ch.seatId);
       if (!seat) continue;
       // Find the desk tile(s) the agent faces from their seat
@@ -1549,7 +1562,7 @@ export class OfficeState {
       for (let d = 1; d <= AUTO_ON_FACING_DEPTH; d++) {
         const tileCol = seat.seatCol + dCol * d;
         const tileRow = seat.seatRow + dRow * d;
-        autoOnTiles.add(`${tileCol},${tileRow}`);
+        markOn(`${tileCol},${tileRow}`);
       }
       // Also check tiles to the sides of the facing direction (desks can be wide)
       for (let d = 1; d <= AUTO_ON_SIDE_DEPTH; d++) {
@@ -1557,12 +1570,12 @@ export class OfficeState {
         const baseRow = seat.seatRow + dRow * d;
         if (dCol !== 0) {
           // Facing left/right: check tiles above and below
-          autoOnTiles.add(`${baseCol},${baseRow - 1}`);
-          autoOnTiles.add(`${baseCol},${baseRow + 1}`);
+          markOn(`${baseCol},${baseRow - 1}`);
+          markOn(`${baseCol},${baseRow + 1}`);
         } else {
           // Facing up/down: check tiles left and right
-          autoOnTiles.add(`${baseCol - 1},${baseRow}`);
-          autoOnTiles.add(`${baseCol + 1},${baseRow}`);
+          markOn(`${baseCol - 1},${baseRow}`);
+          markOn(`${baseCol + 1},${baseRow}`);
         }
       }
     }
@@ -1612,6 +1625,7 @@ export class OfficeState {
 
     // Build modified furniture list with auto-state and animation applied
     const animFrame = Math.floor(this.furnitureAnimTimer / FURNITURE_ANIM_INTERVAL_SEC);
+    const glowAt = new Map<string, MonitorGlow>();
     const modifiedFurniture: PlacedFurniture[] = this.layout.furniture.map((item) => {
       const entry = getCatalogEntry(item.type);
       if (!entry) return item;
@@ -1630,6 +1644,10 @@ export class OfficeState {
                 const frameIdx = animFrame % frames.length;
                 onType = frames[frameIdx];
               }
+              const glow = hasTintableScreen(onType)
+                ? glowByTile.get(`${item.col + dc},${item.row + dr}`)
+                : undefined;
+              if (glow) glowAt.set(`${item.col},${item.row}`, glow);
               return { ...item, type: onType };
             }
             return item;
@@ -1640,12 +1658,21 @@ export class OfficeState {
     });
 
     this.furniture = layoutToFurnitureInstances(modifiedFurniture);
+    if (glowAt.size > 0) {
+      this.furniture = this.furniture.map((inst) => {
+        const glow = glowAt.get(`${inst.x / TILE_SIZE},${inst.y / TILE_SIZE}`);
+        return glow ? { ...inst, sprite: tintScreen(inst.sprite, glow) } : inst;
+      });
+    }
   }
 
   setAgentTool(id: number, tool: string | null): void {
     const ch = this.characters.get(id);
     if (ch) {
+      const before = monitorGlowForTool(ch.currentTool);
       ch.currentTool = tool;
+      // The screen follows the tool (and goes back to stock green when it ends)
+      if (before !== monitorGlowForTool(tool)) this.rebuildFurnitureInstances();
     }
   }
 
