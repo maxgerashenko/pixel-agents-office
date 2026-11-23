@@ -9,7 +9,7 @@ import assert from 'node:assert/strict';
 
 import { beforeEach, test } from 'vitest';
 
-import { airfieldLayout } from '../src/office/engine/skyAirfield.js';
+import { airfieldLayout, setAirfieldSite, slotPoint } from '../src/office/engine/skyAirfield.js';
 import {
   drawGroundPlanes,
   orbitOfStage,
@@ -208,4 +208,27 @@ test('a plan with a link is a button over its bay too', () => {
   assert.ok(p);
   drawGroundPlanes(ctx, W, H, PX, 0);
   assert.equal(skyLinkAt(p.x, p.y), url);
+});
+
+test('beside a full-size office the field narrows to a strip, a tiny gap off the office, parking on the right', () => {
+  const office = { x: 100, y: 200, w: 1000, h: 400 };
+  // 173px gap at 6px per sprite pixel: too narrow for the full field, wide enough for a strip
+  const w = office.x + office.w + 173;
+  setAirfieldSite({ h: 700, office });
+  try {
+    const f = airfieldLayout(w, 150, 6);
+    assert.equal(f.strip, true);
+    assert.ok(f.left > office.x + office.w && f.left - (office.x + office.w) <= 3 * 6);
+    assert.ok(f.left + f.width <= w);
+    assert.ok(f.runwayL === f.runwayR && f.runwayL < f.lotL);
+    // plan bays above, ready bays below, in the one lot
+    const [, planY] = slotPoint(f, 'plan', 0);
+    const [, readyY] = slotPoint(f, 'ready', 0);
+    assert.ok(readyY > planY);
+    // a wide gap keeps the full field; none at all puts it on the skyline
+    setAirfieldSite({ h: 700, office: { ...office, w: 600 } });
+    assert.equal(airfieldLayout(w, 150, 6).strip, false);
+  } finally {
+    setAirfieldSite(null);
+  }
 });

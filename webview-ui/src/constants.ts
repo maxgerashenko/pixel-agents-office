@@ -1115,6 +1115,10 @@ export const SKY_TASK_RISE = 0.42;
 // orbit; ready-to-merge tasks come off the orbit onto the right runway and park
 // in the right lot. Sizes are in sprite pixels unless noted.
 export const SKY_AIRFIELD_WIDTH = 54;
+/** At the biggest office sizes the gap right of it is too narrow for the field, so a strip stands
+ *  there instead: this wide a lot, this many sprite pixels from the office border. */
+export const SKY_AIRFIELD_STRIP_LOT_W = 11;
+export const SKY_AIRFIELD_STRIP_GAP = 2;
 export const SKY_AIRFIELD_HEIGHT_SHARE = 0.55;
 export const SKY_AIRFIELD_HEIGHT_MIN = 30;
 export const SKY_AIRFIELD_HEIGHT_MAX = 60;

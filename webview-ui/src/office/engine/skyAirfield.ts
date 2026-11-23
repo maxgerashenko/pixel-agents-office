@@ -17,6 +17,8 @@ import {
   SKY_AIRFIELD_RUNWAY,
   SKY_AIRFIELD_RUNWAY_W,
   SKY_AIRFIELD_SLOT_PITCH,
+  SKY_AIRFIELD_STRIP_GAP,
+  SKY_AIRFIELD_STRIP_LOT_W,
   SKY_AIRFIELD_TARMAC,
   SKY_AIRFIELD_TAXI_BAND_H,
   SKY_AIRFIELD_TAXI_LINE,
@@ -73,6 +75,9 @@ export interface Airfield {
   /** Parking rows per lot (y of the first, pitch, count). */
   slotTop: number;
   slotRows: number;
+  /** The narrow strip beside a full-size office: one runway, one taxi column and one lot, which
+   *  plan tasks (upper bays) and ready tasks (lower bays) share. */
+  strip: boolean;
 }
 
 /** Where the office stands on the canvas, so the field can go in the woods beside it. */
@@ -93,6 +98,13 @@ export function airfieldLayout(w: number, horizonY: number, px: number): Airfiel
   const wU = SKY_AIRFIELD_WIDTH;
   const gap = site ? w - (site.office.x + site.office.w) : 0;
   const inWoods = site !== null && gap >= (wU + 2 * SKY_AIRFIELD_MARGIN) * px;
+  const stripW =
+    SKY_AIRFIELD_RUNWAY_W +
+    SKY_AIRFIELD_TAXI_W +
+    SKY_AIRFIELD_STRIP_LOT_W +
+    SKY_AIRFIELD_TERMINAL_W;
+  const strip = !inWoods && site !== null && gap >= (stripW + SKY_AIRFIELD_STRIP_GAP + 1) * px;
+  if (strip && site) return stripLayout(horizonY, px, stripW, site);
   let hU: number;
   let left: number;
   let top: number;
@@ -143,6 +155,47 @@ export function airfieldLayout(w: number, horizonY: number, px: number): Airfiel
     lotR: left + (lotRx + Math.floor(L / 2)) * px,
     slotTop: top + 6 * px,
     slotRows: Math.max(1, Math.floor(slotsH / SKY_AIRFIELD_SLOT_PITCH)),
+    strip: false,
+  };
+}
+
+/** The strip: a long thin field in the woods, a tiny gap right of the office, its parking on the right. */
+function stripLayout(horizonY: number, px: number, wU: number, s: AirfieldSite): Airfield {
+  const hU = Math.max(
+    SKY_AIRFIELD_HEIGHT_MIN,
+    Math.min(
+      SKY_AIRFIELD_WOODS_HEIGHT_MAX,
+      Math.floor(((s.h - horizonY) * SKY_AIRFIELD_WOODS_HEIGHT_SHARE) / px),
+    ),
+  );
+  const left = Math.round((s.office.x + s.office.w + SKY_AIRFIELD_STRIP_GAP * px) / px) * px;
+  const top = Math.round((horizonY + SKY_AIRFIELD_WOODS_TOP * px) / px) * px;
+  const R = SKY_AIRFIELD_RUNWAY_W;
+  const G = SKY_AIRFIELD_TAXI_W;
+  const L = SKY_AIRFIELD_STRIP_LOT_W;
+  const slotsH = hU - SKY_AIRFIELD_TAXI_ROW_FROM_BOTTOM - SKY_AIRFIELD_TAXI_BAND_H / 2 - 3;
+  const rows = Math.max(2, Math.floor(slotsH / SKY_AIRFIELD_SLOT_PITCH));
+  const runway = left + Math.floor(R / 2) * px;
+  const gapX = left + (R + Math.floor(G / 2)) * px;
+  const lotX = left + (R + G + Math.floor(L / 2)) * px;
+  return {
+    px,
+    left,
+    top,
+    width: wU * px,
+    height: hU * px,
+    runwayL: runway,
+    runwayR: runway,
+    runwayTop: top + px,
+    runwayBottom: top + (hU - 1) * px,
+    taxiY: top + (hU - SKY_AIRFIELD_TAXI_ROW_FROM_BOTTOM) * px,
+    gapL: gapX,
+    gapR: gapX,
+    lotL: lotX,
+    lotR: lotX,
+    slotTop: top + 6 * px,
+    slotRows: Math.max(1, Math.floor(rows / 2)),
+    strip: true,
   };
 }
 
@@ -151,7 +204,9 @@ export function slotPoint(f: Airfield, lot: AirfieldLot, slot: number): [number,
   const row = slot % f.slotRows;
   const col = Math.floor(slot / f.slotRows);
   const x = (lot === 'plan' ? f.lotL : f.lotR) + (col % 2 === 0 ? 1 : -1) * col * 2 * f.px;
-  const y = f.slotTop + (row * SKY_AIRFIELD_SLOT_PITCH + col * 4) * f.px;
+  // in the strip the ready bays sit below the plan bays, in the same lot
+  const shift = f.strip && lot === 'ready' ? f.slotRows * SKY_AIRFIELD_SLOT_PITCH : 0;
+  const y = f.slotTop + (shift + row * SKY_AIRFIELD_SLOT_PITCH + col * 4) * f.px;
   return [x, y];
 }
 
@@ -446,6 +501,10 @@ export function drawAirfield(
     const g = SKY_AIRFIELD_GRASS_COLORS[n % 2];
     rect(pick(g), x, 0, Math.min(8, wU - x), hU);
   }
+  if (f.strip) {
+    drawStrip(ctx, f, sec, night, pick, rect);
+    return;
+  }
   // lots, taxi gaps and the taxiway along the bottom
   rect(tarmac, T, 1, L, hU - 2);
   rect(tarmac, lotRx, 1, L, hU - 2);
@@ -499,5 +558,64 @@ export function drawAirfield(
       }
       ctx.globalAlpha = 1;
     }
+  }
+}
+
+/** The strip's ground: runway, taxi column, the shared lot and a terminal on the right edge. */
+function drawStrip(
+  ctx: CanvasRenderingContext2D,
+  f: Airfield,
+  sec: number,
+  night: number,
+  pick: (c: { day: string; night: string }) => string,
+  rect: (colour: string, xU: number, yU: number, wU: number, hU: number) => void,
+): void {
+  const hU = f.height / f.px;
+  const wU = f.width / f.px;
+  const R = SKY_AIRFIELD_RUNWAY_W;
+  const G = SKY_AIRFIELD_TAXI_W;
+  const L = SKY_AIRFIELD_STRIP_LOT_W;
+  const T = SKY_AIRFIELD_TERMINAL_W;
+  const tarmac = pick(SKY_AIRFIELD_TARMAC);
+  const mark = pick(SKY_AIRFIELD_MARKING);
+  const bandY = hU - SKY_AIRFIELD_TAXI_ROW_FROM_BOTTOM - SKY_AIRFIELD_TAXI_BAND_H / 2;
+  rect(tarmac, R + G, 1, L, hU - 2);
+  rect(tarmac, R, 0, G, hU - 2);
+  rect(tarmac, 0, bandY, wU - T, SKY_AIRFIELD_TAXI_BAND_H);
+  for (let x = 1; x < wU - T - 1; x += 4) {
+    rect(pick(SKY_AIRFIELD_TAXI_LINE), x, hU - SKY_AIRFIELD_TAXI_ROW_FROM_BOTTOM, 2, 1);
+  }
+  rect(pick(SKY_AIRFIELD_TERMINAL_EDGE), wU - T, 3, T, hU - 12);
+  rect(pick(SKY_AIRFIELD_TERMINAL), wU - T + 1, 4, T - 1, hU - 14);
+  for (let y = 6; y < hU - 10; y += 4) {
+    rect(
+      night > 0.5 ? SKY_AIRFIELD_LIGHT_COLOR : pick(SKY_AIRFIELD_TERMINAL_EDGE),
+      wU - T,
+      y,
+      1,
+      1,
+    );
+  }
+  for (let k = 1; k <= f.slotRows * 2; k++) {
+    const y = 6 - 5 + k * SKY_AIRFIELD_SLOT_PITCH - 1;
+    if (y < bandY - 1) rect(mark, R + G + 2, y, L - 4, 1);
+  }
+  const runway = pick(SKY_AIRFIELD_RUNWAY);
+  rect(runway, 0, 0, R, hU);
+  rect(mark, 0, 0, 1, hU);
+  rect(mark, R - 1, 0, 1, hU);
+  for (let y = 8; y < hU - 8; y += 6) rect(mark, Math.floor(R / 2), y, 1, 3);
+  for (const y of [1, hU - 3]) {
+    for (let k = 1; k < R - 1; k += 2) rect(mark, k, y, 1, 2);
+  }
+  if (night > 0) {
+    const lightOn = Math.floor(sec * SKY_AIRFIELD_LIGHT_RATE);
+    ctx.globalAlpha = night;
+    for (let y = 2, n = 0; y < hU - 1; y += 4, n++) {
+      if ((n + lightOn) % 3 !== 0) continue;
+      rect(SKY_AIRFIELD_LIGHT_COLOR, 0, y, 1, 1);
+      rect(SKY_AIRFIELD_LIGHT_COLOR, R - 1, y, 1, 1);
+    }
+    ctx.globalAlpha = 1;
   }
 }
