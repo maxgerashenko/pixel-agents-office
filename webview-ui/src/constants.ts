@@ -1108,6 +1108,12 @@ export const SKY_TASK_TRACKS = 2;
 export const SKY_TASK_FLYING_STAGES = ['coding', 'review'] as const;
 export const SKY_TASK_GROUND = 0.97;
 export const SKY_TASK_TRACK_GAP = 0.09;
+/** Flyers on one orbit stay at least this many sprite pixels apart along it (a plane is 14 long). */
+export const SKY_TASK_MIN_GAP = 26;
+/** A flyer pushed by a neighbour drifts at most this many sprite pixels per second off its normal speed. */
+export const SKY_TASK_NUDGE_PX_PER_SEC = 5;
+/** A take-off waits on the ground until its joining point is clear, checked in these steps. */
+export const SKY_TASK_JOIN_STEP_SEC = 0.25;
 export const SKY_TASK_RISE = 0.42;
 
 // ── Airfield at the right of the sky ────────────────────────────────────────
