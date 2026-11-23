@@ -47,7 +47,7 @@ test.describe('Standalone / terminal', () => {
     await clickAddAgent(page);
 
     // Control plane: terminalSessionOpened -> an agent card (the drawer tab).
-    const agentCard = page.getByTitle('Agent 1');
+    const agentCard = page.locator('[data-agent-card="1"]');
     await expect(agentCard).toBeVisible({ timeout: 15_000 });
 
     // Data plane, output direction: PTY stdout → WebSocket → xterm DOM. The
@@ -68,14 +68,14 @@ test.describe('Standalone / terminal', () => {
     // Reload: the PTY outlives the socket. The reconnected page must rebuild
     // the tab (webviewReady re-announce) and replay scrollback.
     await page.reload();
-    await expect(page.getByTitle('Agent 1')).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator('[data-agent-card="1"]')).toBeVisible({ timeout: 15_000 });
     await expect(page.locator('.xterm').first()).toContainText('mock claude session', {
       timeout: 15_000,
     });
 
     // Close from the card: PTY killed, tab removed, character despawns.
-    await page.getByTitle('Agent 1').locator('button[title="Close agent"]').click();
-    await expect(page.getByTitle('Agent 1')).toHaveCount(0);
+    await page.locator('[data-agent-card="1"]').locator('button[title="Close agent"]').click();
+    await expect(page.locator('[data-agent-card="1"]')).toHaveCount(0);
     await expectOverlayCount(page, 0);
   });
 
@@ -91,13 +91,13 @@ test.describe('Standalone / terminal', () => {
         claudeScenario(`standalone pty tab ${n}`).holdOpenFor(60_000).build(),
       );
       await clickAddAgent(page);
-      await expect(page.getByTitle(`Agent ${n}`)).toBeVisible({ timeout: 15_000 });
+      await expect(page.locator(`[data-agent-card="${n}"]`)).toBeVisible({ timeout: 15_000 });
     }
 
     // The FIRST tab: every pane is stacked in the same box, so a later
     // agent's hidden pane must not sit over it. Playwright's click refuses an
     // intercepted target, so the click itself is the assertion.
-    await page.getByTitle('Agent 1').click();
+    await page.locator('[data-agent-card="1"]').click();
     const first = page.locator('.xterm:visible');
     await expect(first).toHaveCount(1);
     await expect(first).toContainText('mock claude session', { timeout: 15_000 });
@@ -110,8 +110,8 @@ test.describe('Standalone / terminal', () => {
     // card bar, and the panel's own close button stays on screen.
     await page.setViewportSize({ width: 800, height: 800 });
     await expect(page.getByTitle('Close terminal')).toBeInViewport({ ratio: 1 });
-    await expect(page.getByTitle('Agent 1')).toBeInViewport({ ratio: 1 });
-    await expect(page.getByTitle('Agent 2')).toBeInViewport({ ratio: 1 });
+    await expect(page.locator('[data-agent-card="1"]')).toBeInViewport({ ratio: 1 });
+    await expect(page.locator('[data-agent-card="2"]')).toBeInViewport({ ratio: 1 });
   });
 
   test('copies are verbatim; Alt+C copies the selection re-flowed as text @area:standalone', async ({
