@@ -2,7 +2,7 @@
  * Tasks in the sky. The server sends the board (one entry per branch + PR);
  * by day each flying task is a plane with a white contrail, by night a satellite with
  * blinking lights. The airfield at the right (skyAirfield) is where a task waits: plan and tests
- * tasks park in the left lot (a technician at work, blue and yellow beacons), ready-to-merge
+ * tasks park in the left lot (a technician at work; tests has an amber beacon, plan none), ready-to-merge
  * tasks in the right lot (green beacons). A task that moves to an active status (coding,
  * review) taxis to the left runway, takes off and joins its orbit; orbits arc across the whole
  * sky from left to right, the same arc shifted up one gap each, and the orbit is the status,
@@ -73,7 +73,7 @@ export interface SkyTask {
   id: string;
   title: string;
   stage: SkyTaskStage;
-  /** The pull request's web page (ready to merge: a tap on its plane opens it). */
+  /** The pull request's web page (ready to merge: a tap on its plane opens it; a plan: its files, the documents). */
   url?: string;
 }
 
@@ -731,10 +731,10 @@ interface LinkHit {
   y1: number;
   url: string;
 }
-/** Where ready-to-merge planes stand on the canvas as last drawn, in device pixels. */
+/** Where ready-to-merge and plan planes stand on the canvas as last drawn, in device pixels. */
 let linkHits: LinkHit[] = [];
 
-/** The pull request link of the ready-to-merge plane, rocket or lot at a device-pixel point, if any. */
+/** The pull request link of the ready-to-merge or plan plane, rocket or lot at a device-pixel point, if any. */
 export function skyLinkAt(deviceX: number, deviceY: number): string | null {
   const hit = linkHits.find(
     (h) => deviceX >= h.x0 && deviceX <= h.x1 && deviceY >= h.y0 && deviceY <= h.y1,
@@ -753,7 +753,12 @@ export function drawGroundPlanes(
   linkHits = [];
   for (const [task, s] of statesNow(sec, w, horizonY, px)) {
     if (s.mode === 'air') continue;
-    if (s.mode === 'ground' && s.parked && task.stage === 'ready_to_merge' && task.url) {
+    if (
+      s.mode === 'ground' &&
+      s.parked &&
+      (task.stage === 'ready_to_merge' || task.stage === 'plan') &&
+      task.url
+    ) {
       // the whole bay is the button: plane (or rocket), beacon and the lot round them
       const halfW = (SKY_AIRFIELD_LOT_W * px) / 2;
       const halfH = (SKY_AIRFIELD_SLOT_PITCH * px) / 2;

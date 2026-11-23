@@ -194,3 +194,18 @@ test('a ready-to-merge task with a link is a button over its bay, day or night; 
   drawGroundPlanes(ctx, W, H, PX, 0);
   assert.equal(t && skyLinkAt(t.x, t.y), null);
 });
+
+test('a plan with a link is a button over its bay too', () => {
+  const ctx = new Proxy(
+    {},
+    { get: () => () => 0, set: () => true },
+  ) as unknown as CanvasRenderingContext2D;
+  const url = 'https://github.com/o/r/pull/7/files';
+  resetSkyMotion();
+  setSkyNight(0);
+  setSkyTasks([{ id: 'a', title: 'a', stage: 'plan', url }]);
+  const p = at(0);
+  assert.ok(p);
+  drawGroundPlanes(ctx, W, H, PX, 0);
+  assert.equal(skyLinkAt(p.x, p.y), url);
+});
