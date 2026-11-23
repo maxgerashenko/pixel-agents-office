@@ -191,7 +191,7 @@ export function useTerminalDrawer({
     (id: number): AgentActivity | null => {
       if (!agentSeenActivity[id]) return null;
       const tools = agentTools[id];
-      if (tools?.some((t) => t.permissionWait && !t.done)) return 'attention';
+      if (tools?.some((t) => t.permissionWait && !t.done)) return 'permission';
       if (tools?.some((t) => !t.done)) return 'working';
       if (agentAwaitingInput[id]) return 'attention';
       if (agentStatuses[id] === 'waiting') return 'idle';

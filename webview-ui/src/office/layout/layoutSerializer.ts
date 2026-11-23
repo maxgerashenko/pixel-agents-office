@@ -1,4 +1,5 @@
 import type { ColorValue } from '../../components/ui/types.js';
+import { CLOCK_TYPE } from '../../constants.js';
 import { getColorizedSprite } from '../colorize.js';
 import type {
   FurnitureInstance,
@@ -94,7 +95,14 @@ export function layoutToFurnitureInstances(furniture: PlacedFurniture[]): Furnit
       mirrored = entry.orientation === 'left' || getOrientationInGroup(item.type) === 'left';
     }
 
-    instances.push({ sprite, x, y, zY, ...(mirrored ? { mirrored: true } : {}) });
+    instances.push({
+      sprite,
+      x,
+      y,
+      zY,
+      ...(mirrored ? { mirrored: true } : {}),
+      ...(item.type === CLOCK_TYPE ? { clock: true } : {}),
+    });
   }
   return instances;
 }

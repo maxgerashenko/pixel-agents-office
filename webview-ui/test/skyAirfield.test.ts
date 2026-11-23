@@ -1,6 +1,7 @@
 /**
  * Airfield in the task sky: plan tasks park on the left, a task moving to an active status
- * takes off and joins its orbit, a ready-to-merge task lands and parks on the right.
+ * takes off and joins its orbit, a ready-to-merge task lands and parks on the right (green siren, no technician),
+ * and every parked task carries its pull request number.
  *
  * Run with: npm test
  */
@@ -9,7 +10,13 @@ import assert from 'node:assert/strict';
 
 import { beforeEach, test } from 'vitest';
 
-import { airfieldLayout, setAirfieldSite, slotPoint } from '../src/office/engine/skyAirfield.js';
+import { SKY_BEACON_COLORS, SKY_TECH_VEST_COLOR } from '../src/constants.js';
+import {
+  airfieldLayout,
+  prNumberOfTaskId,
+  setAirfieldSite,
+  slotPoint,
+} from '../src/office/engine/skyAirfield.js';
 import {
   drawGroundPlanes,
   orbitOfStage,
@@ -230,5 +237,173 @@ test('beside a full-size office the field narrows to a strip, a tiny gap off the
     assert.equal(airfieldLayout(w, 150, 6).strip, false);
   } finally {
     setAirfieldSite(null);
+  }
+});
+
+// ── Ready to merge: a green siren, never a technician ──────────────────────
+
+const GREEN_SIREN: string = SKY_BEACON_COLORS.ready_to_merge.dome;
+const TECH_VEST: string = SKY_TECH_VEST_COLOR;
+
+/** Draws the ground and returns every fill colour used by a rect inside the parked task's bay. */
+function coloursAroundBay(w: number, h: number, px: number, sec: number): Set<string> {
+  const p = skyStateForTest('a', sec, w, h, px);
+  assert.ok(p);
+  const used = new Set<string>();
+  let style = '';
+  const ctx = new Proxy(
+    {},
+    {
+      get: (_t, key) =>
+        key === 'fillRect'
+          ? (x: number, y: number) => {
+              if (Math.abs(x - p.x) <= 12 * px && Math.abs(y - p.y) <= 8 * px) used.add(style);
+            }
+          : () => undefined,
+      set: (_t, key, value) => {
+        if (key === 'fillStyle') style = String(value);
+        return true;
+      },
+    },
+  ) as unknown as CanvasRenderingContext2D;
+  drawGroundPlanes(ctx, w, h, px, sec);
+  return used;
+}
+
+function assertReadyCrew(w: number, h: number, px: number, sec: number): void {
+  const used = colours(w, h, px, sec);
+  assert.ok(used.has(GREEN_SIREN), 'the green siren is on');
+  assert.ok(!used.has(TECH_VEST), 'no technician');
+}
+const colours = coloursAroundBay;
+
+test('a parked ready-to-merge plane or rocket has the green siren and no technician, at every hour', () => {
+  for (const night of [0, 0.3, 0.5, 0.8, 1]) {
+    resetSkyMotion();
+    setSkyNight(night);
+    setSkyTasks([{ id: 'a', title: 'a', stage: 'ready_to_merge' }]);
+    assertReadyCrew(W, H, PX, 0);
+    assertReadyCrew(W, H, PX, 0.4);
+  }
+});
+
+test('a task that lands, or moves into ready to merge from tests or plan, is crewed by the siren alone', () => {
+  for (const from of ['plan', 'tests', 'review'] as const) {
+    resetSkyMotion();
+    setSkyNight(0);
+    setSkyTasks([task(from)]);
+    at(0);
+    setSkyTasks([task('ready_to_merge')]);
+    let sec = 0;
+    for (; sec < 300 && skyMotionKind('a') !== 'parked'; sec += 0.25) at(sec);
+    assert.equal(skyMotionKind('a'), 'parked', from);
+    assertReadyCrew(W, H, PX, sec);
+    assertReadyCrew(W, H, PX, sec + 3);
+  }
+});
+
+test('the strip beside the office crews a ready-to-merge plane the same way', () => {
+  const office = { x: 100, y: 200, w: 1000, h: 400 };
+  const w = office.x + office.w + 173;
+  setAirfieldSite({ h: 700, office });
+  try {
+    for (const night of [0, 0.5, 1]) {
+      resetSkyMotion();
+      setSkyNight(night);
+      setSkyTasks([task('ready_to_merge')]);
+      assertReadyCrew(w, 150, 6, 0);
+    }
+  } finally {
+    setAirfieldSite(null);
+  }
+});
+
+test('every parked plane or rocket is labelled with its pull request number', () => {
+  assert.equal(prNumberOfTaskId('airfield-x#96'), 96);
+  assert.equal(prNumberOfTaskId('no-number'), null);
+  for (const night of [0, 1]) {
+    resetSkyMotion();
+    setSkyNight(night);
+    const texts: string[] = [];
+    const ctx = new Proxy(
+      {},
+      {
+        get: (_t, key) => (key === 'fillText' ? (t: string) => texts.push(t) : () => undefined),
+        set: () => true,
+      },
+    ) as unknown as CanvasRenderingContext2D;
+    setSkyTasks([
+      { id: 'a#7', title: 'a', stage: 'ready_to_merge' },
+      { id: 'b#8', title: 'b', stage: 'plan' },
+    ]);
+    drawGroundPlanes(ctx, W, H, PX, 0);
+    assert.ok(texts.includes('#7') && texts.includes('#8'), texts.join());
+  }
+});
+
+test('the ready-to-merge number stands outside the field edge beside its plane, when there is room', () => {
+  const office = { x: 100, y: 200, w: 1000, h: 400 };
+  const w = office.x + office.w + 173 + 120;
+  setAirfieldSite({ h: 700, office });
+  try {
+    const f = airfieldLayout(w, 150, 6);
+    resetSkyMotion();
+    setSkyNight(0);
+    setSkyTasks([{ id: 'a#5', title: 'a', stage: 'ready_to_merge' }]);
+    const p = skyStateForTest('a#5', 0, w, 150, 6);
+    assert.ok(p);
+    const seen: { t: string; x: number; y: number; align: string }[] = [];
+    let align = '';
+    const ctx = new Proxy(
+      {},
+      {
+        get: (_t, key) =>
+          key === 'fillText'
+            ? (t: string, x: number, y: number) => seen.push({ t, x, y, align })
+            : () => undefined,
+        set: (_t, key, value) => {
+          if (key === 'textAlign') align = String(value);
+          return true;
+        },
+      },
+    ) as unknown as CanvasRenderingContext2D;
+    drawGroundPlanes(ctx, w, 150, 6, 0);
+    const label = seen.filter((s) => s.t === '#5').pop(); // the last draw is the text, the first its shadow
+    assert.ok(label);
+    assert.equal(label.align, 'left');
+    assert.ok(label.x >= f.left + f.width, 'past the field edge');
+    assert.equal(label.y, p.y, 'level with the plane');
+  } finally {
+    setAirfieldSite(null);
+  }
+});
+
+test('a plan or tests number stands outside the field edge on the left, level with its plane', () => {
+  for (const stage of ['plan', 'tests'] as const) {
+    resetSkyMotion();
+    setSkyNight(0);
+    setSkyTasks([{ id: 'a#6', title: 'a', stage }]);
+    const p = skyStateForTest('a#6', 0, W, H, PX);
+    assert.ok(p);
+    const seen: { t: string; x: number; y: number; align: string }[] = [];
+    let align = '';
+    const ctx = new Proxy(
+      {},
+      {
+        get: (_t, key) =>
+          key === 'fillText'
+            ? (t: string, x: number, y: number) => seen.push({ t, x, y, align })
+            : () => undefined,
+        set: (_t, key, value) => {
+          if (key === 'textAlign') align = String(value);
+          return true;
+        },
+      },
+    ) as unknown as CanvasRenderingContext2D;
+    drawGroundPlanes(ctx, W, H, PX, 0);
+    const label = seen.filter((s) => s.t === '#6').pop();
+    assert.ok(label, stage);
+    assert.equal(label.align, 'right');
+    assert.ok(label.x <= field.left, 'left of the field edge');
   }
 });
