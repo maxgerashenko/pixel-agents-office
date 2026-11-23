@@ -70,6 +70,7 @@ export function AgentCard({
       style={named ? { gridTemplateColumns: `1fr ${MUGSHOT_DISPLAY_PX}px 1fr` } : undefined}
       onClick={() => onSelect(agentId)}
       title={name ?? `Agent ${agentId}`}
+      data-agent-card={agentId}
     >
       <div className={named ? 'col-start-2 row-start-1' : undefined}>
         <CharacterMugShot palette={appearance.palette} hueShift={appearance.hueShift} />

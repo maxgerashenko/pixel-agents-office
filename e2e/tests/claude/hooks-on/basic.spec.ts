@@ -84,7 +84,7 @@ test.describe('Hooks ON / spawn paths', () => {
 
     // The agent-card bar is not a terminal feature: the extension gets it too,
     // one card per agent (sub-characters get none, see the count-1 below).
-    await expect(panelFrame.getByTitle(/^Agent \d+$/)).toHaveCount(1);
+    await expect(panelFrame.locator('[data-agent-card]')).toHaveCount(1);
     narrator.check('one agent card in the right-edge bar');
 
     // The terminal above is exactly what makes this agent NOT headless: it has
