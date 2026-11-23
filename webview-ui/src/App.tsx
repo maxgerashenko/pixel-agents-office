@@ -10,6 +10,7 @@ import { DebugView } from './components/DebugView.js';
 import { DirectoryModal } from './components/DirectoryModal.js';
 import { EditActionBar } from './components/EditActionBar.js';
 import { IntroBubble } from './components/IntroBubble.js';
+import { MergeCelebration } from './components/MergeCelebration.js';
 import { MigrationNotice } from './components/MigrationNotice.js';
 import { MusicButton } from './components/MusicButton.js';
 import { SettingsModal } from './components/SettingsModal.js';
@@ -878,6 +879,7 @@ function App() {
           <SkyFastForwardButton />
         </div>
       )}
+      {!isDebugMode && <MergeCelebration />}
 
       {/* Mobile: Settings floats top-left (the layout editor stays desktop-
             only — its tools are drag/hover-driven). */}

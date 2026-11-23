@@ -1219,3 +1219,81 @@ export const SKY_TECH_TOOL_COLOR = '#c9ccd6';
 export const SKY_TECH_WORK_SEC = 0.7;
 /** Runway lights chase along the edges at this rate (steps per second). */
 export const SKY_AIRFIELD_LIGHT_RATE = 3;
+
+// ── Merge celebration (a merged pull request, played at the sky button) ──
+/** Palette of the celebration sprites; the sky button's own palette is reused for the balloon and ISS. */
+export const SKY_MERGE_PALETTE: Readonly<Record<string, string>> = {
+  ...SKY_BUTTON_PALETTE,
+  o: '#f08a2a',
+  f: '#ffd84a',
+  n: '#1c1c24',
+  h: '#ffffff',
+};
+/** The docking module (3 x 5), port end up: `s` port, `m` hull, `o` stripe, `n` thruster. */
+export const SKY_MERGE_MODULE = ['.s.', 'mmm', 'mom', 'mmm', '.n.'] as const;
+/** The parachute canopy (5 x 2). */
+export const SKY_MERGE_CANOPY = ['.rwr.', 'rwwwr'] as const;
+/** The dropped packet (2 x 2). */
+export const SKY_MERGE_PACKET = ['bb', 'by'] as const;
+/** The burner flame under the balloon (3 x 2), two flickering frames. */
+export const SKY_MERGE_FLAME = [
+  ['.f.', 'fof'],
+  ['.o.', 'ofo'],
+] as const;
+/** The balloon's stripes, one letter per sector of its turn (a sector is a tenth of a turn). */
+export const SKY_MERGE_STRIPES = 'rywyrrywyr';
+/** CSS pixels per sprite pixel of the plane and rocket (the button sprites use SKY_BUTTON_SCALE). */
+export const SKY_MERGE_FLYER_PX = 3;
+/** Plane body colour and the rocket's stage band. */
+export const SKY_MERGE_PLANE_COLOR = '#e8503a';
+export const SKY_MERGE_ROCKET_BAND = '#d8433a';
+/** The celebration canvas's stacking order: above the sky button (z-44). */
+export const SKY_MERGE_Z_INDEX = 45;
+/** Most celebrations that wait their turn when several pull requests merge at once. */
+export const SKY_MERGE_QUEUE_MAX = 3;
+/** Night: a rocket climbs to the ISS, drops a module that docks; the ISS folds and unfolds its panels, blinks twice, the module goes. Seconds; positions in sprite pixels from the ISS centre. */
+export const SKY_MERGE_NIGHT = {
+  rocketX: -26,
+  rocketFromY: 70,
+  releaseAt: 2.6,
+  releaseY: 4,
+  rocketEnd: 5,
+  rocketToY: -50,
+  approachSec: 1.1,
+  approachY: 14,
+  dockSec: 0.9,
+  dockY: 6,
+  foldAt: 4.9,
+  foldSec: 0.8,
+  foldHoldSec: 0.2,
+  foldMin: 0.2,
+  blinks: [
+    [7.0, 7.35],
+    [7.65, 8.0],
+  ],
+  vanishAt: 8.3,
+  vanishSec: 0.6,
+  total: 9.2,
+} as const;
+/** Day: a plane flies by the balloon and drops a packet on a parachute into the basket; the plane leaves, the burner fires, the balloon turns twice. */
+export const SKY_MERGE_DAY = {
+  planeY: -6.5,
+  dropX: -12,
+  dropAt: 2,
+  exitAt: 4.4,
+  planeMargin: 10,
+  chuteSec: 2.6,
+  chuteSideX: -9,
+  chuteSideY: 3,
+  chuteSideShare: 0.72,
+  basketY: 5.5,
+  flames: [
+    [4.9, 5.5],
+    [5.8, 6.6],
+  ],
+  liftMax: 1,
+  spinAt: 6.8,
+  spinSec: 3.2,
+  spinTurns: 2,
+  total: 10.4,
+} as const;
