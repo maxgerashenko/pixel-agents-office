@@ -1,3 +1,5 @@
+import { skyAt } from '../office/engine/skyCycle.js';
+
 /** The tool rows an agent has open, reduced to what the alert needs. */
 interface ToolRow {
   done: boolean;
@@ -15,4 +17,10 @@ export function agentsNeedingPermission(
     if (tools?.some((t) => t.permissionWait && !t.done)) ids.push(Number(key));
   }
   return ids;
+}
+
+/** Whether the sky is in its night half at hour fraction `t` (the stars-out
+ *  test the fast-forward button uses). The alert is pink then, purple else. */
+export function needsYouSkyIsNight(t: number): boolean {
+  return skyAt(t).starAlpha >= 0.5;
 }

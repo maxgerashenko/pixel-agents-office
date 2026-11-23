@@ -58,7 +58,8 @@
 
   /* Status */
   --color-status-permission: #cca700;
-  --pixel-needs-you: #ffb000;
+  /* "Needs you" alert: purple by day, pink at night (data-needs-you-sky on <html>) */
+  --pixel-needs-you: #a35cff;
   --color-status-active: #3794ff;
   --color-status-success: #89d185;
   --color-status-error: var(--color-danger);
@@ -442,9 +443,13 @@
   }
 }
 
-/* "Needs you": a soft amber glow hugging the screen edge while any agent has an
-   open permission prompt, and the waiting agent's card pulsing the same amber.
+/* "Needs you": a soft glow hugging the screen edge while any agent has an
+   open permission prompt, and the waiting agent's card pulsing the same colour (purple by day, pink at night).
    Slow and low-contrast on purpose; reduced-motion gets a steady glow. */
+:root[data-needs-you-sky='night'] {
+  --pixel-needs-you: #ff5fb0;
+}
+
 .needs-you-edge {
   position: fixed;
   inset: 0;

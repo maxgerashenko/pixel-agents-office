@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { isActiveCardStatus } from '../src/components/cardBar.js';
-import { agentsNeedingPermission } from '../src/components/needsYou.js';
+import { agentsNeedingPermission, needsYouSkyIsNight } from '../src/components/needsYou.js';
 
 describe('agentsNeedingPermission', () => {
   it('is empty when nothing waits', () => {
@@ -26,5 +26,12 @@ describe('agentsNeedingPermission', () => {
 
   it('keeps a permission card in the active group', () => {
     expect(isActiveCardStatus('permission')).toBe(true);
+  });
+});
+
+describe('needsYouSkyIsNight', () => {
+  it('is day at midday and night late in the hour', () => {
+    expect(needsYouSkyIsNight(0.15)).toBe(false);
+    expect(needsYouSkyIsNight(0.8)).toBe(true);
   });
 });
