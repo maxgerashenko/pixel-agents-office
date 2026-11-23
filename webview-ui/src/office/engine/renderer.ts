@@ -55,8 +55,13 @@ import {
   VOID_TILE_DASH_PATTERN,
   VOID_TILE_OUTLINE_COLOR,
   WHITEBOARD_COUNT_COLOR,
-  WHITEBOARD_PLATE_BORDER_COLOR,
+  WHITEBOARD_GLYPH_GAP,
+  WHITEBOARD_GLYPH_H,
+  WHITEBOARD_GLYPH_STROKE,
+  WHITEBOARD_GLYPH_W,
+  WHITEBOARD_GLYPHS,
   WHITEBOARD_PLATE_COLOR,
+  WHITEBOARD_PLATE_MARGIN,
 } from '../../constants.js';
 import { getColorizedFloorSprite, hasFloorSprites, WALL_COLOR } from '../floorTiles.js';
 import { mapOffset } from '../projection.js';
@@ -407,7 +412,7 @@ function renderTableScores(
   ctx.restore();
 }
 
-/** Whiteboard plates: the active-task count in blue on a white plate, centred on each board. */
+/** Whiteboard plates: the active-task count in bold blue pixel digits on a white plate, centred on each board. */
 function renderWhiteboardPlates(
   ctx: CanvasRenderingContext2D,
   plates: WhiteboardPlate[],
@@ -416,24 +421,34 @@ function renderWhiteboardPlates(
   zoom: number,
 ): void {
   ctx.save();
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'alphabetic';
   for (const p of plates) {
-    const w = Math.round(p.w * zoom);
-    const h = Math.round(p.h * zoom);
-    const left = Math.round(offsetX + p.x * zoom - w / 2);
-    const top = Math.round(offsetY + p.y * zoom - h / 2);
-    ctx.fillStyle = WHITEBOARD_PLATE_BORDER_COLOR;
-    ctx.fillRect(left - zoom, top - zoom, w + zoom * 2, h + zoom * 2);
+    const digits = String(p.count).split('');
+    const textW =
+      digits.length * WHITEBOARD_GLYPH_W * WHITEBOARD_GLYPH_STROKE +
+      (digits.length - 1) * WHITEBOARD_GLYPH_GAP;
+    const w = textW + WHITEBOARD_PLATE_MARGIN * 2;
+    const h = WHITEBOARD_GLYPH_H + WHITEBOARD_PLATE_MARGIN * 2;
+    const left = Math.round(offsetX + (p.x - w / 2) * zoom);
+    const top = Math.round(offsetY + (p.y - h / 2) * zoom);
     ctx.fillStyle = WHITEBOARD_PLATE_COLOR;
-    ctx.fillRect(left, top, w, h);
-    ctx.font = `${Math.round(h * 0.8)}px 'FS Pixel Sans'`;
-    const text = String(p.count);
-    const m = ctx.measureText(text);
-    const ascent = Math.ceil(m.actualBoundingBoxAscent);
-    const ink = ascent + Math.ceil(m.actualBoundingBoxDescent);
+    ctx.fillRect(left, top, w * zoom, h * zoom);
     ctx.fillStyle = WHITEBOARD_COUNT_COLOR;
-    ctx.fillText(text, left + w / 2, top + (h - ink) / 2 + ascent);
+    let x = WHITEBOARD_PLATE_MARGIN;
+    for (const d of digits) {
+      const rows = WHITEBOARD_GLYPHS[d] ?? WHITEBOARD_GLYPHS['0'];
+      rows.forEach((bits, ry) => {
+        for (let cx = 0; cx < WHITEBOARD_GLYPH_W; cx++) {
+          if (!(bits & (1 << (WHITEBOARD_GLYPH_W - 1 - cx)))) continue;
+          ctx.fillRect(
+            left + (x + cx * WHITEBOARD_GLYPH_STROKE) * zoom,
+            top + (WHITEBOARD_PLATE_MARGIN + ry) * zoom,
+            WHITEBOARD_GLYPH_STROKE * zoom,
+            zoom,
+          );
+        }
+      });
+      x += WHITEBOARD_GLYPH_W * WHITEBOARD_GLYPH_STROKE + WHITEBOARD_GLYPH_GAP;
+    }
   }
   ctx.restore();
 }

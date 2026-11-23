@@ -3,11 +3,7 @@
  * the sky still flies or parks, so everything but merged), and a tap on it lists them with their
  * pull request numbers. Pure and DOM-free; the canvas draws the plate and App shows the list.
  */
-import {
-  WHITEBOARD_FURNITURE_TYPE,
-  WHITEBOARD_PLATE_FRAC_H,
-  WHITEBOARD_PLATE_FRAC_W,
-} from '../../constants.js';
+import { WHITEBOARD_FURNITURE_TYPE } from '../../constants.js';
 import { getCatalogEntry } from '../layout/furnitureCatalog.js';
 import type { OfficeLayout } from '../types.js';
 import { TILE_SIZE } from '../types.js';
@@ -17,8 +13,6 @@ import type { SkyTask } from './skyTasks.js';
 export interface WhiteboardPlate {
   x: number;
   y: number;
-  w: number;
-  h: number;
   count: number;
 }
 
@@ -55,8 +49,6 @@ export function whiteboardPlates(layout: OfficeLayout, count: number): Whiteboar
     plates.push({
       x: f.col * TILE_SIZE + w / 2,
       y: f.row * TILE_SIZE + h / 2,
-      w: w * WHITEBOARD_PLATE_FRAC_W,
-      h: h * WHITEBOARD_PLATE_FRAC_H,
       count,
     });
   }
