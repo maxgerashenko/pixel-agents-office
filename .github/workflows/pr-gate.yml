@@ -1,8 +1,11 @@
 # Required checks for every pull request: the project must build, its tests must
 # pass, and a change to source code must come with a test change.
 #
-# Make both jobs mandatory by requiring the checks "Build and test" and
-# "Tests included" in the branch protection rule for main.
+# "No AI attribution" rejects AI prefixes in branch names and AI footers,
+# trailers or session links in the PR text and commits.
+#
+# Make the jobs mandatory by requiring the checks "Build and test",
+# "Tests included" and "No AI attribution" in the branch protection rule for main.
 
 name: PR gate
 
@@ -83,3 +86,40 @@ jobs:
             exit 1
           fi
           echo "Source and tests both changed."
+
+  no-ai-attribution:
+    name: No AI attribution
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      # The repo keeps AI attribution out of branch names, PR text and commits.
+      # Only these signals are checked, so docs that name the product are fine.
+      - name: Reject AI attribution in branch, PR text and commits
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          BRANCH: ${{ github.event.pull_request.head.ref }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          name='(cl[a]ude|anthrop[i]c)'
+          fail=0
+          if echo "$BRANCH" | grep -qiE "^($name|worktree-agent)"; then
+            echo "::error::Branch name '$BRANCH' carries an AI prefix. Use a plain descriptive name."
+            fail=1
+          fi
+          if printf '%s\n%s\n' "$PR_TITLE" "$PR_BODY" | grep -qiE "(generated (with|by)|co-authored-by:|session).*$name|$name\.ai/code"; then
+            echo "::error::PR title or description has an AI footer, trailer or session link. Remove it."
+            fail=1
+          fi
+          if git log --format=%B "$BASE_SHA".."$HEAD_SHA" | grep -qiE "(generated (with|by)|co-authored-by:).*$name|$name\.ai/code"; then
+            echo "::error::A commit message has an AI footer, trailer or session link. Reword it."
+            fail=1
+          fi
+          [ "$fail" = 0 ] && echo "No AI attribution found."
+          exit "$fail"
