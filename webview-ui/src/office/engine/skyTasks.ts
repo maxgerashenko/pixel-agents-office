@@ -1,13 +1,14 @@
 /**
  * Tasks in the sky. The server sends the board (one entry per branch + PR);
  * by day each flying task is a plane with a white contrail, by night a satellite with
- * blinking lights. The airfield at the right (skyAirfield) is where a task rests: plan tasks
- * park in the left lot, ready-to-merge tasks in the right lot. A task that moves to an active
- * status (coding, tests, review) taxis to the left runway, takes off and joins its orbit;
- * orbits arc across the whole sky from left to right, the same arc shifted up one gap each,
- * and the orbit is the status, low to high. A task that becomes ready to merge stays on its
- * orbit until it comes round to the airfield, glides down onto the right runway, lands and
- * parks. A merged task leaves the sky. Tasks on one orbit are spread round it with a gap
+ * blinking lights. The airfield at the right (skyAirfield) is where a task waits: plan and tests
+ * tasks park in the left lot (a technician at work, blue and yellow beacons), ready-to-merge
+ * tasks in the right lot (green beacons). A task that moves to an active status (coding,
+ * review) taxis to the left runway, takes off and joins its orbit; orbits arc across the whole
+ * sky from left to right, the same arc shifted up one gap each, and the orbit is the status,
+ * low to high. A task that moves to tests or ready to merge stays on its orbit until it comes
+ * round to the airfield, glides down onto the right runway, lands and parks (tests taxies on
+ * across to the left lot). A merged task leaves the sky. Tasks on one orbit are spread round it with a gap
  * between them. The trail is a white line (solid by day, dashed by night).
  */
 import {
@@ -18,6 +19,7 @@ import {
   SKY_AIRFIELD_FOLD_FROM,
   SKY_AIRFIELD_GLIDE_DX,
   SKY_AIRFIELD_GLIDE_SEC,
+  SKY_AIRFIELD_LANDING_CROSS_SEC,
   SKY_AIRFIELD_LANDING_ROLL_SEC,
   SKY_AIRFIELD_LANDING_TAXI_SEC,
   SKY_AIRFIELD_LIFT_BLEND,
@@ -38,6 +40,7 @@ import {
   SKY_TASK_COLORS,
   SKY_TASK_CROSS_SEC_FASTEST,
   SKY_TASK_CROSS_SEC_SLOWEST,
+  SKY_TASK_FLYING_STAGES,
   SKY_TASK_GROUND,
   SKY_TASK_PANEL_COLOR,
   SKY_TASK_PLANE_SCALE,
@@ -54,6 +57,7 @@ import {
   type Airfield,
   airfieldLayout,
   type AirfieldLot,
+  drawGroundCrew,
   drawGroundPlane,
   drawRocket,
   drawTurningPlane,
@@ -103,10 +107,16 @@ export interface TaskPlace {
   phase: number;
 }
 
-/** The orbit a status flies on (coding, tests, review), or null when the task rests on the airfield. */
+/** The orbit a status flies on (coding, review), or null when the task waits on the airfield. */
 export function orbitOfStage(stage: SkyTaskStage): number | null {
-  const i = SKY_TASK_STAGES.indexOf(stage);
-  return i >= 1 && i <= SKY_TASK_TRACKS ? i - 1 : null;
+  const i = (SKY_TASK_FLYING_STAGES as readonly SkyTaskStage[]).indexOf(stage);
+  return i >= 0 ? i : null;
+}
+
+/** The lot a waiting status parks in: plan and tests in the left lot, ready to merge in the right one. */
+export function lotOfStage(stage: SkyTaskStage): AirfieldLot | null {
+  if (stage === 'plan' || stage === 'tests') return 'plan';
+  return stage === 'ready_to_merge' ? 'ready' : null;
 }
 
 /**
@@ -212,8 +222,15 @@ function slopeAt(at: (k: number) => [number, number], u: number): number {
 type Motion =
   | { kind: 'parked'; lot: AirfieldLot; slot: number }
   | { kind: 'takeoff'; t0: number; slot: number; orbit: number; rocket: boolean }
-  | { kind: 'cruise'; orbit: number; phase: number; landAt?: number; landRocket?: boolean }
-  | { kind: 'landing'; t0: number; slot: number; orbit: number; rocket: boolean };
+  | {
+      kind: 'cruise';
+      orbit: number;
+      phase: number;
+      landAt?: number;
+      landRocket?: boolean;
+      landLot?: AirfieldLot;
+    }
+  | { kind: 'landing'; t0: number; slot: number; orbit: number; rocket: boolean; lot: AirfieldLot };
 
 export type SkyMotionKind = Motion['kind'];
 
@@ -296,16 +313,29 @@ function takeoffLegs(f: Airfield, slot: number): { start: [number, number]; legs
   };
 }
 
-/** Down the landing runway -> along the taxiway -> up the side taxi column -> into the bay. */
-function landingLegs(f: Airfield, slot: number): { start: [number, number]; legs: Leg[] } {
-  const target = slotPoint(f, 'ready', slot);
+/**
+ * Down the landing runway -> along the taxiway -> up the side taxi column -> into the bay. The
+ * right lot is the next column over; the left lot (tests) is the whole width of the field away.
+ */
+function landingLegs(
+  f: Airfield,
+  slot: number,
+  lot: AirfieldLot,
+): { start: [number, number]; legs: Leg[] } {
+  const target = slotPoint(f, lot, slot);
   const [a, b, c] = SKY_AIRFIELD_LANDING_TAXI_SEC;
+  const gap = lot === 'ready' ? f.gapR : f.gapL;
   return {
     start: [f.runwayR, f.runwayTop],
     legs: [
       { x: f.runwayR, y: f.taxiY, dur: SKY_AIRFIELD_LANDING_ROLL_SEC, ease: 'out' },
-      { x: f.gapR, y: f.taxiY, dur: a, ease: 'lin' },
-      { x: f.gapR, y: target[1], dur: b, ease: 'lin' },
+      {
+        x: gap,
+        y: f.taxiY,
+        dur: lot === 'ready' ? a : SKY_AIRFIELD_LANDING_CROSS_SEC,
+        ease: 'lin',
+      },
+      { x: gap, y: target[1], dur: b, ease: 'lin' },
       { x: target[0], y: target[1], dur: c, ease: 'lin' },
     ],
   };
@@ -322,10 +352,10 @@ const takeoffSec = (g: Geo, m: { slot: number; rocket: boolean }): number =>
   m.rocket
     ? SKY_ROCKET_HOLD_SEC + SKY_ROCKET_RISE_SEC
     : sum(takeoffLegs(g.field, m.slot).legs) + SKY_AIRFIELD_CLIMB_SEC;
-const landingSec = (g: Geo, m: { slot: number; rocket: boolean }): number =>
+const landingSec = (g: Geo, m: { slot: number; rocket: boolean; lot: AirfieldLot }): number =>
   m.rocket
     ? SKY_ROCKET_DESCENT_SEC + SKY_ROCKET_SETTLE_SEC
-    : SKY_AIRFIELD_GLIDE_SEC + sum(landingLegs(g.field, m.slot).legs);
+    : SKY_AIRFIELD_GLIDE_SEC + sum(landingLegs(g.field, m.slot, m.lot).legs);
 
 /** Progress along the orbit where the climb ends / the glide starts. */
 const uJoin = (g: Geo, rocket: boolean): number =>
@@ -336,10 +366,12 @@ const uJoin = (g: Geo, rocket: boolean): number =>
       8 * g.px) /
       g.span,
   );
-const uGlide = (g: Geo, rocket: boolean): number =>
+const uGlide = (g: Geo, rocket: boolean, lot: AirfieldLot): number =>
   mod1(
     ((rocket
-      ? g.field.lotR - SKY_ROCKET_TRACK_DX * g.px
+      ? lot === 'ready'
+        ? g.field.lotR - SKY_ROCKET_TRACK_DX * g.px
+        : g.field.lotL - SKY_ROCKET_TRACK_DX * g.px
       : g.field.runwayR - SKY_AIRFIELD_GLIDE_DX * g.px) +
       8 * g.px) /
       g.span,
@@ -350,7 +382,7 @@ function freeSlot(lot: AirfieldLot, except?: string): number {
   for (const [id, m] of motions) {
     if (id === except) continue;
     if (m.kind === 'parked' && m.lot === lot) used.add(m.slot);
-    if (m.kind === 'landing' && lot === 'ready') used.add(m.slot);
+    if (m.kind === 'landing' && m.lot === lot) used.add(m.slot);
   }
   let s = 0;
   while (used.has(s)) s++;
@@ -371,7 +403,7 @@ function syncSkyMotion(sec: number, g: Geo): void {
   const places = placeTasks(tasks);
   tasks.forEach((t, i) => {
     const orbit = orbitOfStage(t.stage);
-    const ready = t.stage === 'ready_to_merge';
+    const lot = lotOfStage(t.stage);
     let m = motions.get(t.id);
     if (!m) {
       // first sight: a flying task is already up, the others are parked
@@ -379,7 +411,7 @@ function syncSkyMotion(sec: number, g: Geo): void {
         t.id,
         orbit !== null
           ? { kind: 'cruise', orbit, phase: places[i].phase }
-          : park(t.id, ready ? 'ready' : 'plan'),
+          : park(t.id, lot ?? 'plan'),
       );
       return;
     }
@@ -392,33 +424,37 @@ function syncSkyMotion(sec: number, g: Geo): void {
       };
       motions.set(t.id, m);
     }
-    if (m.kind === 'landing' && sec >= m.t0 + landingSec(g, m) && ready) {
-      m = { kind: 'parked', lot: 'ready', slot: m.slot };
+    if (m.kind === 'landing' && lot && sec >= m.t0 + landingSec(g, m)) {
+      m = m.lot === lot ? { kind: 'parked', lot, slot: m.slot } : park(t.id, lot);
       motions.set(t.id, m);
     }
     if (t.stage === 'plan') {
       if (m.kind !== 'parked' || m.lot !== 'plan') motions.set(t.id, park(t.id, 'plan'));
       return;
     }
-    if (ready) {
-      if (m.kind === 'parked' && m.lot === 'plan') {
-        motions.set(t.id, park(t.id, 'ready'));
+    if (lot) {
+      // tests (left lot) or ready to merge (right lot): come down from the orbit onto that lot
+      if (m.kind === 'parked') {
+        if (m.lot !== lot) motions.set(t.id, park(t.id, lot));
       } else if (m.kind === 'cruise') {
         const cross = orbitCrossSec(m.orbit);
         const u = mod1(sec / cross + m.phase);
         const rocket = m.landAt !== undefined ? !!m.landRocket : isNight();
-        const landAt = m.landAt ?? sec + mod1(uGlide(g, rocket) - u) * cross;
+        if (m.landLot !== lot) m.landAt = undefined;
+        const landAt = m.landAt ?? sec + mod1(uGlide(g, rocket, lot) - u) * cross;
         if (sec >= landAt) {
           motions.set(t.id, {
             kind: 'landing',
             t0: landAt,
-            slot: freeSlot('ready', t.id),
+            slot: freeSlot(lot, t.id),
             orbit: m.orbit,
             rocket,
+            lot,
           });
         } else {
           m.landAt = landAt;
           m.landRocket = rocket;
+          m.landLot = lot;
         }
       }
       // a take-off in progress climbs out first and lands on its first lap
@@ -441,6 +477,7 @@ function syncSkyMotion(sec: number, g: Geo): void {
     } else {
       m.landAt = undefined;
       m.landRocket = undefined;
+      m.landLot = undefined;
       if (m.orbit !== orbit) {
         // change orbit without jumping along it
         const u = sec / orbitCrossSec(m.orbit) + m.phase;
@@ -475,6 +512,8 @@ type FlyerState =
       stageIndex: number;
       /** Resting in a lot (as opposed to taxiing): a rocket at night, a plane by day. */
       parked?: boolean;
+      /** 0..1, spreads the beacons' flashes so parked planes don't all pulse together. */
+      seed: number;
     }
   | { mode: 'air'; pose: FlyerPose; trail: boolean }
   | {
@@ -579,7 +618,7 @@ function stateOf(task: SkyTask, m: Motion, sec: number, g: Geo): FlyerState {
   const stageIndex = Math.max(0, SKY_TASK_STAGES.indexOf(task.stage));
   if (m.kind === 'parked') {
     const [x, y] = slotPoint(f, m.lot, m.slot);
-    return { mode: 'ground', x, y, heading: 'up', stageIndex, parked: true };
+    return { mode: 'ground', x, y, heading: 'up', stageIndex, parked: true, seed: hash01(task.id) };
   }
   if (m.kind === 'cruise') {
     const pose = flyerPose(task, sec, g.w, g.horizonY, g.px, m, f);
@@ -602,8 +641,8 @@ function stateOf(task: SkyTask, m: Motion, sec: number, g: Geo): FlyerState {
     });
   }
   if (m.kind === 'landing' && m.rocket) {
-    const pad = slotPoint(f, 'ready', m.slot);
-    const track = at(uGlide(g, true));
+    const pad = slotPoint(f, m.lot, m.slot);
+    const track = at(uGlide(g, true, m.lot));
     if (dt < SKY_ROCKET_DESCENT_SEC) {
       const s = dt / SKY_ROCKET_DESCENT_SEC;
       return rocketAt(task, pad, track, 1 - EASE.out(s), {
@@ -624,7 +663,7 @@ function stateOf(task: SkyTask, m: Motion, sec: number, g: Geo): FlyerState {
     const groundSec = sum(legs);
     if (dt < groundSec) {
       const r = followLegs(start, legs, dt, g.px);
-      return { mode: 'ground', ...r, stageIndex };
+      return { mode: 'ground', ...r, stageIndex, seed: 0 };
     }
     return turning(
       task,
@@ -639,14 +678,14 @@ function stateOf(task: SkyTask, m: Motion, sec: number, g: Geo): FlyerState {
     return turning(
       task,
       [f.runwayR, f.runwayTop],
-      at(uGlide(g, false)),
+      at(uGlide(g, false, m.lot)),
       1 - smooth(dt / SKY_AIRFIELD_GLIDE_SEC),
       false,
     );
   }
-  const { start, legs } = landingLegs(f, m.slot);
+  const { start, legs } = landingLegs(f, m.slot, m.lot);
   const r = followLegs(start, legs, dt - SKY_AIRFIELD_GLIDE_SEC, g.px);
-  return { mode: 'ground', ...r, stageIndex };
+  return { mode: 'ground', ...r, stageIndex, seed: 0 };
 }
 
 function statesNow(
@@ -695,6 +734,8 @@ export function drawGroundPlanes(
     if (s.mode === 'ground' && s.parked && isNight())
       drawRocket(ctx, s.x, s.y, px, -Math.PI / 2, 1, colour, 0, 0, sec);
     else if (s.mode === 'ground') drawGroundPlane(ctx, s.x, s.y, px, s.heading, colour);
+    if (s.mode === 'ground' && s.parked)
+      drawGroundCrew(ctx, s.x, s.y, px, SKY_TASK_STAGES[s.stageIndex], sec, s.seed);
     else if (s.mode === 'rocket') {
       ctx.globalAlpha = 1 - s.fade;
       drawRocket(ctx, s.x, s.y, px, s.angle, s.scale, colour, s.flame, s.dust, sec);

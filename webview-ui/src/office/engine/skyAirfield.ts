@@ -1,5 +1,5 @@
 /**
- * The airfield at the right of the sky: a left lot (plan tasks park here) beside the take-off
+ * The airfield at the right of the sky: a left lot (plan and tests tasks wait here) beside the take-off
  * runway, and a landing runway beside the right lot (ready-to-merge tasks park here), seen from
  * above like a map. Pure geometry plus the static drawing; the tasks' planes live in skyTasks.
  */
@@ -29,11 +29,22 @@ import {
   SKY_AIRFIELD_WOODS_HEIGHT_MAX,
   SKY_AIRFIELD_WOODS_HEIGHT_SHARE,
   SKY_AIRFIELD_WOODS_TOP,
+  SKY_BEACON_BASE_COLOR,
+  SKY_BEACON_COLORS,
+  SKY_BEACON_GLOW_ALPHA,
+  SKY_BEACON_RIM_COLOR,
+  SKY_BEACON_SWEEP_RATE,
   SKY_ROCKET_BODY_COLOR,
   SKY_ROCKET_DARK_COLOR,
   SKY_ROCKET_DUST_COLOR,
   SKY_ROCKET_FLAME_COLORS,
   SKY_ROCKET_LEG_COLOR,
+  SKY_TECH_HELMET_COLOR,
+  SKY_TECH_LEGS_COLOR,
+  SKY_TECH_SKIN_COLOR,
+  SKY_TECH_TOOL_COLOR,
+  SKY_TECH_VEST_COLOR,
+  SKY_TECH_WORK_SEC,
 } from '../../constants.js';
 import { mix, parseHex, toCss } from './skyCycle.js';
 
@@ -308,6 +319,95 @@ export function drawRocket(
     }
   }
   ctx.restore();
+}
+
+/** A technician (3 x 5): `h` helmet, `s` skin, `v` vest, `l` legs, `t` the tool he works with. */
+const TECH_FRAMES: string[][] = [
+  ['.h.', '.s.', 'vvv', '.v.', 'l.l'],
+  ['.h.', '.s.', 'vvt', '.v.', 'l.l'],
+];
+const TECH_COLORS: Record<string, string> = {
+  h: SKY_TECH_HELMET_COLOR,
+  s: SKY_TECH_SKIN_COLOR,
+  v: SKY_TECH_VEST_COLOR,
+  l: SKY_TECH_LEGS_COLOR,
+  t: SKY_TECH_TOOL_COLOR,
+};
+
+/** A siren beacon (3 x 5): `d` dome, `c` the bright core, `r` rim, `b` base. */
+const BEACON: string[] = ['.d.', 'dcd', 'dcd', 'rrr', 'bbb'];
+
+type SignalStage = keyof typeof SKY_BEACON_COLORS;
+
+/** Draws one rotating siren centred on (cx, cy): a bright pixel sweeps across the dome and the glow pulses. */
+function drawBeacon(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  px: number,
+  stage: SignalStage,
+  sec: number,
+  phase: number,
+): void {
+  const colours = SKY_BEACON_COLORS[stage];
+  const turn = (sec * SKY_BEACON_SWEEP_RATE + phase) % 1;
+  // the beam passes the left, the front and the right of the dome in turn
+  const step = Math.floor(turn * 4);
+  const lit = [0, 1, 2, 1][step];
+  const pulse = 0.5 + 0.5 * Math.sin(turn * Math.PI * 2);
+  const a = ctx.globalAlpha;
+  ctx.fillStyle = colours.glow;
+  // the glow is a soft cross round the dome, pulsing with the sweep
+  ctx.globalAlpha = a * SKY_BEACON_GLOW_ALPHA * (0.4 + 0.6 * pulse);
+  ctx.fillRect(cx - 3 * px, cy - px, 7 * px, 2 * px);
+  ctx.fillRect(cx - 2 * px, cy - 3 * px, 5 * px, 4 * px);
+  ctx.globalAlpha = a;
+  BEACON.forEach((row, ry) => {
+    for (let rx = 0; rx < row.length; rx++) {
+      const c = row[rx];
+      if (c === '.') continue;
+      ctx.fillStyle =
+        c === 'd'
+          ? rx === lit && ry >= 1
+            ? colours.core
+            : colours.dome
+          : c === 'c'
+            ? colours.core
+            : c === 'r'
+              ? SKY_BEACON_RIM_COLOR
+              : SKY_BEACON_BASE_COLOR;
+      ctx.fillRect(cx + (rx - 1) * px, cy + (ry - 2) * px, px, px);
+    }
+  });
+}
+
+/**
+ * What stands round a parked plane (or rocket) centred on (x, y): two siren beacons ahead of the
+ * wings, and for plan and tests a technician at the right wing working on it. Ready-to-merge
+ * tasks get beacons only. `seed` offsets the flashing so neighbours don't pulse together.
+ */
+export function drawGroundCrew(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  px: number,
+  stage: string,
+  sec: number,
+  seed: number,
+): void {
+  if (stage !== 'plan' && stage !== 'tests' && stage !== 'ready_to_merge') return;
+  drawBeacon(ctx, x - 5 * px, y - 2 * px, px, stage, sec, seed);
+  drawBeacon(ctx, x + 5 * px, y - 2 * px, px, stage, sec, seed + 0.5);
+  if (stage === 'ready_to_merge') return;
+  const frame = TECH_FRAMES[Math.floor(sec / SKY_TECH_WORK_SEC + seed * 7) % 2];
+  frame.forEach((row, ry) => {
+    for (let rx = 0; rx < row.length; rx++) {
+      const c = row[rx];
+      if (c === '.') continue;
+      ctx.fillStyle = TECH_COLORS[c];
+      ctx.fillRect(x + (4 + rx) * px, y + (2 + ry - (c === 't' ? 1 : 0)) * px, px, px);
+    }
+  });
 }
 
 /** The field itself: grass, lots, terminals, taxiways and the two runways. `night` is 0..1. */

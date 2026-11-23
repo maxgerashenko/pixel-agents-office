@@ -33,10 +33,11 @@ beforeEach(() => {
   setSkyNight(0);
 });
 
-test('only coding, tests and review fly an orbit', () => {
+test('only coding and review fly an orbit; plan, tests and ready wait on the ground', () => {
   assert.equal(orbitOfStage('plan'), null);
+  assert.equal(orbitOfStage('tests'), null);
   assert.equal(orbitOfStage('coding'), 0);
-  assert.equal(orbitOfStage('review'), 2);
+  assert.equal(orbitOfStage('review'), 1);
   assert.equal(orbitOfStage('ready_to_merge'), null);
 });
 
@@ -91,6 +92,34 @@ test('a cruising task that becomes ready lands on the right runway and parks rig
   const p = at(sec);
   assert.equal(p?.mode, 'ground');
   assert.ok(p && p.x > field.runwayR);
+});
+
+test('a coding task that moves to tests lands, taxies across to the left lot and parks there', () => {
+  setSkyTasks([task('coding')]);
+  at(0);
+  setSkyTasks([task('tests')]);
+  let sec = 0;
+  let landed = false;
+  for (; sec < 120 && !landed; sec += 0.25) {
+    at(sec);
+    landed = skyMotionKind('a') === 'landing';
+  }
+  assert.ok(landed, 'it comes down within a lap');
+  for (; sec < 200 && skyMotionKind('a') !== 'parked'; sec += 0.25) at(sec);
+  assert.equal(skyMotionKind('a'), 'parked');
+  const p = at(sec);
+  assert.equal(p?.mode, 'ground');
+  assert.ok(p && p.x < field.runwayL, 'parked in the left lot');
+});
+
+test('a tests task moving to review takes off from the left lot', () => {
+  setSkyTasks([task('tests')]);
+  at(0);
+  assert.equal(skyMotionKind('a'), 'parked');
+  setSkyTasks([task('review')]);
+  at(10);
+  assert.equal(skyMotionKind('a'), 'takeoff');
+  assert.equal(at(10 + 20)?.mode, 'air');
 });
 
 test('a merged task leaves the airfield', () => {

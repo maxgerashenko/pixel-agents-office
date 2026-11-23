@@ -1102,8 +1102,10 @@ export const SKY_TASK_PLANE_SCALE = 1;
 /** Sprite pixels between a flyer's tail and where its trail begins (measured from the flyer's middle). */
 export const SKY_TASK_PLANE_TRAIL_GAP = 9;
 export const SKY_TASK_SAT_TRAIL_GAP = 6;
-/** Parallel orbits, one per flying status (coding, tests, review), all the same arc, each shifted up by a gap (fractions of the skyline height). Plan and ready-to-merge tasks sit on the airfield instead. */
-export const SKY_TASK_TRACKS = 3;
+/** Parallel orbits, one per flying status (coding, review), all the same arc, each shifted up by a gap (fractions of the skyline height). Plan and ready-to-merge tasks sit on the airfield instead. */
+export const SKY_TASK_TRACKS = 2;
+/** The statuses that fly an orbit, low to high. Plan, tests and ready-to-merge tasks wait on the airfield. */
+export const SKY_TASK_FLYING_STAGES = ['coding', 'review'] as const;
 export const SKY_TASK_GROUND = 0.97;
 export const SKY_TASK_TRACK_GAP = 0.09;
 export const SKY_TASK_RISE = 0.42;
@@ -1112,7 +1114,7 @@ export const SKY_TASK_RISE = 0.42;
 // Plan tasks park in the left lot, take off from the left runway and join their
 // orbit; ready-to-merge tasks come off the orbit onto the right runway and park
 // in the right lot. Sizes are in sprite pixels unless noted.
-export const SKY_AIRFIELD_WIDTH = 44;
+export const SKY_AIRFIELD_WIDTH = 54;
 export const SKY_AIRFIELD_HEIGHT_SHARE = 0.55;
 export const SKY_AIRFIELD_HEIGHT_MIN = 30;
 export const SKY_AIRFIELD_HEIGHT_MAX = 60;
@@ -1132,7 +1134,7 @@ export const SKY_AIRFIELD_CLEARANCE = 5;
 export const SKY_AIRFIELD_LIFT_BLEND = 60;
 /** Column layout, left to right: terminal, lot, taxi gap, runway, middle, runway, taxi gap, lot, terminal. */
 export const SKY_AIRFIELD_TERMINAL_W = 1;
-export const SKY_AIRFIELD_LOT_W = 10;
+export const SKY_AIRFIELD_LOT_W = 15;
 export const SKY_AIRFIELD_TAXI_W = 1;
 export const SKY_AIRFIELD_RUNWAY_W = 9;
 /** The taxiway along the bottom: rows from the bottom edge. */
@@ -1156,6 +1158,8 @@ export const SKY_AIRFIELD_FADE_FROM = 0.72;
 export const SKY_AIRFIELD_GLIDE_DX = 20;
 export const SKY_AIRFIELD_LANDING_ROLL_SEC = 1.6;
 export const SKY_AIRFIELD_LANDING_TAXI_SEC = [0.6, 0.7, 0.5] as const;
+/** A tests task parks in the left lot, so it taxies the whole way across the field from the landing runway. */
+export const SKY_AIRFIELD_LANDING_CROSS_SEC = 2.2;
 /** Night: tasks leave and return on rockets from the lots instead of planes down the runways.
  *  The rocket stands on its pad, lights up, climbs straight up and shrinks into the distance
  *  (the field is close, the tracks far away), pitching over onto its track as the satellite
@@ -1191,5 +1195,27 @@ export const SKY_AIRFIELD_TERMINAL = { day: '#c9ccd6', night: '#4a4f68' } as con
 export const SKY_AIRFIELD_TERMINAL_EDGE = { day: '#8a8ea0', night: '#2c3048' } as const;
 export const SKY_AIRFIELD_LIGHT_COLOR = '#ffd84a';
 export const SKY_AIRFIELD_PLANE_WING_COLOR = '#e8eaf2';
+/**
+ * Ground crew and siren beacons beside a parked plane (or rocket). Plan: a technician preparing it
+ * under blue lights. Tests: a technician and yellow (amber) beacons flashing. Ready to merge: green
+ * beacons, no technician. Each beacon is a rotating siren: a bright pixel sweeps across the dome
+ * while the glow pulses.
+ */
+export const SKY_BEACON_SWEEP_RATE = 1.6;
+export const SKY_BEACON_GLOW_ALPHA = 0.3;
+export const SKY_BEACON_BASE_COLOR = '#1c1c24';
+export const SKY_BEACON_RIM_COLOR = '#b3322a';
+export const SKY_BEACON_COLORS = {
+  plan: { dome: '#2f6bff', core: '#bcd2ff', glow: '#4d8dff' },
+  tests: { dome: '#f08a1c', core: '#ffe27a', glow: '#ffb832' },
+  ready_to_merge: { dome: '#2fbf4f', core: '#c4ffd0', glow: '#4fe070' },
+} as const;
+export const SKY_TECH_HELMET_COLOR = '#f2f2f2';
+export const SKY_TECH_SKIN_COLOR = '#e8b88a';
+export const SKY_TECH_VEST_COLOR = '#ff8a1f';
+export const SKY_TECH_LEGS_COLOR = '#3a4a78';
+export const SKY_TECH_TOOL_COLOR = '#c9ccd6';
+/** Seconds per technician work cycle (the tool arm goes up and down). */
+export const SKY_TECH_WORK_SEC = 0.7;
 /** Runway lights chase along the edges at this rate (steps per second). */
 export const SKY_AIRFIELD_LIGHT_RATE = 3;
