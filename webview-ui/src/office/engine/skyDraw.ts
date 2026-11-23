@@ -70,7 +70,7 @@ import {
   STARS,
   toCss,
 } from './skyCycle.js';
-import { drawDayFlyers, drawGroundPlanes, drawNightFlyers, setSkyNight } from './skyTasks.js';
+import { drawGroundPlanes, drawSkyFlyers, setSkyNight } from './skyTasks.js';
 
 function disc(
   ctx: CanvasRenderingContext2D,
@@ -846,10 +846,6 @@ export function drawSky(
   setSkyNight(sky.starAlpha);
   drawGroundPlanes(ctx, w, horizonY, px, nowSec);
 
-  if (sky.starAlpha > 0) {
-    drawNightFlyers(ctx, w, horizonY, px, now.getTime() / 1000, sky.starAlpha);
-  }
-
   if (sky.dayAlpha > 0) {
     const sec = now.getTime() / 1000;
     const warmth = 1;
@@ -900,6 +896,7 @@ export function drawSky(
       }
     }
     ctx.globalAlpha = 1;
-    drawDayFlyers(ctx, w, horizonY, px, sec, sky.dayAlpha);
   }
+  // planes by day, satellites by night, morphing into each other over dusk and dawn
+  drawSkyFlyers(ctx, w, horizonY, px, nowSec);
 }
