@@ -1,6 +1,7 @@
 /**
  * Airfield in the task sky: plan tasks park on the left, a task moving to an active status
- * takes off and joins its orbit, a ready-to-merge task lands and parks on the right.
+ * takes off and joins its orbit, a ready-to-merge task lands and parks on the right (green siren, no technician),
+ * and every parked task carries its pull request number.
  *
  * Run with: npm test
  */
