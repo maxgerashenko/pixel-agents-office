@@ -479,23 +479,29 @@ export function prNumberOfTaskId(id: string): number | null {
   return m ? Number(m[1]) : null;
 }
 
-/** "#N" centred under a parked plane or rocket at (x, y). */
+/**
+ * "#N" for a parked plane or rocket at (x, y): centred under it, or - for ready to merge, with
+ * `outsideX` - just past the field's outer edge at that x, level with the plane.
+ */
 export function drawPrNumber(
   ctx: CanvasRenderingContext2D,
   x: number,
   y: number,
   px: number,
   num: number,
+  outsideX?: number,
 ): void {
   const size = Math.max(SKY_PR_NUMBER_MIN_FONT_PX, SKY_PR_NUMBER_SIZE_UNITS * px);
   ctx.font = `${size}px 'FS Pixel Sans'`;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'top';
-  const ty = y + SKY_PR_NUMBER_OFFSET_UNITS * px;
+  const outside = outsideX !== undefined;
+  ctx.textAlign = outside ? (outsideX >= x ? 'left' : 'right') : 'center';
+  ctx.textBaseline = outside ? 'middle' : 'top';
+  const tx = outside ? outsideX : x;
+  const ty = outside ? y : y + SKY_PR_NUMBER_OFFSET_UNITS * px;
   ctx.fillStyle = SKY_PR_NUMBER_SHADOW_COLOR;
-  ctx.fillText(`#${num}`, x + 1, ty + 1);
+  ctx.fillText(`#${num}`, tx + 1, ty + 1);
   ctx.fillStyle = SKY_PR_NUMBER_COLOR;
-  ctx.fillText(`#${num}`, x, ty);
+  ctx.fillText(`#${num}`, tx, ty);
 }
 
 /** The field itself: grass, lots, terminals, taxiways and the two runways. `night` is 0..1. */

@@ -340,3 +340,40 @@ test('every parked plane or rocket is labelled with its pull request number', ()
     assert.ok(texts.includes('#7') && texts.includes('#8'), texts.join());
   }
 });
+
+test('the ready-to-merge number stands outside the field edge beside its plane, when there is room', () => {
+  const office = { x: 100, y: 200, w: 1000, h: 400 };
+  const w = office.x + office.w + 173 + 120;
+  setAirfieldSite({ h: 700, office });
+  try {
+    const f = airfieldLayout(w, 150, 6);
+    resetSkyMotion();
+    setSkyNight(0);
+    setSkyTasks([{ id: 'a#5', title: 'a', stage: 'ready_to_merge' }]);
+    const p = skyStateForTest('a#5', 0, w, 150, 6);
+    assert.ok(p);
+    const seen: { t: string; x: number; y: number; align: string }[] = [];
+    let align = '';
+    const ctx = new Proxy(
+      {},
+      {
+        get: (_t, key) =>
+          key === 'fillText'
+            ? (t: string, x: number, y: number) => seen.push({ t, x, y, align })
+            : () => undefined,
+        set: (_t, key, value) => {
+          if (key === 'textAlign') align = String(value);
+          return true;
+        },
+      },
+    ) as unknown as CanvasRenderingContext2D;
+    drawGroundPlanes(ctx, w, 150, 6, 0);
+    const label = seen.filter((s) => s.t === '#5').pop(); // the last draw is the text, the first its shadow
+    assert.ok(label);
+    assert.equal(label.align, 'left');
+    assert.ok(label.x >= f.left + f.width, 'past the field edge');
+    assert.equal(label.y, p.y, 'level with the plane');
+  } finally {
+    setAirfieldSite(null);
+  }
+});

@@ -27,6 +27,9 @@ import {
   SKY_AIRFIELD_SLOT_PITCH,
   SKY_AIRFIELD_TAKEOFF_ROLL_SEC,
   SKY_AIRFIELD_TAKEOFF_TAXI_SEC,
+  SKY_PR_NUMBER_EDGE_GAP_UNITS,
+  SKY_PR_NUMBER_FREE_SIDE_UNITS,
+  SKY_PR_NUMBER_ROOM_UNITS,
   SKY_ROCKET_DESCENT_SEC,
   SKY_ROCKET_FADE_FROM,
   SKY_ROCKET_FAR_SCALE,
@@ -795,7 +798,21 @@ export function drawGroundPlanes(
     if (s.mode === 'ground' && s.parked) {
       drawGroundCrew(ctx, s.x, s.y, px, SKY_TASK_STAGES[s.stageIndex], sec, s.seed);
       const num = prNumberOfTaskId(task.id);
-      if (num !== null) drawPrNumber(ctx, s.x, s.y, px, num);
+      if (num !== null) {
+        // ready to merge: the number stands just outside the field's edge, level with the plane; with
+        // no room there (the field touches the sky's edge) it takes the free side where a technician
+        // would stand
+        const f = airfieldLayout(w, horizonY, px);
+        const edge = f.left + f.width + SKY_PR_NUMBER_EDGE_GAP_UNITS * px;
+        const room = w - edge >= SKY_PR_NUMBER_ROOM_UNITS * px;
+        const outside =
+          task.stage !== 'ready_to_merge'
+            ? undefined
+            : room
+              ? edge
+              : s.x + SKY_PR_NUMBER_FREE_SIDE_UNITS * px;
+        drawPrNumber(ctx, s.x, s.y, px, num, outside);
+      }
     } else if (s.mode === 'rocket') {
       ctx.globalAlpha = 1 - s.fade;
       drawRocket(ctx, s.x, s.y, px, s.angle, s.scale, colour, s.flame, s.dust, sec);
