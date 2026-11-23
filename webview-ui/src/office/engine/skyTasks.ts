@@ -28,6 +28,9 @@ import {
   SKY_AIRFIELD_SLOT_PITCH,
   SKY_AIRFIELD_TAKEOFF_ROLL_SEC,
   SKY_AIRFIELD_TAKEOFF_TAXI_SEC,
+  SKY_PR_NUMBER_EDGE_GAP_UNITS,
+  SKY_PR_NUMBER_FREE_SIDE_UNITS,
+  SKY_PR_NUMBER_ROOM_UNITS,
   SKY_ROCKET_DESCENT_SEC,
   SKY_ROCKET_FADE_FROM,
   SKY_ROCKET_FAR_SCALE,
@@ -66,10 +69,12 @@ import {
   type AirfieldLot,
   drawGroundCrew,
   drawGroundPlane,
+  drawPrNumber,
   drawRocket,
   drawTurningPlane,
   type Heading,
   PLANE_TOP_LENGTH,
+  prNumberOfTaskId,
   slotPoint,
 } from './skyAirfield.js';
 
@@ -975,9 +980,31 @@ export function drawGroundPlanes(
       }
       ctx.globalAlpha = 1;
     } else if (s.mode === 'ground') drawGroundPlane(ctx, s.x, s.y, px, s.heading, colour);
-    if (s.mode === 'ground' && s.parked)
+    if (s.mode === 'ground' && s.parked) {
       drawGroundCrew(ctx, s.x, s.y, px, SKY_TASK_STAGES[s.stageIndex], sec, s.seed);
-    else if (s.mode === 'rocket') {
+      const num = prNumberOfTaskId(task.id);
+      if (num !== null) {
+        // beside the plane, outside the field: ready to merge on the right edge (level with the
+        // plane), plan and tests on the left edge. With no room there the number takes the free
+        // side of a ready plane, or goes under any other.
+        const f = airfieldLayout(w, horizonY, px);
+        const need = SKY_PR_NUMBER_ROOM_UNITS * px;
+        // the same distance from the plane's centre to the number on both sides: enough to clear
+        // whichever lot's plane sits nearer its field edge
+        const dist =
+          Math.max(
+            slotPoint(f, 'plan', 0)[0] - f.left,
+            f.left + f.width - slotPoint(f, 'ready', 0)[0],
+          ) +
+          SKY_PR_NUMBER_EDGE_GAP_UNITS * px;
+        let outside: number | undefined;
+        if (task.stage === 'ready_to_merge')
+          outside =
+            w - (s.x + dist) >= need ? s.x + dist : s.x + SKY_PR_NUMBER_FREE_SIDE_UNITS * px;
+        else if (!f.strip && s.x - dist >= need) outside = s.x - dist;
+        drawPrNumber(ctx, s.x, s.y, px, num, outside);
+      }
+    } else if (s.mode === 'rocket') {
       ctx.globalAlpha = 1 - s.fade;
       drawRocket(ctx, s.x, s.y, px, s.angle, s.scale, colour, s.flame, s.dust, sec);
       ctx.globalAlpha = 1;
