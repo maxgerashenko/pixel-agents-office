@@ -24,6 +24,7 @@ import type {
   SelectionRenderState,
 } from '../engine/renderer.js';
 import { renderFrame } from '../engine/renderer.js';
+import { skyMoonAt, toggleNightLineStyle } from '../engine/skyDraw.js';
 import { getSkyTasks, skyLinkAt } from '../engine/skyTasks.js';
 import { isWhiteboard, whiteboardPlates } from '../engine/whiteboard.js';
 import { EditTool, TILE_SIZE } from '../types.js';
@@ -453,7 +454,9 @@ export function OfficeCanvas({
           getCharacter: (id) => officeState.characters.get(id),
         });
         canvas.style.cursor =
-          hitId === null && petId === null && skyLinkAt(pos.deviceX, pos.deviceY)
+          hitId === null &&
+          petId === null &&
+          (skyLinkAt(pos.deviceX, pos.deviceY) || skyMoonAt(pos.deviceX, pos.deviceY))
             ? 'pointer'
             : cursor;
       }
@@ -685,6 +688,12 @@ export function OfficeCanvas({
           onWhiteboardTap();
           return;
         }
+      }
+
+      // The moon: switch the night-sky brushstrokes between thin and thick
+      if (skyMoonAt(pos.deviceX, pos.deviceY)) {
+        toggleNightLineStyle();
+        return;
       }
 
       // A ready-to-merge plane, rocket or its lot: open the task's pull request
