@@ -11,7 +11,7 @@ export interface AgentAppearance {
 }
 
 /** Agent activity reflected by the tab's status dot. */
-export type AgentActivity = 'idle' | 'working' | 'attention';
+export type AgentActivity = 'idle' | 'working' | 'attention' | 'permission';
 
 /** Activity plus the drawer-owned "connection broken" state. */
 export type TabStatus = AgentActivity | 'disconnected';
@@ -19,7 +19,8 @@ export type TabStatus = AgentActivity | 'disconnected';
 const STATUS_DOT: Record<TabStatus, string> = {
   idle: 'bg-status-success', // green — turn complete, nothing pending
   working: 'bg-accent-bright', // blue — actively running
-  attention: 'bg-status-permission', // yellow — needs permission or input
+  attention: 'bg-status-permission', // yellow — needs input
+  permission: 'bg-status-permission', // yellow — a permission prompt is open (card also flashes)
   disconnected: 'bg-status-error', // red — terminal socket dropped
 };
 
@@ -66,7 +67,7 @@ export function AgentCard({
       // under the mug shot, which sits beside the close/status column as
       // before; a long name widens both sides alike and runs under that
       // column. Unnamed (mobile): the plain flex row.
-      className={`pointer-events-auto p-1 cursor-pointer border-2 shrink-0 ${named ? 'grid' : 'flex items-stretch gap-1'} ${CARD_VARIANT[variant]}`}
+      className={`pointer-events-auto p-1 cursor-pointer border-2 shrink-0 ${status === 'permission' ? 'needs-you-card' : ''} ${named ? 'grid' : 'flex items-stretch gap-1'} ${CARD_VARIANT[variant]}`}
       style={named ? { gridTemplateColumns: `1fr ${MUGSHOT_DISPLAY_PX}px 1fr` } : undefined}
       onClick={() => onSelect(agentId)}
       title={name ?? `Agent ${agentId}`}
