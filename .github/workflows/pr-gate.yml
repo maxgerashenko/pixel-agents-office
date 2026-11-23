@@ -1,0 +1,85 @@
+# Required checks for every pull request: the project must build, its tests must
+# pass, and a change to source code must come with a test change.
+#
+# Make both jobs mandatory by requiring the checks "Build and test" and
+# "Tests included" in the branch protection rule for main.
+
+name: PR gate
+
+on:
+  pull_request:
+    branches:
+      - main
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-gate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    name: Build and test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npm run check-types
+
+      - name: Build extension and CLI
+        run: npm run build:extension
+
+      - name: Build webview
+        run: npm run build:webview
+
+      - name: Unit tests
+        run: npm run test:webview && npm run test:server
+
+  tests-included:
+    name: Tests included
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Require a test change with every source change
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          SKIP_LABEL: ${{ contains(github.event.pull_request.labels.*.name, 'no-tests') }}
+        run: |
+          if [ "$SKIP_LABEL" = "true" ]; then
+            echo "Label 'no-tests' set: skipping."
+            exit 0
+          fi
+          files=$(git diff --name-only "$BASE_SHA"..."$HEAD_SHA")
+          source=$(echo "$files" | grep -E '^(server/src|core/src|adapters|webview-ui/src)/.*\.(ts|tsx)$' || true)
+          tests=$(echo "$files" | grep -E '(^|/)(__tests__|test|e2e/tests)/|\.(test|spec)\.(ts|tsx|mjs)$' || true)
+          if [ -z "$source" ]; then
+            echo "No source files changed: nothing to test."
+            exit 0
+          fi
+          if [ -z "$tests" ]; then
+            echo "::error::Source changed but no test file changed. Add or update a test, or label the PR 'no-tests' with the reason in the description."
+            echo "$source"
+            exit 1
+          fi
+          echo "Source and tests both changed."
