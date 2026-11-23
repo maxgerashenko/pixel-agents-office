@@ -1326,7 +1326,8 @@ export const WHITEBOARD_GLYPH_STROKE = 2;
 export const WHITEBOARD_GLYPH_GAP = 1;
 export const WHITEBOARD_PLATE_MARGIN = 1;
 export const WHITEBOARD_COUNT_COLOR = '#2b6cdf';
-export const WHITEBOARD_PLATE_COLOR = '#f4f6f4';
+/** The board sprite's own surface colour, so the patch that clears its scribbles under the count is invisible. */
+export const WHITEBOARD_PLATE_COLOR = '#efebe8';
 /** How often the open list re-reads the board, ms. */
 export const WHITEBOARD_REFRESH_MS = 1000;
 export const WHITEBOARD_MODAL_Z_INDEX = 52;
