@@ -382,8 +382,7 @@ function drawBeacon(
 }
 
 /**
- * What stands round a parked plane (or rocket) centred on (x, y): two siren beacons ahead of the
- * wings, and for plan and tests a technician at the right wing working on it. Ready-to-merge
+ * What stands round a parked plane (or rocket) centred on (x, y): one siren beacon on the lot's outer edge, and for plan and tests a technician at the right wing working on it. Ready-to-merge
  * tasks get beacons only. `seed` offsets the flashing so neighbours don't pulse together.
  */
 export function drawGroundCrew(
@@ -396,8 +395,9 @@ export function drawGroundCrew(
   seed: number,
 ): void {
   if (stage !== 'plan' && stage !== 'tests' && stage !== 'ready_to_merge') return;
-  drawBeacon(ctx, x - 5 * px, y - 2 * px, px, stage, sec, seed);
-  drawBeacon(ctx, x + 5 * px, y - 2 * px, px, stage, sec, seed + 0.5);
+  // one beacon per bay, on the lot's outer edge: the left edge of the left lot, the right edge of the right one
+  const outer = stage === 'ready_to_merge' ? 6 : -6;
+  drawBeacon(ctx, x + outer * px, y, px, stage, sec, seed);
   if (stage === 'ready_to_merge') return;
   const frame = TECH_FRAMES[Math.floor(sec / SKY_TECH_WORK_SEC + seed * 7) % 2];
   frame.forEach((row, ry) => {
