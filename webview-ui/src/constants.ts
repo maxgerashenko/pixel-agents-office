@@ -1301,3 +1301,14 @@ export const SKY_MERGE_DAY = {
   spinTurns: 2,
   total: 10.4,
 } as const;
+
+// ── Wall clock (the CLOCK item shows the device's local time) ──
+/** The CLOCK sprite pixel the hands turn about (a face pixel, so a hand starts on it). */
+export const CLOCK_PIVOT_COL = 7;
+export const CLOCK_PIVOT_ROW = 16;
+/** Hand lengths in sprite pixels from the pivot (the face has 3 pixels of room each way). */
+export const CLOCK_HOUR_HAND_LENGTH = 2;
+export const CLOCK_MINUTE_HAND_LENGTH = 3;
+export const CLOCK_HAND_COLOR = '#394449';
+/** The catalog type of the wall clock. */
+export const CLOCK_TYPE = 'CLOCK';
