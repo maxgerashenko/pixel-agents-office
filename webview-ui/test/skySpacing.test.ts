@@ -11,6 +11,7 @@ import { beforeEach, test } from 'vitest';
 
 import { SKY_TASK_MIN_GAP } from '../src/constants.js';
 import {
+  flyerPose,
   minGapU,
   resetSkyMotion,
   separateFlyers,
@@ -159,4 +160,18 @@ test('a lone flyer is never moved', () => {
 
 test('two pinned flyers too close stay put rather than moving either', () => {
   assert.deepEqual(separateFlyers([0.5, 0.51], [true, true], 0.1, 0.05), [0, 0]);
+});
+
+test('a flyer tilts smoothly along its orbit: the slope never flickers between frames', () => {
+  const task = t('a', 'coding');
+  const place = { orbit: 0, phase: 0 };
+  let prev = flyerPose(task, 0, W, H, PX, place);
+  let worst = 0;
+  for (let sec = 0.05; sec < 40; sec += 0.05) {
+    const p = flyerPose(task, sec, W, H, PX, place);
+    // off the right edge it wraps to the left edge, off screen: not a frame anyone sees
+    if (p.x >= prev.x) worst = Math.max(worst, Math.abs(p.slope - prev.slope));
+    prev = p;
+  }
+  assert.ok(worst < 0.02, `slope jumped by ${worst} between frames`);
 });

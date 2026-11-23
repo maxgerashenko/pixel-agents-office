@@ -226,6 +226,7 @@ export function orbitArc(
   horizonY: number,
   px: number,
   field?: Airfield,
+  snap = true,
 ): (k: number) => [number, number] {
   const ground = horizonY * (SKY_TASK_GROUND - orbit * SKY_TASK_TRACK_GAP);
   const rise = horizonY * SKY_TASK_RISE;
@@ -241,7 +242,7 @@ export function orbitArc(
       const wgt = smooth((x - (field.left - blend)) / blend);
       y = y * (1 - wgt) + Math.min(y, lift) * wgt;
     }
-    return [Math.round(x / px) * px, Math.round(y / px) * px];
+    return snap ? [Math.round(x / px) * px, Math.round(y / px) * px] : [x, y];
   };
 }
 
@@ -264,14 +265,15 @@ export function flyerPose(
     y,
     alpha: task.stage === 'merged' ? 1 - u * u : 1,
     stageIndex: si,
-    slope: slopeAt(at, u),
+    // the tilt comes from the exact curve: off the pixel-snapped one it flickers between steps
+    slope: slopeAt(orbitArc(place.orbit, w, horizonY, px, field, false), u),
     at,
   };
 }
 
 /** Climb (+) or dive (-) of an arc at progress `u`, for tilting a sprite. */
 function slopeAt(at: (k: number) => [number, number], u: number): number {
-  const d = 0.004;
+  const d = 0.02;
   const [x0, y0] = at(Math.max(0, u - d));
   const [x1, y1] = at(Math.min(1, u + d));
   if (x1 === x0) return 0;
