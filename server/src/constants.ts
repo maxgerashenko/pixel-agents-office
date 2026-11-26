@@ -201,6 +201,17 @@ export const TASKS_STALE_MS = 3 * 24 * 60 * 60_000;
 export const TASKS_MAX = 8;
 export const TASKS_POLL_ENV = 'PIXEL_AGENTS_TASKS_POLL';
 
+// ── Issue board (the whiteboard's big view: one column per board Status) ──────
+/** How often GitHub is asked for issues while a page is open. */
+export const ISSUE_BOARD_POLL_INTERVAL_MS = 60_000;
+export const ISSUE_BOARD_POLL_TIMEOUT_MS = 20_000;
+/** A closed issue stays in the Done column this long. */
+export const ISSUE_BOARD_DONE_LINGER_MS = 7 * 24 * 60 * 60_000;
+/** How many open and how many closed issues one poll asks for, per repo. */
+export const ISSUE_BOARD_OPEN_LIMIT = 200;
+export const ISSUE_BOARD_CLOSED_LIMIT = 30;
+export const ISSUE_BOARD_POLL_ENV = 'PIXEL_AGENTS_ISSUE_BOARD_POLL';
+
 /** Cloud sessions (claude.ai/code) shown as working characters: refresh cadence while a page is open. */
 export const CLOUD_SESSIONS_POLL_INTERVAL_MS = 30_000;
 export const CLOUD_SESSIONS_POLL_TIMEOUT_MS = 25_000;

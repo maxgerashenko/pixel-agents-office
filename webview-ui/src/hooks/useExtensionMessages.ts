@@ -8,6 +8,7 @@ import { playDoneSound, playPermissionSound, setSoundEnabled } from '../notifica
 import { type CloudSessionView, syncCloudSessions } from '../office/engine/cloudAgents.js';
 import type { ExistingAgentMeta, PendingAgent } from '../office/engine/existingAgents.js';
 import { reconcileExistingAgents } from '../office/engine/existingAgents.js';
+import { type IssueBoardCardView, setIssueBoard } from '../office/engine/issueBoard.js';
 import type { OfficeState } from '../office/engine/officeState.js';
 import { setGhostHeadlessAgents as setRendererGhostHeadlessAgents } from '../office/engine/renderer.js';
 import { setSkyTasks, type SkyTask } from '../office/engine/skyTasks.js';
@@ -812,6 +813,8 @@ export function useExtensionMessages(
           latestCloudSessions = msg.sessions as CloudSessionView[];
           if (layoutReadyRef.current) syncCloudSessions(os, latestCloudSessions);
         }
+      } else if (msg.type === 'issueBoardUpdate') {
+        if (Array.isArray(msg.issues)) setIssueBoard(msg.issues as IssueBoardCardView[]);
       } else if (msg.type === 'tasksUpdate') {
         if (Array.isArray(msg.tasks)) setSkyTasks(msg.tasks as SkyTask[]);
       } else if (msg.type === 'usageUpdate') {

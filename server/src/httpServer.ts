@@ -21,6 +21,7 @@ import {
   WS_CLOSE_FORBIDDEN_ORIGIN,
   WS_CLOSE_UNAUTHORIZED,
 } from './constants.js';
+import type { IssueBoardTracker } from './issueBoardTracker.js';
 import type { TaskTracker } from './taskTracker.js';
 import type { PtySessionManager } from './terminal/ptySessionManager.js';
 import { registerTerminalRoutes } from './terminal/terminalRoutes.js';
@@ -58,6 +59,8 @@ export interface HttpServerOptions {
   tasks?: TaskTracker;
   /** The user's claude.ai cloud sessions, drawn as characters; absent = none are drawn. */
   cloudSessions?: CloudSessionTracker;
+  /** Issue board for the whiteboard's big view; absent = an empty board. */
+  issueBoard?: IssueBoardTracker;
   /** Callback when a hook event is received */
   onHookEvent?: (providerId: string, event: Record<string, unknown>) => void;
   /** Invoked when setHooksEnabled is toggled via WebSocket. Standalone installs/uninstalls hooks here. */
@@ -258,6 +261,7 @@ function registerWebSocketRoute(
     const releaseUsageViewer = options.usage?.addViewer();
     const releaseTasksViewer = options.tasks?.addViewer();
     const releaseCloudViewer = options.cloudSessions?.addViewer();
+    const releaseIssueBoardViewer = options.issueBoard?.addViewer();
 
     // Pipe store events to WebSocket client
     const onAgentAdded = (id: number, agent: AgentState) => {
@@ -306,6 +310,7 @@ function registerWebSocketRoute(
           usage: options.usage,
           tasks: options.tasks,
           cloudSessions: options.cloudSessions,
+          issueBoard: options.issueBoard,
         });
       } catch {
         // Malformed JSON, ignore
@@ -319,6 +324,7 @@ function registerWebSocketRoute(
       releaseUsageViewer?.();
       releaseTasksViewer?.();
       releaseCloudViewer?.();
+      releaseIssueBoardViewer?.();
     });
   });
 }

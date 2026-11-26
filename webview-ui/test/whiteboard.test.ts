@@ -1,5 +1,5 @@
 /**
- * Live whiteboard: the count on the board and the list a tap opens.
+ * Live whiteboard: the count on the board and which tap opens the big view.
  *
  * Run with: npm test
  */
@@ -10,13 +10,7 @@ import path from 'node:path';
 import { beforeAll, test } from 'vitest';
 
 import { loadFurnitureAssets } from '../../server/src/assetLoader.js';
-import type { SkyTask } from '../src/office/engine/skyTasks.js';
-import {
-  isWhiteboard,
-  taskPrNumber,
-  whiteboardEntries,
-  whiteboardPlates,
-} from '../src/office/engine/whiteboard.js';
+import { isWhiteboard, whiteboardPlates } from '../src/office/engine/whiteboard.js';
 import { buildDynamicCatalog } from '../src/office/layout/furnitureCatalog.js';
 import type { OfficeLayout } from '../src/office/types.js';
 import { TILE_SIZE } from '../src/office/types.js';
@@ -25,29 +19,6 @@ beforeAll(async () => {
   const loaded = await loadFurnitureAssets(path.resolve(__dirname, '../public'));
   assert.ok(loaded);
   buildDynamicCatalog({ catalog: loaded.catalog, sprites: Object.fromEntries(loaded.sprites) });
-});
-
-const task = (id: string, stage: SkyTask['stage']): SkyTask => ({ id, title: `t ${id}`, stage });
-
-test('the PR number is read from the end of a task id', () => {
-  assert.equal(taskPrNumber('feat/whiteboard#97'), 97);
-  assert.equal(taskPrNumber('a#1#22'), 22);
-  assert.equal(taskPrNumber('no-number'), null);
-});
-
-test('entries list every task but merged ones, with PR numbers and titles', () => {
-  const list = whiteboardEntries([
-    task('a#1', 'coding'),
-    task('b#2', 'merged'),
-    task('c#3', 'ready_to_merge'),
-  ]);
-  assert.deepEqual(
-    list.map((e) => [e.pr, e.title]),
-    [
-      [1, 't a#1'],
-      [3, 't c#3'],
-    ],
-  );
 });
 
 test('a plate sits centred on each whiteboard and carries the count', () => {
