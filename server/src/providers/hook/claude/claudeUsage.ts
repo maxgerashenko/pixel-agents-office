@@ -18,15 +18,23 @@ import type { UsageSnapshot, UsageWindow } from '../../../../../core/src/provide
  * out-of-range percentage is clamped to 0-100. Returns null when no window
  * survives, so the previous snapshot stands.
  */
+/** The Fable-only weekly window's key: `seven_day_fable` (any `seven_day_*` key naming Fable). */
+export function isFableWeekKey(key: string): boolean {
+  return /^seven_day_.*fable/i.test(key);
+}
+
 export function parseClaudeUsage(raw: unknown): UsageSnapshot | null {
   if (!isRecord(raw) || !isRecord(raw['rate_limits'])) return null;
   const limits = raw['rate_limits'];
   const fiveHour = parseWindow(limits['five_hour']);
   const sevenDay = parseWindow(limits['seven_day']);
-  if (!fiveHour && !sevenDay) return null;
+  const fableKey = Object.keys(limits).find(isFableWeekKey);
+  const sevenDayFable = fableKey ? parseWindow(limits[fableKey]) : undefined;
+  if (!fiveHour && !sevenDay && !sevenDayFable) return null;
   return {
     ...(fiveHour ? { fiveHour } : {}),
     ...(sevenDay ? { sevenDay } : {}),
+    ...(sevenDayFable ? { sevenDayFable } : {}),
   };
 }
 

@@ -85,6 +85,8 @@ export interface UsageSnapshot {
   fiveHour?: UsageWindow;
   /** The weekly window. */
   sevenDay?: UsageWindow;
+  /** The weekly window of the Fable model alone (a model-specific weekly limit). */
+  sevenDayFable?: UsageWindow;
 }
 
 // ── Hook-based Provider (CLIs with hooks APIs) ────────────────

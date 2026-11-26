@@ -42,6 +42,10 @@ Keep your existing statusline: put its command after `--`; it receives the same 
 }
 ```
 
+## Weekly limits
+
+One thin line sits under the token bar when the account reports weekly limits, holding both: **Fable this week** is always yellow and **This week** (all models) is the main fill colour. The shorter layer is drawn in front, so neither covers the other. The Fable line reads a `seven_day_*fable` key of `rate_limits`; it stays hidden when Claude Code does not report one.
+
 ## Live refresh
 
 The statusline only fires after a Claude Code response, so on its own the strip lags and misses usage spent on claude.ai web. While at least one Pixel Agents page is open (a browser tab, or the VS Code panel), the server therefore also asks Claude Code for the current limits:

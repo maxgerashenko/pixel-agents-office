@@ -53,6 +53,15 @@ describe('parseClaudeUsage', () => {
     });
   });
 
+  it('reads the Fable-only weekly window from a seven_day_*fable key', () => {
+    const raw = statusline({ used_percentage: 1, resets_at: 5 });
+    (raw['rate_limits'] as Record<string, unknown>)['seven_day_fable'] = {
+      used_percentage: 62,
+      resets_at: 9,
+    };
+    expect(parseClaudeUsage(raw)?.sevenDayFable).toEqual({ usedPercentage: 62, resetsAt: 9000 });
+  });
+
   it('accepts a single window', () => {
     const r = parseClaudeUsage(statusline({ used_percentage: 10, resets_at: 5 }));
     expect(r).toEqual({ fiveHour: { usedPercentage: 10, resetsAt: 5000 } });

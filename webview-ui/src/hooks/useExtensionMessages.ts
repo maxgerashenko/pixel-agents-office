@@ -820,6 +820,7 @@ export function useExtensionMessages(
           const view: UsageView = {
             fiveHour: asUsageWindow(msg.fiveHour),
             sevenDay: asUsageWindow(msg.sevenDay),
+            sevenDayFable: asUsageWindow(msg.sevenDayFable),
             updatedAt: typeof msg.updatedAt === 'number' ? msg.updatedAt : 0,
           };
           setUsage((m) => ({ ...m, [providerId]: view }));

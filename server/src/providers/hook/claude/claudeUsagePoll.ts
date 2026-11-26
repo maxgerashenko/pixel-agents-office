@@ -10,6 +10,7 @@ import {
   USAGE_POLL_SETTINGS_FILE_NAME,
   USAGE_POLL_TIMEOUT_MS,
 } from '../../../constants.js';
+import { isFableWeekKey } from './claudeUsage.js';
 
 /**
  * Pull-based usage refresh for Claude Code.
@@ -64,10 +65,13 @@ export function parseClaudeUsageResponse(
   if (!isRecord(body) || !isRecord(body['rate_limits'])) return null;
   const fiveHour = parseWindow(body['rate_limits']['five_hour']);
   const sevenDay = parseWindow(body['rate_limits']['seven_day']);
-  if (!fiveHour && !sevenDay) return null;
+  const fableKey = Object.keys(body['rate_limits']).find(isFableWeekKey);
+  const sevenDayFable = fableKey ? parseWindow(body['rate_limits'][fableKey]) : undefined;
+  if (!fiveHour && !sevenDay && !sevenDayFable) return null;
   return {
     ...(fiveHour ? { fiveHour } : {}),
     ...(sevenDay ? { sevenDay } : {}),
+    ...(sevenDayFable ? { sevenDayFable } : {}),
   };
 }
 
