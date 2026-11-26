@@ -5,6 +5,7 @@ import {
   displayPercent,
   formatTimeLeft,
   pickSessionWindow,
+  pickWeekWindows,
   ringHue,
   ringPixelPaths,
   sessionClock,
@@ -38,6 +39,36 @@ function SessionRing({ percent }: { percent: number }) {
   );
 }
 
+/** A thin weekly-limit line: the same track as the main bar (2px border, dark
+ *  fill, square), one line per limit, stacked so neither covers the other. */
+function WeekLine({
+  label,
+  percent,
+  resetsAt,
+  now,
+  fillClass,
+}: {
+  label: string;
+  percent: number;
+  resetsAt: number;
+  now: number;
+  fillClass: string;
+}) {
+  return (
+    <div
+      className="h-6 border-2 border-border bg-bg-dark"
+      role="progressbar"
+      aria-label={label}
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={percent}
+      title={`${label}: ${percent}% used, resets in ${formatTimeLeft(resetsAt, now)}`}
+    >
+      <div className={`h-full ${fillClass}`} style={{ width: `${percent}%` }} />
+    </div>
+  );
+}
+
 interface UsageMeterProps {
   /** Latest `usageUpdate` per provider id. */
   usage: Record<string, UsageView>;
@@ -61,6 +92,7 @@ export function UsageMeter({ usage }: UsageMeterProps) {
   const session = pickSessionWindow(usage, now);
   if (!session) return null;
 
+  const { week, fable } = pickWeekWindows(usage, now);
   const percent = displayPercent(session.usedPercentage);
   const { earlyPercent, lastHourPercent } = sessionClock(session.resetsAt, now);
   const timeLeft = formatTimeLeft(session.resetsAt, now);
@@ -84,32 +116,56 @@ export function UsageMeter({ usage }: UsageMeterProps) {
       >
         {timeLeft}
       </span>
-      <div
-        className="relative flex-1 min-w-0 h-14 border-2 border-border bg-bg-dark"
-        role="progressbar"
-        aria-label="Current session usage"
-        aria-valuemin={0}
-        aria-valuemax={100}
-        aria-valuenow={percent}
-        title={
-          lastHourPercent === null ? undefined : `Last hour: ${Math.round(lastHourPercent)}% passed`
-        }
-      >
-        {/* Last hour of the window: a layer sharing the bar with the token
-            fill. The shorter of the two is drawn in front, so both stay
-            visible: yellow while the hour is behind the tokens, pink once
-            it is ahead. */}
-        {lastHourPercent !== null && lastHourPercent > percent && (
-          <div
-            className="absolute inset-y-0 left-0 bg-usage-last-hour"
-            style={{ width: `${lastHourPercent}%` }}
+      <div className="flex-1 min-w-0 flex flex-col gap-2">
+        <div
+          className="relative h-14 border-2 border-border bg-bg-dark"
+          role="progressbar"
+          aria-label="Current session usage"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={percent}
+          title={
+            lastHourPercent === null
+              ? undefined
+              : `Last hour: ${Math.round(lastHourPercent)}% passed`
+          }
+        >
+          {/* Last hour of the window: a layer sharing the bar with the token
+              fill. The shorter of the two is drawn in front, so both stay
+              visible: yellow while the hour is behind the tokens, pink once
+              it is ahead. */}
+          {lastHourPercent !== null && lastHourPercent > percent && (
+            <div
+              className="absolute inset-y-0 left-0 bg-usage-last-hour"
+              style={{ width: `${lastHourPercent}%` }}
+            />
+          )}
+          <div className="relative h-full bg-accent-bright" style={{ width: `${percent}%` }} />
+          {lastHourPercent !== null && lastHourPercent <= percent && (
+            <div
+              className="absolute inset-y-0 left-0 bg-usage-last-hour-behind"
+              style={{ width: `${lastHourPercent}%` }}
+            />
+          )}
+        </div>
+        {/* Weekly limits under the main bar: Fable's week in the main colour,
+            the all-models week in the secondary one. */}
+        {fable && (
+          <WeekLine
+            label="Fable this week"
+            percent={displayPercent(fable.usedPercentage)}
+            resetsAt={fable.resetsAt}
+            now={now}
+            fillClass="bg-accent-bright"
           />
         )}
-        <div className="relative h-full bg-accent-bright" style={{ width: `${percent}%` }} />
-        {lastHourPercent !== null && lastHourPercent <= percent && (
-          <div
-            className="absolute inset-y-0 left-0 bg-usage-last-hour-behind"
-            style={{ width: `${lastHourPercent}%` }}
+        {week && (
+          <WeekLine
+            label="This week"
+            percent={displayPercent(week.usedPercentage)}
+            resetsAt={week.resetsAt}
+            now={now}
+            fillClass="bg-accent"
           />
         )}
       </div>

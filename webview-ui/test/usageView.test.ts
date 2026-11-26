@@ -6,6 +6,7 @@ import {
   formatTimeLeft,
   liveWindow,
   pickSessionWindow,
+  pickWeekWindows,
   ringHue,
   ringPixelPaths,
   sessionClock,
@@ -103,5 +104,15 @@ describe('ringHue', () => {
     expect(ringHue(50)).toBe(60);
     expect(ringHue(100)).toBe(0);
     expect(ringHue(150)).toBe(0);
+  });
+});
+
+describe('pickWeekWindows', () => {
+  const w = (resetsAt: number) => ({ usedPercentage: 10, resetsAt });
+  it('returns the live week and Fable week, dropping expired ones', () => {
+    const usage = { claude: { sevenDay: w(100), sevenDayFable: w(10), updatedAt: 0 } };
+    expect(pickWeekWindows(usage, 50)).toEqual({ week: w(100), fable: undefined });
+    expect(pickWeekWindows(usage, 5).fable).toEqual(w(10));
+    expect(pickWeekWindows(usage, 500)).toEqual({});
   });
 });
