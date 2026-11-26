@@ -5,6 +5,7 @@ import {
   getIssueBoard,
   isOpenableIssueUrl,
   issueBoardColumns,
+  issueBoardShownCount,
 } from '../office/engine/issueBoard.js';
 import { Modal } from './ui/Modal.js';
 
@@ -20,13 +21,13 @@ export function WhiteboardModal({ isOpen, onClose }: { isOpen: boolean; onClose:
     return () => window.clearInterval(timer);
   }, [isOpen]);
 
-  const openCount = cards.filter((c) => c.status !== 'done').length;
+  const openCount = issueBoardShownCount(cards);
 
   return (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={`Board (${openCount} open)`}
+      title={`Board (${openCount})`}
       zIndex={WHITEBOARD_MODAL_Z_INDEX}
       className="min-w-[min(960px,100%)]!"
     >

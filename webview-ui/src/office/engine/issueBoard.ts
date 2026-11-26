@@ -19,6 +19,9 @@ export const ISSUE_BOARD_COLUMNS: ReadonlyArray<{ status: IssueBoardStatus; labe
   { status: 'done', label: 'Done' },
 ];
 
+/** Columns kept off the board: backlog, stuck and finished issues are not active work. */
+const HIDDEN_STATUSES: ReadonlySet<IssueBoardStatus> = new Set(['new', 'blocked', 'done']);
+
 const KNOWN_STATUSES = new Set<string>(ISSUE_BOARD_COLUMNS.map((c) => c.status));
 
 let board: IssueBoardCardView[] = [];
@@ -37,13 +40,20 @@ export interface IssueBoardColumn {
   cards: IssueBoardCardView[];
 }
 
-/** Every column in board order, each with its issues by number; empty columns are kept. */
+/** Every shown column in board order, each with its issues by number; empty columns are kept. */
 export function issueBoardColumns(cards: IssueBoardCardView[]): IssueBoardColumn[] {
-  return ISSUE_BOARD_COLUMNS.map(({ status, label }) => ({
-    status,
-    label,
-    cards: cards.filter((c) => c.status === status).sort((a, b) => a.number - b.number),
-  }));
+  return ISSUE_BOARD_COLUMNS.filter(({ status }) => !HIDDEN_STATUSES.has(status)).map(
+    ({ status, label }) => ({
+      status,
+      label,
+      cards: cards.filter((c) => c.status === status).sort((a, b) => a.number - b.number),
+    }),
+  );
+}
+
+/** Issues on the shown columns. */
+export function issueBoardShownCount(cards: IssueBoardCardView[]): number {
+  return issueBoardColumns(cards).reduce((total, column) => total + column.cards.length, 0);
 }
 
 /** A card opens its issue only when the link is a github.com page. */
