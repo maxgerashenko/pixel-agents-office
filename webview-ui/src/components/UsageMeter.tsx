@@ -56,7 +56,7 @@ function WeekLine({
 }) {
   return (
     <div
-      className="h-6 border-2 border-border bg-bg-dark"
+      className="h-8 border-2 border-border bg-bg-dark"
       role="progressbar"
       aria-label={label}
       aria-valuemin={0}
