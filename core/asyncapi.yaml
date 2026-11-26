@@ -640,6 +640,16 @@ components:
         url:
           type: string
           description: The issue's page on github.com; a tap on its card opens it.
+        progress:
+          $ref: '#/components/schemas/IssueBoardProgress'
+          description: >-
+            What the agent is doing, for the sky. Set only for needs design (writing_plan, or
+            plan_ready once its plan file exists) and in progress (coding, or testing once its pull
+            request has checks running or is in review).
+
+    IssueBoardProgress:
+      type: string
+      enum: [writing_plan, plan_ready, coding, testing]
 
     IssueBoardStatus:
       type: string

@@ -1,6 +1,6 @@
 /**
- * The airfield at the right of the sky: a left lot (plan and tests tasks wait here) beside the take-off
- * runway, and a landing runway beside the right lot (ready-to-merge tasks park here), seen from
+ * The airfield at the right of the sky: a left lot (plan ready, needs decision and ready tasks wait here) beside the take-off
+ * runway, and a landing runway beside the right lot (in review tasks park here), seen from
  * above like a map. Pure geometry plus the static drawing; the tasks' planes live in skyTasks.
  */
 import {
@@ -46,16 +46,10 @@ import {
   SKY_ROCKET_DUST_COLOR,
   SKY_ROCKET_FLAME_COLORS,
   SKY_ROCKET_LEG_COLOR,
-  SKY_TECH_HELMET_COLOR,
-  SKY_TECH_LEGS_COLOR,
-  SKY_TECH_SKIN_COLOR,
-  SKY_TECH_TOOL_COLOR,
-  SKY_TECH_VEST_COLOR,
-  SKY_TECH_WORK_SEC,
 } from '../../constants.js';
 import { mix, parseHex, toCss } from './skyCycle.js';
 
-export type AirfieldLot = 'plan' | 'ready';
+export type AirfieldLot = 'left' | 'right';
 export type Heading = 'up' | 'right' | 'down' | 'left';
 
 /** Everything in canvas pixels, on the sprite-pixel grid. */
@@ -208,9 +202,9 @@ function stripLayout(horizonY: number, px: number, wU: number, s: AirfieldSite):
 export function slotPoint(f: Airfield, lot: AirfieldLot, slot: number): [number, number] {
   const row = slot % f.slotRows;
   const col = Math.floor(slot / f.slotRows);
-  const x = (lot === 'plan' ? f.lotL : f.lotR) + (col % 2 === 0 ? 1 : -1) * col * 2 * f.px;
-  // in the strip the ready bays sit below the plan bays, in the same lot
-  const shift = f.strip && lot === 'ready' ? f.slotRows * SKY_AIRFIELD_SLOT_PITCH : 0;
+  const x = (lot === 'left' ? f.lotL : f.lotR) + (col % 2 === 0 ? 1 : -1) * col * 2 * f.px;
+  // in the strip the right bays sit below the left bays, in the same lot
+  const shift = f.strip && lot === 'right' ? f.slotRows * SKY_AIRFIELD_SLOT_PITCH : 0;
   const y = f.slotTop + (shift + row * SKY_AIRFIELD_SLOT_PITCH + col * 4) * f.px;
   return [x, y];
 }
@@ -381,19 +375,6 @@ export function drawRocket(
   ctx.restore();
 }
 
-/** A technician (3 x 5): `h` helmet, `s` skin, `v` vest, `l` legs, `t` the tool he works with. */
-const TECH_FRAMES: string[][] = [
-  ['.h.', '.s.', 'vvv', '.v.', 'l.l'],
-  ['.h.', '.s.', 'vvt', '.v.', 'l.l'],
-];
-const TECH_COLORS: Record<string, string> = {
-  h: SKY_TECH_HELMET_COLOR,
-  s: SKY_TECH_SKIN_COLOR,
-  v: SKY_TECH_VEST_COLOR,
-  l: SKY_TECH_LEGS_COLOR,
-  t: SKY_TECH_TOOL_COLOR,
-};
-
 /** A siren beacon (3 x 5): `d` dome, `c` the bright core, `r` rim, `b` base. */
 const BEACON: string[] = ['.d.', 'dcd', 'dcd', 'rrr', 'bbb'];
 
@@ -442,8 +423,9 @@ function drawBeacon(
 }
 
 /**
- * What stands round a parked plane (or rocket) centred on (x, y): one siren beacon on the lot's outer edge (none for a plan), and for plan and tests a technician at the right wing working on it. Ready-to-merge
- * tasks get beacons only. `seed` offsets the flashing so neighbours don't pulse together.
+ * What stands round a parked plane (or rocket) centred on (x, y): one siren beacon on the lot's outer
+ * edge, its colour the status (blue plan ready, yellow needs decision, green ready and in review).
+ * `seed` offsets the flashing so neighbours don't pulse together.
  */
 export function drawGroundCrew(
   ctx: CanvasRenderingContext2D,
@@ -454,23 +436,10 @@ export function drawGroundCrew(
   sec: number,
   seed: number,
 ): void {
-  if (stage !== 'plan' && stage !== 'tests' && stage !== 'ready_to_merge') return;
-  // one beacon per bay, on the lot's outer edge: the left edge of the left lot, the right edge of the right one.
-  // A plan has no siren: its technician works on it quietly until the plan is published.
-  if (stage !== 'plan') {
-    const outer = stage === 'ready_to_merge' ? 6 : -6;
-    drawBeacon(ctx, x + outer * px, y, px, stage, sec, seed);
-  }
-  if (stage === 'ready_to_merge') return;
-  const frame = TECH_FRAMES[Math.floor(sec / SKY_TECH_WORK_SEC + seed * 7) % 2];
-  frame.forEach((row, ry) => {
-    for (let rx = 0; rx < row.length; rx++) {
-      const c = row[rx];
-      if (c === '.') continue;
-      ctx.fillStyle = TECH_COLORS[c];
-      ctx.fillRect(x + (4 + rx) * px, y + (2 + ry - (c === 't' ? 1 : 0)) * px, px, px);
-    }
-  });
+  if (!(stage in SKY_BEACON_COLORS)) return;
+  // one beacon per bay, on the lot's outer edge: the left edge of the left lot, the right edge of the right one
+  const outer = stage === 'in_review' ? 6 : -6;
+  drawBeacon(ctx, x + outer * px, y, px, stage as SignalStage, sec, seed);
 }
 
 /** The pull request number a task id ends in (`branch#12` -> 12), or null. */

@@ -1085,15 +1085,26 @@ export const REACTION_LABEL_OPACITY = 0.12;
 
 /** Task flyers: one plane (day) or satellite (night) per task, flying left to right. */
 export const SKY_TASK_STAGES = [
-  'plan',
+  'designing',
   'coding',
-  'tests',
-  'review',
-  'ready_to_merge',
-  'merged',
+  'testing',
+  'plan_ready',
+  'needs_decision',
+  'ready',
+  'in_review',
+  'done',
 ] as const;
 /** Plane body colour per stage, in stage order. */
-export const SKY_TASK_COLORS = ['#9aa0b4', '#f2c14e', '#f08a3c', '#b48ae8', '#6fd36f', '#ffffff'];
+export const SKY_TASK_COLORS = [
+  '#9aa0b4',
+  '#f2c14e',
+  '#f08a3c',
+  '#6aa8e8',
+  '#ffd23f',
+  '#6fd36f',
+  '#b48ae8',
+  '#ffffff',
+];
 export const SKY_TASK_TRAIL_COLOR = '#ffffff';
 export const SKY_TASK_WING_COLOR = '#2c3350';
 export const SKY_TASK_PANEL_COLOR = '#4a6fb5';
@@ -1109,10 +1120,10 @@ export const SKY_TASK_PLANE_SCALE = 1;
 /** Sprite pixels between a flyer's tail and where its trail begins (measured from the flyer's middle). */
 export const SKY_TASK_PLANE_TRAIL_GAP = 9;
 export const SKY_TASK_SAT_TRAIL_GAP = 6;
-/** Parallel orbits, one per flying status (coding, review), all the same arc, each shifted up by a gap (fractions of the skyline height). Plan and ready-to-merge tasks sit on the airfield instead. */
-export const SKY_TASK_TRACKS = 2;
-/** The statuses that fly an orbit, low to high. Plan, tests and ready-to-merge tasks wait on the airfield. */
-export const SKY_TASK_FLYING_STAGES = ['coding', 'review'] as const;
+/** Parallel orbits, one per flying status (designing, coding, testing), all the same arc, each shifted up by a gap (fractions of the skyline height). The other statuses wait on the airfield instead. */
+export const SKY_TASK_TRACKS = 3;
+/** The statuses that fly an orbit, low to high. The other statuses wait on the airfield. */
+export const SKY_TASK_FLYING_STAGES = ['designing', 'coding', 'testing'] as const;
 export const SKY_TASK_GROUND = 0.97;
 export const SKY_TASK_TRACK_GAP = 0.09;
 /** Flyers on one orbit stay at least this many sprite pixels apart along it (a plane is 14 long). */
@@ -1125,7 +1136,7 @@ export const SKY_TASK_RISE = 0.42;
 
 // ── Airfield at the right of the sky ────────────────────────────────────────
 // Plan tasks park in the left lot, take off from the left runway and join their
-// orbit; ready-to-merge tasks come off the orbit onto the right runway and park
+// orbit; in review tasks come off the orbit onto the right runway and park
 // in the right lot. Sizes are in sprite pixels unless noted.
 export const SKY_AIRFIELD_WIDTH = 54;
 /** At the biggest office sizes the gap right of it is too narrow for the field, so a strip stands
@@ -1213,9 +1224,8 @@ export const SKY_AIRFIELD_TERMINAL_EDGE = { day: '#8a8ea0', night: '#2c3048' } a
 export const SKY_AIRFIELD_LIGHT_COLOR = '#ffd84a';
 export const SKY_AIRFIELD_PLANE_WING_COLOR = '#e8eaf2';
 /**
- * Ground crew and siren beacons beside a parked plane (or rocket). Plan: a technician preparing it
- * under blue lights. Tests: a technician and yellow (amber) beacons flashing. Ready to merge: green
- * beacons, no technician. Each beacon is a rotating siren: a bright pixel sweeps across the dome
+ * Siren beacons beside a parked plane (or rocket): blue for plan ready, yellow for needs decision, green
+ * for ready and in review. Each beacon is a rotating siren: a bright pixel sweeps across the dome
  * while the glow pulses.
  */
 export const SKY_BEACON_SWEEP_RATE = 1.6;
@@ -1223,15 +1233,11 @@ export const SKY_BEACON_GLOW_ALPHA = 0.3;
 export const SKY_BEACON_BASE_COLOR = '#1c1c24';
 export const SKY_BEACON_RIM_COLOR = '#b3322a';
 export const SKY_BEACON_COLORS = {
-  plan: { dome: '#2f6bff', core: '#bcd2ff', glow: '#4d8dff' },
-  tests: { dome: '#f08a1c', core: '#ffe27a', glow: '#ffb832' },
-  ready_to_merge: { dome: '#2fbf4f', core: '#c4ffd0', glow: '#4fe070' },
+  plan_ready: { dome: '#4aa3ff', core: '#d2e8ff', glow: '#6fb8ff' },
+  needs_decision: { dome: '#ffd23f', core: '#fff3b0', glow: '#ffe066' },
+  ready: { dome: '#3ddc5a', core: '#c4ffd0', glow: '#4fe070' },
+  in_review: { dome: '#3ddc5a', core: '#c4ffd0', glow: '#4fe070' },
 } as const;
-export const SKY_TECH_HELMET_COLOR = '#f2f2f2';
-export const SKY_TECH_SKIN_COLOR = '#e8b88a';
-export const SKY_TECH_VEST_COLOR = '#ff8a1f';
-export const SKY_TECH_LEGS_COLOR = '#3a4a78';
-export const SKY_TECH_TOOL_COLOR = '#c9ccd6';
 /** The "#N" pull request number under each parked plane or rocket: text colour, shadow, size in sprite pixels, gap below the bay centre. */
 export const SKY_PR_NUMBER_COLOR = 'rgba(255, 255, 255, 0.95)';
 export const SKY_PR_NUMBER_SHADOW_COLOR = 'rgba(10, 10, 20, 0.85)';
@@ -1243,8 +1249,6 @@ export const SKY_PR_NUMBER_ROOM_UNITS = 5;
 /** With no room outside: the number's near edge, from the plane's centre (negative = to its left, away from the siren). */
 export const SKY_PR_NUMBER_FREE_SIDE_UNITS = -4;
 export const SKY_PR_NUMBER_OFFSET_UNITS = 6;
-/** Seconds per technician work cycle (the tool arm goes up and down). */
-export const SKY_TECH_WORK_SEC = 0.7;
 /** Runway lights chase along the edges at this rate (steps per second). */
 export const SKY_AIRFIELD_LIGHT_RATE = 3;
 

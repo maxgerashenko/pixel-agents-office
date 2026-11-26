@@ -1,14 +1,13 @@
 /**
- * Tasks in the sky. The server sends the board (one entry per branch + PR);
- * by day each flying task is a plane with a white contrail, by night a satellite with
- * blinking lights. The airfield at the right (skyAirfield) is where a task waits: plan and tests
- * tasks park in the left lot (a technician at work; tests has an amber beacon, plan none), ready-to-merge
- * tasks in the right lot (green beacons). A task that moves to an active status (coding,
- * review) taxis to the left runway, takes off and joins its orbit; orbits arc across the whole
- * sky from left to right, the same arc shifted up one gap each, and the orbit is the status,
- * low to high. A task that moves to tests or ready to merge stays on its orbit until it comes
- * round to the airfield, glides down onto the right runway, lands and parks (tests taxies on
- * across to the left lot). A merged task leaves the sky (with a celebration at the sky button). Tasks on one orbit are spread round it with a gap
+ * Tasks in the sky: the board's issues. By day each flying task is a plane with a white contrail,
+ * by night a satellite with blinking lights. Designing, coding and testing fly (three orbits, low to
+ * high); an agent is working. The rest wait on the airfield (skyAirfield) for Max: plan ready (blue
+ * beacon), needs decision (yellow) and ready (green) in the left lot, in review (green) in the right
+ * lot. A task that moves to a flying status taxis to the left runway, takes off and joins its orbit;
+ * orbits arc across the whole sky from left to right, the same arc shifted up one gap each. A task
+ * that moves to a waiting status stays on its orbit until it comes round to the airfield, glides
+ * down onto the right runway, lands and parks (left-lot tasks taxi on across). A done task leaves
+ * the sky (with a celebration at the sky button). Tasks on one orbit are spread round it with a gap
  * between them, and never closer than SKY_TASK_MIN_GAP: a take-off waits for a clear joining point, a newcomer
  * is placed in the widest gap, and flyers that still end up too close drift apart slowly. The trail is a white line (solid by day, dashed by night).
  */
@@ -83,7 +82,7 @@ export interface SkyTask {
   id: string;
   title: string;
   stage: SkyTaskStage;
-  /** The pull request's web page (ready to merge: a tap on its plane opens it; a plan: its files, the documents). */
+  /** The pull request's web page (a tap on a parked task opens its issue). */
   url?: string;
 }
 
@@ -93,8 +92,8 @@ let tasks: SkyTask[] = [];
 export function setSkyTasks(next: SkyTask[]): void {
   // a task that was in the sky and now arrives merged has just merged: celebrate it at the sky button
   const known = new Set(tasks.map((t) => t.id));
-  const justMerged = next.filter((t) => t.stage === 'merged' && known.has(t.id)).length;
-  tasks = next.filter((t) => t.stage !== 'merged');
+  const justMerged = next.filter((t) => t.stage === 'done' && known.has(t.id)).length;
+  tasks = next.filter((t) => t.stage !== 'done');
   announceSkyMerge(justMerged);
 }
 export function getSkyTasks(): SkyTask[] {
@@ -131,10 +130,10 @@ export function orbitOfStage(stage: SkyTaskStage): number | null {
   return i >= 0 ? i : null;
 }
 
-/** The lot a waiting status parks in: plan and tests in the left lot, ready to merge in the right one. */
+/** The lot a waiting status parks in: plan ready, needs decision and ready on the left, in review on the right. */
 export function lotOfStage(stage: SkyTaskStage): AirfieldLot | null {
-  if (stage === 'plan' || stage === 'tests') return 'plan';
-  return stage === 'ready_to_merge' ? 'ready' : null;
+  if (stage === 'plan_ready' || stage === 'needs_decision' || stage === 'ready') return 'left';
+  return stage === 'in_review' ? 'right' : null;
 }
 
 /**
@@ -268,7 +267,7 @@ export function flyerPose(
   return {
     x,
     y,
-    alpha: task.stage === 'merged' ? 1 - u * u : 1,
+    alpha: task.stage === 'done' ? 1 - u * u : 1,
     stageIndex: si,
     // the tilt comes from the exact curve: off the pixel-snapped one it flickers between steps
     slope: slopeAt(orbitArc(place.orbit, w, horizonY, px, field, false), u),
@@ -372,7 +371,7 @@ const sum = (legs: Leg[]): number => legs.reduce((a, l) => a + l.dur, 0);
 
 /** Park -> side taxi column -> down to the taxiway -> along it to the runway -> up the runway. */
 function takeoffLegs(f: Airfield, slot: number): { start: [number, number]; legs: Leg[] } {
-  const start = slotPoint(f, 'plan', slot);
+  const start = slotPoint(f, 'left', slot);
   const [a, b, c] = SKY_AIRFIELD_TAKEOFF_TAXI_SEC;
   return {
     start,
@@ -396,7 +395,7 @@ function landingLegs(
 ): { start: [number, number]; legs: Leg[] } {
   const target = slotPoint(f, lot, slot);
   const [a, b, c] = SKY_AIRFIELD_LANDING_TAXI_SEC;
-  const gap = lot === 'ready' ? f.gapR : f.gapL;
+  const gap = lot === 'right' ? f.gapR : f.gapL;
   return {
     start: [f.runwayR, f.runwayTop],
     legs: [
@@ -404,7 +403,7 @@ function landingLegs(
       {
         x: gap,
         y: f.taxiY,
-        dur: lot === 'ready' ? a : SKY_AIRFIELD_LANDING_CROSS_SEC,
+        dur: lot === 'right' ? a : SKY_AIRFIELD_LANDING_CROSS_SEC,
         ease: 'lin',
       },
       { x: gap, y: target[1], dur: b, ease: 'lin' },
@@ -463,7 +462,7 @@ const uJoin = (g: Geo, rocket: boolean): number =>
 const uGlide = (g: Geo, rocket: boolean, lot: AirfieldLot): number =>
   mod1(
     ((rocket
-      ? lot === 'ready'
+      ? lot === 'right'
         ? g.field.lotR - SKY_ROCKET_TRACK_DX * g.px
         : g.field.lotL - SKY_ROCKET_TRACK_DX * g.px
       : g.field.runwayR - SKY_AIRFIELD_GLIDE_DX * g.px) +
@@ -628,7 +627,7 @@ function syncSkyMotion(sec: number, g: Geo): void {
         t.id,
         orbit !== null
           ? { kind: 'cruise', orbit, phase: freePhase(orbit, places[i].phase, t.id, sec, g) }
-          : park(t.id, lot ?? 'plan'),
+          : park(t.id, lot ?? 'left'),
       );
       return;
     }
@@ -645,12 +644,8 @@ function syncSkyMotion(sec: number, g: Geo): void {
       m = m.lot === lot ? { kind: 'parked', lot, slot: m.slot } : park(t.id, lot);
       motions.set(t.id, m);
     }
-    if (t.stage === 'plan') {
-      if (m.kind !== 'parked' || m.lot !== 'plan') motions.set(t.id, park(t.id, 'plan'));
-      return;
-    }
     if (lot) {
-      // tests (left lot) or ready to merge (right lot): come down from the orbit onto that lot
+      // a waiting status (left or right lot): come down from the orbit onto that lot
       if (m.kind === 'parked') {
         if (m.lot !== lot) motions.set(t.id, park(t.id, lot));
       } else if (m.kind === 'cruise') {
@@ -681,7 +676,7 @@ function syncSkyMotion(sec: number, g: Geo): void {
     // an active status
     if (m.kind === 'parked') {
       const start = {
-        slot: m.lot === 'plan' ? m.slot : freeSlot('plan', t.id),
+        slot: m.lot === 'left' ? m.slot : freeSlot('left', t.id),
         orbit,
         rocket: isNight(),
       };
@@ -849,7 +844,7 @@ function stateOf(task: SkyTask, m: Motion, sec: number, g: Geo): FlyerState {
   const at = orbitArc(m.orbit, g.w, g.horizonY, g.px, f);
   const dt = sec - m.t0;
   if (m.kind === 'takeoff' && m.rocket) {
-    const pad = slotPoint(f, 'plan', m.slot);
+    const pad = slotPoint(f, 'left', m.slot);
     const track = at(uJoin(g, true));
     if (dt < SKY_ROCKET_HOLD_SEC) {
       const burn = smooth(dt / SKY_ROCKET_HOLD_SEC);
@@ -949,10 +944,10 @@ interface LinkHit {
   y1: number;
   url: string;
 }
-/** Where ready-to-merge and plan planes stand on the canvas as last drawn, in device pixels. */
+/** Where parked planes stand on the canvas as last drawn, in device pixels. */
 let linkHits: LinkHit[] = [];
 
-/** The pull request link of the ready-to-merge or plan plane, rocket or lot at a device-pixel point, if any. */
+/** The issue link of the parked plane, rocket or lot at a device-pixel point, if any. */
 export function skyLinkAt(deviceX: number, deviceY: number): string | null {
   const hit = linkHits.find(
     (h) => deviceX >= h.x0 && deviceX <= h.x1 && deviceY >= h.y0 && deviceY <= h.y1,
@@ -971,12 +966,7 @@ export function drawGroundPlanes(
   linkHits = [];
   for (const [task, s] of statesNow(sec, w, horizonY, px)) {
     if (s.mode === 'air') continue;
-    if (
-      s.mode === 'ground' &&
-      s.parked &&
-      (task.stage === 'ready_to_merge' || task.stage === 'plan') &&
-      task.url
-    ) {
+    if (s.mode === 'ground' && s.parked && task.url) {
       // the whole bay is the button: plane (or rocket), beacon and the lot round them
       const halfW = (SKY_AIRFIELD_LOT_W * px) / 2;
       const halfH = (SKY_AIRFIELD_SLOT_PITCH * px) / 2;
@@ -1007,8 +997,8 @@ export function drawGroundPlanes(
       drawGroundCrew(ctx, s.x, s.y, px, SKY_TASK_STAGES[s.stageIndex], sec, s.seed);
       const num = prNumberOfTaskId(task.id);
       if (num !== null) {
-        // beside the plane, outside the field: ready to merge on the right edge (level with the
-        // plane), plan and tests on the left edge. With no room there the number takes the free
+        // beside the plane, outside the field: in review on the right edge (level with the
+        // plane), the other parked stages on the left edge. With no room there the number takes the free
         // side of a ready plane, or goes under any other.
         const f = airfieldLayout(w, horizonY, px);
         const need = SKY_PR_NUMBER_ROOM_UNITS * px;
@@ -1016,12 +1006,12 @@ export function drawGroundPlanes(
         // whichever lot's plane sits nearer its field edge
         const dist =
           Math.max(
-            slotPoint(f, 'plan', 0)[0] - f.left,
-            f.left + f.width - slotPoint(f, 'ready', 0)[0],
+            slotPoint(f, 'left', 0)[0] - f.left,
+            f.left + f.width - slotPoint(f, 'right', 0)[0],
           ) +
           SKY_PR_NUMBER_EDGE_GAP_UNITS * px;
         let outside: number | undefined;
-        if (task.stage === 'ready_to_merge')
+        if (task.stage === 'in_review')
           outside =
             w - (s.x + dist) >= need ? s.x + dist : s.x + SKY_PR_NUMBER_FREE_SIDE_UNITS * px;
         else if (!f.strip && s.x - dist >= need) outside = s.x - dist;

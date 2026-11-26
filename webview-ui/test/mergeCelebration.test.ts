@@ -80,20 +80,20 @@ test('day: the parachute settles into the basket, then the flame, then two full 
 test('a task that arrives merged after being in the sky announces a merge, once', () => {
   let seen = 0;
   const off = onSkyMerge((n) => (seen += n));
-  setSkyTasks([{ id: 'a', title: 'a', stage: 'merged' }]);
+  setSkyTasks([{ id: 'a', title: 'a', stage: 'done' }]);
   assert.equal(seen, 0, 'a merged task the sky never knew is not celebrated');
   setSkyTasks([
-    { id: 'a', title: 'a', stage: 'review' },
-    { id: 'b', title: 'b', stage: 'ready_to_merge' },
+    { id: 'a', title: 'a', stage: 'testing' },
+    { id: 'b', title: 'b', stage: 'in_review' },
   ]);
   setSkyTasks([
-    { id: 'a', title: 'a', stage: 'merged' },
-    { id: 'b', title: 'b', stage: 'ready_to_merge' },
+    { id: 'a', title: 'a', stage: 'done' },
+    { id: 'b', title: 'b', stage: 'in_review' },
   ]);
   assert.equal(seen, 1);
   setSkyTasks([
-    { id: 'a', title: 'a', stage: 'merged' },
-    { id: 'b', title: 'b', stage: 'ready_to_merge' },
+    { id: 'a', title: 'a', stage: 'done' },
+    { id: 'b', title: 'b', stage: 'in_review' },
   ]);
   assert.equal(seen, 1, 'a repeat of the board is not a second merge');
   off();

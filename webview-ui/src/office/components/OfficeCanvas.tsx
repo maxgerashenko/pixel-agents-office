@@ -237,7 +237,7 @@ export function OfficeCanvas({
           officeState.pets,
           officeState.getTableTennisBalls(),
           officeState.getTableTennisScores(),
-          whiteboardPlates(layout, getSkyTasks().filter((t) => t.stage !== 'merged').length),
+          whiteboardPlates(layout, getSkyTasks().length),
         );
         offsetRef.current = { x: offsetX, y: offsetY };
 

@@ -1,4 +1,6 @@
 import { execFile } from 'child_process';
+import { readdirSync } from 'fs';
+import { join } from 'path';
 
 import type { AgentStateStore } from './agentStateStore.js';
 import { readConfig } from './configPersistence.js';
@@ -10,6 +12,7 @@ import {
   ISSUE_BOARD_POLL_INTERVAL_MS,
   ISSUE_BOARD_POLL_TIMEOUT_MS,
 } from './constants.js';
+import { type GhPr, stageOfPr, type TaskStage } from './taskTracker.js';
 
 /** The board's Status columns, left to right. */
 export const ISSUE_BOARD_STATUSES = [
@@ -38,6 +41,10 @@ const FLOW_LABEL_TO_STATUS_IN_PRIORITY_ORDER: ReadonlyArray<[string, IssueBoardS
   ['needs-design', 'needs_design'],
 ];
 
+/** What the agent is doing on a card, for the sky: set only for needs design and in progress. */
+export const ISSUE_PROGRESSES = ['writing_plan', 'plan_ready', 'coding', 'testing'] as const;
+export type IssueProgress = (typeof ISSUE_PROGRESSES)[number];
+
 export interface IssueBoardCard {
   /** `owner/repo#number`. */
   id: string;
@@ -45,6 +52,7 @@ export interface IssueBoardCard {
   title: string;
   status: IssueBoardStatus;
   url: string;
+  progress?: IssueProgress;
 }
 
 /** The fields of `gh issue list --json ...` this reads. */
@@ -55,6 +63,10 @@ export interface GhIssue {
   state: 'OPEN' | 'CLOSED';
   labels: { name: string }[];
   closedAt?: string | null;
+  /** Added by the tracker, not by `gh`: the stage of the open pull request that fixes this issue. */
+  pullRequestStage?: TaskStage;
+  /** Added by the tracker: a plan file `plan/feature-<number>-*.md` exists in the repo. */
+  hasPlanFile?: boolean;
 }
 
 /** Pure: the board column an issue belongs in. */
@@ -65,6 +77,16 @@ export function boardStatusOfIssue(issue: GhIssue): IssueBoardStatus {
     if (labelNames.has(flowLabel)) return status;
   }
   return 'new';
+}
+
+/** Pure: what the agent is doing on an open issue, or undefined when the status has no such split. */
+function progressOfIssue(issue: GhIssue, status: IssueBoardStatus): IssueProgress | undefined {
+  if (status === 'needs_design') return issue.hasPlanFile ? 'plan_ready' : 'writing_plan';
+  if (status === 'in_progress') {
+    const testing = ['tests', 'review', 'ready_to_merge'];
+    return testing.includes(issue.pullRequestStage ?? '') ? 'testing' : 'coding';
+  }
+  return undefined;
 }
 
 /** `owner/repo` from an issue's web page, or null when the url is not a GitHub issue. */
@@ -83,12 +105,15 @@ export function issueBoardFromIssues(issues: GhIssue[], now: number): IssueBoard
     }
     const repo = repoOfIssueUrl(issue.url);
     if (repo === null) continue;
+    const status = boardStatusOfIssue(issue);
+    const progress = progressOfIssue(issue, status);
     cards.push({
       id: `${repo}#${issue.number}`,
       number: issue.number,
       title: issue.title,
-      status: boardStatusOfIssue(issue),
+      status,
       url: issue.url,
+      ...(progress ? { progress } : {}),
     });
   }
   return cards;
@@ -130,14 +155,71 @@ function runGhIssueList(
   });
 }
 
-/** Asks `gh` for the open and recently closed issues of the repo at `dir`; null when unavailable. */
+type GhOpenPr = GhPr & { closingIssuesReferences?: { number: number }[] };
+
+function runGhOpenPrList(dir: string): Promise<GhOpenPr[]> {
+  return new Promise((resolve) => {
+    execFile(
+      'gh',
+      [
+        'pr',
+        'list',
+        '--state',
+        'open',
+        '--limit',
+        '100',
+        '--json',
+        'number,title,url,headRefName,state,isDraft,changedFiles,files,reviewDecision,reviewRequests,statusCheckRollup,closingIssuesReferences',
+      ],
+      { cwd: dir, timeout: ISSUE_BOARD_POLL_TIMEOUT_MS, maxBuffer: 8 * 1024 * 1024 },
+      (err, stdout) => {
+        try {
+          const parsed = err ? null : (JSON.parse(stdout) as unknown);
+          resolve(Array.isArray(parsed) ? (parsed as GhOpenPr[]) : []);
+        } catch {
+          resolve([]);
+        }
+      },
+    );
+  });
+}
+
+/** Issue numbers that have a plan file `plan/feature-<number>-*.md` in the repo at `dir`. */
+function issueNumbersWithPlanFile(dir: string): Set<number> {
+  try {
+    const numbers = readdirSync(join(dir, 'plan')).flatMap((name) => {
+      const match = /^feature-(\d+)-.*\.md$/.exec(name);
+      return match ? [Number(match[1])] : [];
+    });
+    return new Set(numbers);
+  } catch {
+    return new Set();
+  }
+}
+
+/**
+ * Asks `gh` for the open and recently closed issues of the repo at `dir`, each marked with the
+ * stage of the pull request that fixes it and whether its plan file exists; null when unavailable.
+ */
 async function fetchIssues(dir: string): Promise<GhIssue[] | null> {
-  const [open, closed] = await Promise.all([
+  const [open, closed, openPrs] = await Promise.all([
     runGhIssueList(dir, 'open', ISSUE_BOARD_OPEN_LIMIT),
     runGhIssueList(dir, 'closed', ISSUE_BOARD_CLOSED_LIMIT),
+    runGhOpenPrList(dir),
   ]);
   if (open === null) return null;
-  return [...open, ...(closed ?? [])];
+  const planned = issueNumbersWithPlanFile(dir);
+  const stageByIssueNumber = new Map<number, TaskStage>();
+  for (const pr of openPrs) {
+    for (const ref of pr.closingIssuesReferences ?? [])
+      stageByIssueNumber.set(ref.number, stageOfPr(pr));
+  }
+  const enriched = open.map((issue) => ({
+    ...issue,
+    pullRequestStage: stageByIssueNumber.get(issue.number),
+    hasPlanFile: planned.has(issue.number),
+  }));
+  return [...enriched, ...(closed ?? [])];
 }
 
 export interface IssueBoardTrackerOptions {

@@ -268,6 +268,7 @@ export interface IssueBoardCard {
   title: string;
   status: IssueBoardStatus;
   url: string;
+  progress?: IssueBoardProgress;
 }
 
 export type IssueBoardStatus =
@@ -279,6 +280,8 @@ export type IssueBoardStatus =
   | 'needs_decision'
   | 'blocked'
   | 'done';
+
+export type IssueBoardProgress = 'writing_plan' | 'plan_ready' | 'coding' | 'testing';
 
 export interface LayoutLoaded {
   type: 'layoutLoaded';

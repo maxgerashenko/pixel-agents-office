@@ -35,6 +35,33 @@ describe('boardStatusOfIssue', () => {
   });
 });
 
+describe('progress of a card', () => {
+  const now = Date.parse('2026-11-26T12:00:00Z');
+  const progressOf = (over: Partial<GhIssue>) =>
+    issueBoardFromIssues([issue(over)], now)[0].progress;
+
+  it('needs design: writing the plan until a plan file exists, then ready for review', () => {
+    const labelsNeedsDesign = labels('needs-design');
+    expect(progressOf({ labels: labelsNeedsDesign })).toBe('writing_plan');
+    expect(progressOf({ labels: labelsNeedsDesign, hasPlanFile: true })).toBe('plan_ready');
+  });
+
+  it('in progress: coding until its pull request has checks running or is in review', () => {
+    const labelsInProgress = labels('in-progress');
+    expect(progressOf({ labels: labelsInProgress })).toBe('coding');
+    expect(progressOf({ labels: labelsInProgress, pullRequestStage: 'plan' })).toBe('coding');
+    expect(progressOf({ labels: labelsInProgress, pullRequestStage: 'coding' })).toBe('coding');
+    expect(progressOf({ labels: labelsInProgress, pullRequestStage: 'tests' })).toBe('testing');
+    expect(progressOf({ labels: labelsInProgress, pullRequestStage: 'review' })).toBe('testing');
+  });
+
+  it('other statuses carry no progress', () => {
+    expect(progressOf({ labels: labels('status:ready') })).toBeUndefined();
+    expect(progressOf({ labels: labels('in-review') })).toBeUndefined();
+    expect(progressOf({ labels: labels('needs-decision') })).toBeUndefined();
+  });
+});
+
 describe('issueBoardFromIssues', () => {
   const now = Date.parse('2026-11-26T12:00:00Z');
 

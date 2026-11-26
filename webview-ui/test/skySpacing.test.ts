@@ -87,7 +87,7 @@ test('flyers that start together on one orbit are spread beyond the minimum gap'
 
 test('several take-offs at once never end up closer than the minimum gap', () => {
   const ids = ['a', 'b', 'c', 'd'];
-  setSkyTasks(ids.map((id) => t(id, 'plan')));
+  setSkyTasks(ids.map((id) => t(id, 'plan_ready')));
   skyStateForTest('a', 0, W, H, PX);
   setSkyTasks(ids.map((id) => t(id, 'coding')));
   let worst = Infinity;
@@ -100,7 +100,7 @@ test('several take-offs at once never end up closer than the minimum gap', () =>
 
 test('a take-off waits on the ground while the joining point is taken', () => {
   // one flyer sitting where a plane would join: the newcomer is held back
-  setSkyTasks([t('a', 'coding'), t('b', 'plan')]);
+  setSkyTasks([t('a', 'coding'), t('b', 'plan_ready')]);
   skyStateForTest('a', 0, W, H, PX);
   setSkyTasks([t('a', 'coding'), t('b', 'coding')]);
   let held = false;
@@ -118,7 +118,7 @@ test('a take-off waits on the ground while the joining point is taken', () => {
 });
 
 test('a task that changes orbit onto an occupied spot drifts clear without jumping', () => {
-  setSkyTasks([t('a', 'coding'), t('b', 'review')]);
+  setSkyTasks([t('a', 'coding'), t('b', 'testing')]);
   skyStateForTest('a', 0, W, H, PX);
   // find the moment b is level with a, then move b to a's orbit
   let sec = 0;
@@ -144,9 +144,9 @@ test('a task that changes orbit onto an occupied spot drifts clear without jumpi
 test('the gap holds at night too, where a rocket climbs to the track', () => {
   setSkyNight(1);
   const ids = ['a', 'b', 'c'];
-  setSkyTasks(ids.map((id) => t(id, 'plan')));
+  setSkyTasks(ids.map((id) => t(id, 'plan_ready')));
   skyStateForTest('a', 0, W, H, PX);
-  setSkyTasks(ids.map((id) => t(id, 'review')));
+  setSkyTasks(ids.map((id) => t(id, 'testing')));
   let worst = Infinity;
   for (let sec = 1; sec < 150; sec += 0.1) {
     for (const id of ids) skyStateForTest(id, sec, W, H, PX);
