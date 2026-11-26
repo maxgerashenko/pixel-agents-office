@@ -525,6 +525,8 @@ components:
           $ref: '#/components/schemas/UsageWindow'
         sevenDay:
           $ref: '#/components/schemas/UsageWindow'
+        sevenDayFable:
+          $ref: '#/components/schemas/UsageWindow'
         updatedAt:
           type: number
           description: When the server received this snapshot, Unix epoch milliseconds.

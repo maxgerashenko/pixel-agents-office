@@ -219,6 +219,7 @@ export interface UsageUpdate {
   providerId: string;
   fiveHour?: UsageWindow;
   sevenDay?: UsageWindow;
+  sevenDayFable?: UsageWindow;
   updatedAt: number;
 }
 

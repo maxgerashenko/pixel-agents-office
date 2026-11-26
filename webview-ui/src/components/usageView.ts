@@ -11,6 +11,8 @@ export interface UsageWindowView {
 export interface UsageView {
   fiveHour?: UsageWindowView;
   sevenDay?: UsageWindowView;
+  /** The Fable-only weekly window. */
+  sevenDayFable?: UsageWindowView;
   updatedAt: number;
 }
 
@@ -107,6 +109,20 @@ export function pickSessionWindow(
     if (w) return w;
   }
   return undefined;
+}
+
+/** First provider's live weekly windows: all models ("this week") and Fable
+ *  alone. Either may be missing; both missing means no thin lines. */
+export function pickWeekWindows(
+  usage: Record<string, UsageView>,
+  now: number,
+): { week?: UsageWindowView; fable?: UsageWindowView } {
+  for (const view of Object.values(usage)) {
+    const week = liveWindow(view.sevenDay, now);
+    const fable = liveWindow(view.sevenDayFable, now);
+    if (week || fable) return { week, fable };
+  }
+  return {};
 }
 
 /** Validate one wire window; anything malformed counts as absent. */

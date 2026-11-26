@@ -45,10 +45,12 @@ export function readUsageFile(): Record<string, StoredUsage> {
       const e = entry as Record<string, unknown>;
       const fiveHour = isWindow(e['fiveHour']) ? e['fiveHour'] : undefined;
       const sevenDay = isWindow(e['sevenDay']) ? e['sevenDay'] : undefined;
-      if (!fiveHour && !sevenDay) continue;
+      const sevenDayFable = isWindow(e['sevenDayFable']) ? e['sevenDayFable'] : undefined;
+      if (!fiveHour && !sevenDay && !sevenDayFable) continue;
       out[providerId] = {
         ...(fiveHour ? { fiveHour } : {}),
         ...(sevenDay ? { sevenDay } : {}),
+        ...(sevenDayFable ? { sevenDayFable } : {}),
         updatedAt: typeof e['updatedAt'] === 'number' ? e['updatedAt'] : 0,
       };
     }
@@ -76,10 +78,13 @@ export function writeUsageFile(data: Record<string, StoredUsage>): void {
 export function withoutExpiredWindows(usage: StoredUsage, now: number): StoredUsage | null {
   const fiveHour = usage.fiveHour && usage.fiveHour.resetsAt > now ? usage.fiveHour : undefined;
   const sevenDay = usage.sevenDay && usage.sevenDay.resetsAt > now ? usage.sevenDay : undefined;
-  if (!fiveHour && !sevenDay) return null;
+  const sevenDayFable =
+    usage.sevenDayFable && usage.sevenDayFable.resetsAt > now ? usage.sevenDayFable : undefined;
+  if (!fiveHour && !sevenDay && !sevenDayFable) return null;
   return {
     ...(fiveHour ? { fiveHour } : {}),
     ...(sevenDay ? { sevenDay } : {}),
+    ...(sevenDayFable ? { sevenDayFable } : {}),
     updatedAt: usage.updatedAt,
   };
 }
@@ -162,13 +167,15 @@ export class UsageTracker {
     if (
       previous &&
       sameWindow(previous.fiveHour, parsed.fiveHour) &&
-      sameWindow(previous.sevenDay, parsed.sevenDay)
+      sameWindow(previous.sevenDay, parsed.sevenDay) &&
+      sameWindow(previous.sevenDayFable, parsed.sevenDayFable)
     ) {
       return false;
     }
     const stored: StoredUsage = {
       ...(parsed.fiveHour ? { fiveHour: parsed.fiveHour } : {}),
       ...(parsed.sevenDay ? { sevenDay: parsed.sevenDay } : {}),
+      ...(parsed.sevenDayFable ? { sevenDayFable: parsed.sevenDayFable } : {}),
       updatedAt: this.now(),
     };
     this.latest[providerId] = stored;
@@ -279,6 +286,7 @@ function toMessage(providerId: string, usage: StoredUsage): Record<string, unkno
     providerId,
     ...(usage.fiveHour ? { fiveHour: usage.fiveHour } : {}),
     ...(usage.sevenDay ? { sevenDay: usage.sevenDay } : {}),
+    ...(usage.sevenDayFable ? { sevenDayFable: usage.sevenDayFable } : {}),
     updatedAt: usage.updatedAt,
   };
 }
