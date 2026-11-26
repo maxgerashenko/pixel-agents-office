@@ -28,6 +28,7 @@ export type ServerMessage =
   | AgentContextUsage
   | UsageUpdate
   | TasksUpdate
+  | CloudSessionsUpdate
   | LayoutLoaded
   | FurnitureAssetsLoaded
   | CharacterSpritesLoaded
@@ -239,6 +240,21 @@ export interface TaskInfo {
 
 export type AnonymousSchema_84 =
   'plan' | 'coding' | 'tests' | 'review' | 'ready_to_merge' | 'merged';
+
+export interface CloudSessionsUpdate {
+  type: 'cloudSessionsUpdate';
+  sessions: CloudSessionInfo[];
+}
+
+export interface CloudSessionInfo {
+  id: string;
+  title: string;
+  state: AnonymousSchema_90;
+  repo?: string;
+  url?: string;
+}
+
+export type AnonymousSchema_90 = 'working' | 'permission' | 'idle';
 
 export interface LayoutLoaded {
   type: 'layoutLoaded';

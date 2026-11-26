@@ -5,6 +5,7 @@ import type { HooksConsentRequest } from '../../../core/src/messages.js';
 import type { UsageView } from '../components/usageView.js';
 import { asUsageWindow } from '../components/usageView.js';
 import { playDoneSound, playPermissionSound, setSoundEnabled } from '../notificationSound.js';
+import { type CloudSessionView, syncCloudSessions } from '../office/engine/cloudAgents.js';
 import type { ExistingAgentMeta, PendingAgent } from '../office/engine/existingAgents.js';
 import { reconcileExistingAgents } from '../office/engine/existingAgents.js';
 import type { OfficeState } from '../office/engine/officeState.js';
@@ -254,6 +255,9 @@ export function useExtensionMessages(
   useEffect(() => {
     // Buffer agents from existingAgents until layout is loaded
     let pendingAgents: PendingAgent[] = [];
+    // Cloud sessions arrive in the connect handshake, possibly before the layout: keep the
+    // newest list and seat it once layoutLoaded has built the seats.
+    let latestCloudSessions: CloudSessionView[] = [];
 
     // Accumulate distinct directoryNames seen across agents (never removed during the
     // session): the source for the Areas Directory-mapping dropdown, so a Directory stays
@@ -355,6 +359,7 @@ export function useExtensionMessages(
           if (p.isHeadless) os.setHeadless(p.id, true);
         }
         pendingAgents = [];
+        syncCloudSessions(os, latestCloudSessions);
         layoutReadyRef.current = true;
         setLayoutReady(true);
         if (msg.wasReset) {
@@ -801,6 +806,11 @@ export function useExtensionMessages(
         }
         if (typeof msg.extensionVersion === 'string') {
           setExtensionVersion(msg.extensionVersion as string);
+        }
+      } else if (msg.type === 'cloudSessionsUpdate') {
+        if (Array.isArray(msg.sessions)) {
+          latestCloudSessions = msg.sessions as CloudSessionView[];
+          if (layoutReadyRef.current) syncCloudSessions(os, latestCloudSessions);
         }
       } else if (msg.type === 'tasksUpdate') {
         if (Array.isArray(msg.tasks)) setSkyTasks(msg.tasks as SkyTask[]);

@@ -6,6 +6,7 @@ import type { AgentRuntime } from './agentRuntime.js';
 import type { AgentStateStore } from './agentStateStore.js';
 import { saveLayoutWithAreaRenames } from './areaRenamePersistence.js';
 import type { LoadedAssets, LoadedCharacterSprites, LoadedPetSprites } from './assetLoader.js';
+import type { CloudSessionTracker } from './cloudSessionTracker.js';
 import {
   getHooksConsent,
   getHooksEnabled,
@@ -62,6 +63,7 @@ export interface ClientMessageContext {
   usage?: UsageTracker;
   /** Current task board, replayed on webviewReady (display data). */
   tasks?: TaskTracker;
+  cloudSessions?: CloudSessionTracker;
   store: AgentStateStore;
   runtime?: AgentRuntime;
   cache: AssetCache | null;
@@ -470,6 +472,7 @@ function handleWebviewReady(send: WsSend, ctx: ClientMessageContext): void {
   for (const usageMessage of ctx.usage?.currentMessages() ?? []) send(usageMessage);
 
   if (ctx.tasks) send(ctx.tasks.currentMessage());
+  if (ctx.cloudSessions) send(ctx.cloudSessions.currentMessage());
 
   // 1. Provider capabilities (must arrive before any agent messages)
   send({

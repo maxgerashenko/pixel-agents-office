@@ -1392,3 +1392,8 @@ export const CLOCK_MINUTE_HAND_LENGTH = 3;
 export const CLOCK_HAND_COLOR = '#394449';
 /** The catalog type of the wall clock. */
 export const CLOCK_TYPE = 'CLOCK';
+
+/** Character ids of cloud sessions count up from here: clear of server agent ids (small), sub-agents (negative) and the greeter. */
+export const CLOUD_AGENT_ID_BASE = 2_000_000;
+/** Longest cloud-session title the activity label shows before it is cut. */
+export const CLOUD_TITLE_MAX_CHARS = 60;

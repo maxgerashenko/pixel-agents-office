@@ -11,6 +11,7 @@ import type {
   ReloadAssetsSideEffect,
   SetHooksEnabledSideEffect,
 } from './clientMessageHandler.js';
+import { CloudSessionTracker } from './cloudSessionTracker.js';
 import {
   SERVER_JSON_DIR,
   SERVER_JSON_NAME,
@@ -57,6 +58,7 @@ export class PixelAgentsServer {
   private callback: HookEventCallback | null = null;
   private usageTracker: UsageTracker | null = null;
   private taskTracker: TaskTracker | null = null;
+  private cloudSessionTracker: CloudSessionTracker | null = null;
 
   /** The usage tracker of the server THIS instance started (null when it reused another process's server, which then owns the snapshot). */
   get usage(): UsageTracker | null {
@@ -141,6 +143,7 @@ export class PixelAgentsServer {
     const store = options?.store;
     this.usageTracker = store ? new UsageTracker(store) : null;
     this.taskTracker = store ? new TaskTracker(store) : null;
+    this.cloudSessionTracker = store ? new CloudSessionTracker(store) : null;
 
     const { app, port } = await createHttpServer({
       embedded,
@@ -150,6 +153,7 @@ export class PixelAgentsServer {
       store: store!,
       usage: this.usageTracker ?? undefined,
       tasks: this.taskTracker ?? undefined,
+      cloudSessions: this.cloudSessionTracker ?? undefined,
       runtime: options?.runtime,
       staticDir: options?.staticDir,
       assetCache: options?.assetCache,
@@ -201,6 +205,8 @@ export class PixelAgentsServer {
     this.usageTracker = null;
     this.taskTracker?.dispose();
     this.taskTracker = null;
+    this.cloudSessionTracker?.dispose();
+    this.cloudSessionTracker = null;
   }
 
   /** Returns the current server config, or null if not started. */

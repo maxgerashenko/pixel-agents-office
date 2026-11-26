@@ -85,7 +85,7 @@ function isResponseFor(line: string, requestId: string): boolean {
 
 /** Write the hooks-off settings file the polling CLI is started with, when
  *  missing or different. Returns its path, or null when it cannot be written. */
-function ensureSettingsFile(): string | null {
+export function ensureSettingsFile(): string | null {
   const filePath = path.join(os.homedir(), SERVER_JSON_DIR, USAGE_POLL_SETTINGS_FILE_NAME);
   try {
     let current: string | null = null;
