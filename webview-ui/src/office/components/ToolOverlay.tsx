@@ -259,6 +259,9 @@ export function ToolOverlay({
               isSelected && rows ? [...rows].reverse().find((t) => !t.done) : undefined;
             activityText = activeRow?.status ?? (sub?.label || 'Subtask');
           }
+        } else if (ch.cloud) {
+          // a cloud session has no tool feed: its title is the label
+          activityText = ch.cloud.title;
         } else {
           activityText = getActivityText(
             id,
@@ -353,7 +356,7 @@ export function ToolOverlay({
                     </span>
                   )}
                 </div>
-                {isSelected && !isSub && (
+                {isSelected && !isSub && !ch.cloud && (
                   <Button
                     variant="ghost"
                     size="icon"

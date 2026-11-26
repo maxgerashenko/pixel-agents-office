@@ -301,6 +301,9 @@ export interface Character {
    *  per-consumer guard reads this flag. It exists for the render/e2e snapshot
    *  (testHooks.getCharacters) to tell the greeter from agents. */
   isGreeter?: boolean;
+  /** A claude.ai cloud session drawn as a character (see engine/cloudAgents). Not an agent of
+   *  this server: never persisted, no terminal; a click opens `url`. Transient. */
+  cloud?: { title: string; url: string };
 
   // -- Agent Teams --
   /** Team name this agent belongs to */

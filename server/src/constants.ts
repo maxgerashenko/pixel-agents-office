@@ -200,3 +200,13 @@ export const TASKS_MERGED_LINGER_MS = 30 * 60_000;
 export const TASKS_STALE_MS = 3 * 24 * 60 * 60_000;
 export const TASKS_MAX = 8;
 export const TASKS_POLL_ENV = 'PIXEL_AGENTS_TASKS_POLL';
+
+/** Cloud sessions (claude.ai/code) shown as working characters: refresh cadence while a page is open. */
+export const CLOUD_SESSIONS_POLL_INTERVAL_MS = 30_000;
+export const CLOUD_SESSIONS_POLL_TIMEOUT_MS = 25_000;
+/** A cloud session that is idle (at its prompt) stays in the office this long after its last change. */
+export const CLOUD_SESSIONS_IDLE_LINGER_MS = 10 * 60_000;
+export const CLOUD_SESSIONS_MAX = 8;
+export const CLOUD_SESSIONS_POLL_ENV = 'PIXEL_AGENTS_CLOUD_POLL';
+/** Where a cloud session's page lives; the id already starts with `session_`. */
+export const CLOUD_SESSION_URL_PREFIX = 'https://claude.ai/code/';

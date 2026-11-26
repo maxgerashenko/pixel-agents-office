@@ -105,6 +105,8 @@ components:
         - $ref: '#/components/schemas/UsageUpdate'
         # Tasks (planes and satellites in the sky)
         - $ref: '#/components/schemas/TasksUpdate'
+        # Cloud sessions (characters working at desks)
+        - $ref: '#/components/schemas/CloudSessionsUpdate'
         # Layout
         - $ref: '#/components/schemas/LayoutLoaded'
         # Assets
@@ -560,6 +562,44 @@ components:
           description: |
             The pull request's web page; a tap on a ready-to-merge task's plane opens it.
             A plan's link is the pull request's files (its documents).
+
+    CloudSessionsUpdate:
+      description: |
+        The user's claude.ai cloud sessions that are working or recently were,
+        drawn as characters at desks. The server asks the user's own `claude`
+        CLI (its own sign-in; no credentials are read) while a page is open and
+        sends the whole list when it changes, and during the connect handshake.
+        Display data, so read-only clients get it too.
+      type: object
+      additionalProperties: false
+      required: [type, sessions]
+      properties:
+        type:
+          const: cloudSessionsUpdate
+        sessions:
+          type: array
+          items:
+            $ref: '#/components/schemas/CloudSessionInfo'
+
+    CloudSessionInfo:
+      type: object
+      additionalProperties: false
+      required: [id, title, state]
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        state:
+          type: string
+          description: working = running or starting, permission = waits for the user, idle = at its prompt.
+          enum: [working, permission, idle]
+        repo:
+          type: string
+          description: owner/name of the session's repository.
+        url:
+          type: string
+          description: The session's page on claude.ai; a click on its character opens it.
 
     LayoutLoaded:
       description: |

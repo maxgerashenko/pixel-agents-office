@@ -53,6 +53,7 @@ import { OfficeCanvas } from './office/components/OfficeCanvas.js';
 import { ToolOverlay } from './office/components/ToolOverlay.js';
 import { EditorState } from './office/editor/editorState.js';
 import { EditorToolbar } from './office/editor/EditorToolbar.js';
+import { cloudUrlOf } from './office/engine/cloudAgents.js';
 import { OfficeState } from './office/engine/officeState.js';
 import { exportLayoutToFile } from './office/layout/exportLayout.js';
 import { isRotatable } from './office/layout/furnitureCatalog.js';
@@ -543,6 +544,14 @@ function App() {
     (agentId: number) => {
       // If clicked agent is a sub-agent, focus the parent's terminal instead
       const os = getOfficeState();
+      // A cloud session has no terminal here: its click opens its page on claude.ai
+      const cloudUrl = cloudUrlOf(os, agentId);
+      if (cloudUrl !== null) {
+        if (cloudUrl.startsWith('https://claude.ai/')) {
+          window.open(cloudUrl, '_blank', 'noopener,noreferrer');
+        }
+        return;
+      }
       const focusId = os.terminalOwnerOf(agentId);
       transport.send({ type: 'focusAgent', id: focusId });
       // Standalone: focusAgent is a no-op server-side (there's no editor to

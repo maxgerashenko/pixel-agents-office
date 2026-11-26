@@ -12,6 +12,7 @@ import type {
   SetHooksEnabledSideEffect,
 } from './clientMessageHandler.js';
 import { handleClientMessage } from './clientMessageHandler.js';
+import type { CloudSessionTracker } from './cloudSessionTracker.js';
 import {
   HOOK_API_PREFIX,
   MAX_HOOK_BODY_SIZE,
@@ -55,6 +56,8 @@ export interface HttpServerOptions {
   usage?: UsageTracker;
   /** Task board for the sky; absent = no tasks are drawn. */
   tasks?: TaskTracker;
+  /** The user's claude.ai cloud sessions, drawn as characters; absent = none are drawn. */
+  cloudSessions?: CloudSessionTracker;
   /** Callback when a hook event is received */
   onHookEvent?: (providerId: string, event: Record<string, unknown>) => void;
   /** Invoked when setHooksEnabled is toggled via WebSocket. Standalone installs/uninstalls hooks here. */
@@ -254,6 +257,7 @@ function registerWebSocketRoute(
     // while any page is open.
     const releaseUsageViewer = options.usage?.addViewer();
     const releaseTasksViewer = options.tasks?.addViewer();
+    const releaseCloudViewer = options.cloudSessions?.addViewer();
 
     // Pipe store events to WebSocket client
     const onAgentAdded = (id: number, agent: AgentState) => {
@@ -301,6 +305,7 @@ function registerWebSocketRoute(
           ptyManager: options.ptyManager,
           usage: options.usage,
           tasks: options.tasks,
+          cloudSessions: options.cloudSessions,
         });
       } catch {
         // Malformed JSON, ignore
@@ -313,6 +318,7 @@ function registerWebSocketRoute(
       store.off('broadcast', onBroadcast);
       releaseUsageViewer?.();
       releaseTasksViewer?.();
+      releaseCloudViewer?.();
     });
   });
 }
