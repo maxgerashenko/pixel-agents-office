@@ -40,10 +40,9 @@ function SessionRing({ percent }: { percent: number }) {
   );
 }
 
-/** One thin line holding both weekly limits, in the main bar's colours and by
- *  its rule: Fable's week is the token fill (main colour); the all-models week
- *  is the second layer. The longer layer is drawn behind and the shorter in
- *  front, so neither hides the other: pink behind, yellow in front. */
+/** One thin line holding both weekly limits: Fable's week is always yellow,
+ *  the all-models week is the main fill colour. The longer layer is drawn
+ *  behind and the shorter in front, so neither hides the other. */
 function WeekLine({
   week,
   fable,
@@ -55,7 +54,7 @@ function WeekLine({
 }) {
   const weekPct = week ? displayPercent(week.usedPercentage) : null;
   const fablePct = fable ? displayPercent(fable.usedPercentage) : null;
-  const weekAhead = weekPct !== null && (fablePct === null || weekPct > fablePct);
+  const fableAhead = fablePct !== null && (weekPct === null || fablePct > weekPct);
   const tips = [
     fable && fablePct !== null
       ? `Fable this week: ${fablePct}% used, resets in ${formatTimeLeft(fable.resetsAt, now)}`
@@ -74,22 +73,22 @@ function WeekLine({
       aria-valuenow={fablePct ?? weekPct ?? 0}
       title={tips.join('\n')}
     >
-      {weekPct !== null && weekAhead && (
+      {fablePct !== null && fableAhead && (
         <div
-          className="absolute inset-y-0 left-0 bg-usage-last-hour"
-          style={{ width: `${weekPct}%` }}
-        />
-      )}
-      {fablePct !== null && (
-        <div
-          className="absolute inset-y-0 left-0 bg-accent-bright"
+          className="absolute inset-y-0 left-0 bg-usage-last-hour-behind"
           style={{ width: `${fablePct}%` }}
         />
       )}
-      {weekPct !== null && !weekAhead && (
+      {weekPct !== null && (
+        <div
+          className="absolute inset-y-0 left-0 bg-accent-bright"
+          style={{ width: `${weekPct}%` }}
+        />
+      )}
+      {fablePct !== null && !fableAhead && (
         <div
           className="absolute inset-y-0 left-0 bg-usage-last-hour-behind"
-          style={{ width: `${weekPct}%` }}
+          style={{ width: `${fablePct}%` }}
         />
       )}
     </div>
