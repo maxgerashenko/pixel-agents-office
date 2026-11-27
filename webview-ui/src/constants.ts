@@ -1454,3 +1454,6 @@ export const CLOCK_TYPE = 'CLOCK';
 export const CLOUD_AGENT_ID_BASE = 2_000_000;
 /** Longest cloud-session title the activity label shows before it is cut. */
 export const CLOUD_TITLE_MAX_CHARS = 60;
+
+/** After returning to the app, how long to wait for the music to resume before showing it as off. */
+export const MUSIC_RESUME_CHECK_MS = 2000;

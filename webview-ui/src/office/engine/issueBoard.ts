@@ -60,3 +60,9 @@ export function issueBoardShownCount(cards: IssueBoardCardView[]): number {
 export function isOpenableIssueUrl(url: string): boolean {
   return url.startsWith('https://github.com/');
 }
+
+/** The details line for a card: its column name, plus its progress step when it has one. */
+export function issueDetailsLine(card: IssueBoardCardView): string {
+  const column = ISSUE_BOARD_COLUMNS.find((c) => c.status === card.status)?.label ?? card.status;
+  return card.progress ? `${column} \u00b7 ${card.progress.replace('_', ' ')}` : column;
+}
