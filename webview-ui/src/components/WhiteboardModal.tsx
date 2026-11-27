@@ -4,9 +4,9 @@ import { WHITEBOARD_MODAL_Z_INDEX, WHITEBOARD_REFRESH_MS } from '../constants.js
 import {
   getIssueBoard,
   isOpenableIssueUrl,
-  ISSUE_BOARD_COLUMNS,
   issueBoardColumns,
   issueBoardShownCount,
+  issueDetailsLine,
 } from '../office/engine/issueBoard.js';
 import { Modal } from './ui/Modal.js';
 
@@ -73,11 +73,7 @@ export function WhiteboardModal({ isOpen, onClose }: { isOpen: boolean; onClose:
           <div className="my-2 text-base" style={{ lineHeight: 1.3 }}>
             {selected.title}
           </div>
-          <div className="text-sm text-text-muted mb-4">
-            {ISSUE_BOARD_COLUMNS.find((c) => c.status === selected.status)?.label ??
-              selected.status}
-            {selected.progress ? ` · ${selected.progress.replace('_', ' ')}` : ''}
-          </div>
+          <div className="text-sm text-text-muted mb-4">{issueDetailsLine(selected)}</div>
           <div className="flex gap-4">
             <button
               type="button"

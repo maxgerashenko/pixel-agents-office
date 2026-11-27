@@ -13,6 +13,7 @@ import {
   isOpenableIssueUrl,
   type IssueBoardCardView,
   issueBoardColumns,
+  issueDetailsLine,
   setIssueBoard,
 } from '../src/office/engine/issueBoard.js';
 
@@ -64,4 +65,12 @@ test('only GitHub pages open from a card', () => {
   assert.equal(isOpenableIssueUrl('https://github.com/o/r/issues/1'), true);
   assert.equal(isOpenableIssueUrl('javascript:alert(1)'), false);
   assert.equal(isOpenableIssueUrl('https://github.com.evil.test/o/r/issues/1'), false);
+});
+
+test('details line names the column and the progress step', () => {
+  assert.equal(issueDetailsLine(card(1, 'ready')), 'Ready');
+  assert.equal(
+    issueDetailsLine({ ...card(2, 'in_progress'), progress: 'plan_ready' }),
+    'In progress \u00b7 plan ready',
+  );
 });
