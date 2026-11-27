@@ -509,7 +509,7 @@ function renderMissionScreens(
       const labelW = (label.length * pitch - MISSION_SCREEN_LABEL_GLYPH_GAP) * unit;
       const labelX =
         left + Math.round(((colX + MISSION_SCREEN_COLUMN_W / 2) * zoom - labelW / 2) / unit) * unit;
-      const labelY = top + MISSION_SCREEN_LABEL_Y * zoom;
+      const labelY = top + Math.round(MISSION_SCREEN_LABEL_Y * zoom);
       label.split('').forEach((ch, ci) => {
         (MISSION_SCREEN_LABEL_GLYPHS[ch] ?? []).forEach((bits, ry) => {
           for (let cx = 0; cx < MISSION_SCREEN_LABEL_GLYPH_W; cx++) {

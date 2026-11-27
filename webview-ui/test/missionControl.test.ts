@@ -41,11 +41,11 @@ function card(number: number, status: IssueBoardCardView['status']): IssueBoardC
   return { id: `r#${number}`, number, title: `t${number}`, status, url: '' } as IssueBoardCardView;
 }
 
-test('the screen is a 7x2 wall item in the Wall tab', () => {
+test('the screen is a 9x1 wall item in the Wall tab', () => {
   const entry = getCatalogEntry('MISSION_SCREEN');
   assert.ok(entry);
-  assert.equal(entry.footprintW, 7);
-  assert.equal(entry.footprintH, 2);
+  assert.equal(entry.footprintW, 9);
+  assert.equal(entry.footprintH, 1);
   assert.equal(entry.canPlaceOnWalls, true);
   assert.ok(getCatalogByCategory('wall').some((e) => e.type === 'MISSION_SCREEN'));
 });
@@ -84,7 +84,7 @@ test('seven-segment digits light the right bars and stay inside the digit box', 
   assert.equal(digitRects('0').length, 6);
   for (const d of '0123456789') {
     for (const [x, y, w, h] of digitRects(d)) {
-      assert.ok(x >= 0 && y >= 0 && x + w <= 7 && y + h <= 14, `digit ${d}`);
+      assert.ok(x >= 0 && y >= 0 && x + w <= 6 && y + h <= 8, `digit ${d}`);
     }
   }
 });
