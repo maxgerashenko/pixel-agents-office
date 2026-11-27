@@ -20,8 +20,8 @@ import {
   setSkyTasks,
   skyMotionKind,
   skyStateForTest,
-  trackOfStatus,
   type SkyTask,
+  trackOfStatus,
 } from '../src/office/engine/skyTasks.js';
 
 const W = 1100;

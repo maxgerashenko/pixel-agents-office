@@ -19,9 +19,8 @@ import {
 } from '../src/office/engine/skyAirfield.js';
 import {
   drawGroundPlanes,
-  lotOfStage,
   flies,
-  trackOfStatus,
+  lotOfStage,
   placeTasks,
   resetSkyMotion,
   setSkyNight,
@@ -30,6 +29,7 @@ import {
   skyMotionKind,
   skyStateForTest,
   type SkyTask,
+  trackOfStatus,
 } from '../src/office/engine/skyTasks.js';
 
 const W = 1100;
