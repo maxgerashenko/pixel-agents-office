@@ -41,6 +41,15 @@ const FLOW_LABEL_TO_STATUS_IN_PRIORITY_ORDER: ReadonlyArray<[string, IssueBoardS
   ['design', 'needs_design'],
 ];
 
+/** Pre-rename flow labels, still honoured so cards do not vanish while GitHub labels are renamed. */
+const LEGACY_FLOW_LABEL_ALIASES: Readonly<Record<string, string>> = {
+  'needs-decision': 'decision',
+  'in-review': 'review',
+  'in-progress': 'coding',
+  'status:ready': 'ready',
+  'needs-design': 'design',
+};
+
 /** What the agent is doing on a card, for the sky: set only for needs design and in progress. */
 export const ISSUE_PROGRESSES = ['writing_plan', 'plan_ready', 'coding', 'testing'] as const;
 export type IssueProgress = (typeof ISSUE_PROGRESSES)[number];
@@ -72,7 +81,12 @@ export interface GhIssue {
 /** Pure: the board column an issue belongs in. */
 export function boardStatusOfIssue(issue: GhIssue): IssueBoardStatus {
   if (issue.state === 'CLOSED') return 'done';
-  const labelNames = new Set(issue.labels.map((label) => label.name.toLowerCase()));
+  const labelNames = new Set(
+    issue.labels.map((label) => {
+      const name = label.name.toLowerCase();
+      return LEGACY_FLOW_LABEL_ALIASES[name] ?? name;
+    }),
+  );
   for (const [flowLabel, status] of FLOW_LABEL_TO_STATUS_IN_PRIORITY_ORDER) {
     if (labelNames.has(flowLabel)) return status;
   }

@@ -129,3 +129,16 @@ describe('boardSyncTickMsFromEnv', () => {
     expect(boardSyncTickMsFromEnv({ PIXEL_AGENTS_BOARD_SYNC_MINUTES: 'x' })).toBe(120_000);
   });
 });
+
+describe('legacy names', () => {
+  it('maps old labels to the new columns', () => {
+    expect(columnOfLabels(['needs-decision'])).toBe('decision');
+    expect(columnOfLabels(['in-progress'])).toBe('coding');
+    expect(columnOfLabels(['in-review', 'in-progress'])).toBe('review');
+  });
+  it('strips an old label when the card moves column', () => {
+    const plan = planLabelChanges([item(1, 'review', ['in-progress'])], { 'o/r#1': 'coding' });
+    expect(plan[0].remove).toEqual(['in-progress']);
+    expect(plan[0].add).toEqual(['review']);
+  });
+});

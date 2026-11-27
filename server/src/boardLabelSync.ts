@@ -41,7 +41,6 @@ const LABEL_OF_COLUMN: Readonly<Record<string, string | null>> = {
   stale: 'status:stale',
   done: null,
 };
-const FLOW_LABELS = [...new Set(Object.values(LABEL_OF_COLUMN).filter((l): l is string => !!l))];
 
 /** The same priority as prototypeRAG's project_board_status_sync.py. */
 const COLUMN_OF_LABEL_IN_PRIORITY_ORDER: ReadonlyArray<[string, string]> = [
@@ -52,6 +51,27 @@ const COLUMN_OF_LABEL_IN_PRIORITY_ORDER: ReadonlyArray<[string, string]> = [
   ['coding', 'coding'],
   ['ready', 'ready'],
   ['design', 'design'],
+];
+
+/** Pre-rename names (flow labels and project Status columns) mapped to the current ones. */
+const LEGACY_NAME_ALIASES: Readonly<Record<string, string>> = {
+  'needs-decision': 'decision',
+  'needs decision': 'decision',
+  'in-review': 'review',
+  'in review': 'review',
+  'in-progress': 'coding',
+  'in progress': 'coding',
+  'status:ready': 'ready',
+  'needs-design': 'design',
+  'needs design': 'design',
+};
+const currentName = (name: string): string => LEGACY_NAME_ALIASES[name] ?? name;
+/** Current flow labels plus legacy label spellings, so a column move strips either. */
+const FLOW_LABELS = [
+  ...new Set([
+    ...Object.values(LABEL_OF_COLUMN).filter((l): l is string => !!l),
+    ...Object.keys(LEGACY_NAME_ALIASES).filter((k) => !k.includes(' ')),
+  ]),
 ];
 
 export interface BoardItem {
@@ -77,7 +97,7 @@ export const itemKey = (item: Pick<BoardItem, 'repo' | 'number'>): string =>
 
 /** Pure: the column the labels alone put an open issue in. */
 export function columnOfLabels(labels: string[]): string {
-  const names = new Set(labels.map((l) => l.toLowerCase()));
+  const names = new Set(labels.map((l) => currentName(l.toLowerCase())));
   for (const [label, column] of COLUMN_OF_LABEL_IN_PRIORITY_ORDER) {
     if (names.has(label)) return column;
   }
@@ -231,7 +251,7 @@ export async function fetchBoardItems(owner: string, projectNumber: number): Pro
       items.push({
         repo: repository.nameWithOwner,
         number,
-        status: (node.fieldValueByName?.name ?? '').trim().toLowerCase(),
+        status: currentName((node.fieldValueByName?.name ?? '').trim().toLowerCase()),
         labels: [],
       });
     }

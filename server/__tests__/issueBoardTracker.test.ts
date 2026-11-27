@@ -121,3 +121,22 @@ describe('IssueBoardTracker', () => {
     tracker.dispose();
   });
 });
+
+describe('legacy flow labels', () => {
+  it('still place issues in the renamed columns', () => {
+    const l = (...names: string[]) => names.map((name) => ({ name }));
+    const base = {
+      number: 1,
+      title: 't',
+      url: 'https://github.com/o/r/issues/1',
+      state: 'OPEN' as const,
+    };
+    expect(boardStatusOfIssue({ ...base, labels: l('needs-design') })).toBe('needs_design');
+    expect(boardStatusOfIssue({ ...base, labels: l('status:ready') })).toBe('ready');
+    expect(boardStatusOfIssue({ ...base, labels: l('in-progress') })).toBe('in_progress');
+    expect(boardStatusOfIssue({ ...base, labels: l('in-review') })).toBe('in_review');
+    expect(boardStatusOfIssue({ ...base, labels: l('needs-decision', 'in-review') })).toBe(
+      'needs_decision',
+    );
+  });
+});
