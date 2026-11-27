@@ -1471,3 +1471,5 @@ export const SYNC_LAMP_COLOR = '#ffe27a';
 export const SYNC_LAMP_FLASH_COLOR = '#ffffff';
 export const SYNC_DARK_ALPHA = 0.3;
 export const SYNC_STALE_ALPHA = 0.55;
+export const SYNC_FLAME_OUTER_COLOR = '#ff4d00';
+export const SYNC_FLAME_INNER_COLOR = '#ffe27a';
