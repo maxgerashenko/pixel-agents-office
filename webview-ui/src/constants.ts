@@ -1461,15 +1461,7 @@ export const MUSIC_RESUME_CHECK_MS = 2000;
 // ── Board sync craft (ISS + hot-air balloon blink once per Mac sync tick) ──
 export const SYNC_POLL_MS = 30_000;
 export const SYNC_FLASH_MS = 1500;
-export const SYNC_ISS_CROSS_SEC = 90;
-export const SYNC_BALLOON_CROSS_SEC = 240;
-export const SYNC_BODY_COLOR = '#c9ccd8';
-export const SYNC_PANEL_COLOR = '#3b5fa8';
-export const SYNC_ENVELOPE_COLORS = ['#d9534f', '#f0c64a', '#d9534f'] as const;
-export const SYNC_BASKET_COLOR = '#7a5230';
 export const SYNC_LAMP_COLOR = '#ffe27a';
 export const SYNC_LAMP_FLASH_COLOR = '#ffffff';
-export const SYNC_DARK_ALPHA = 0.3;
-export const SYNC_STALE_ALPHA = 0.55;
 export const SYNC_FLAME_OUTER_COLOR = '#ff4d00';
 export const SYNC_FLAME_INNER_COLOR = '#ffe27a';

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { syncAlpha, syncLampColor } from '../src/office/engine/skySync.js';
+import { syncLampColor } from '../src/office/engine/skySync.js';
 
 describe('syncLampColor', () => {
   const live = { liveness: 'live' as const, lastTickAt: 10_000 };
@@ -14,11 +14,5 @@ describe('syncLampColor', () => {
   it('is dark when stale or off', () => {
     expect(syncLampColor({ liveness: 'stale', lastTickAt: 0 }, 5)).toBeNull();
     expect(syncLampColor({ liveness: 'off', lastTickAt: 0 }, 5)).toBeNull();
-  });
-  it('dims craft unless live', () => {
-    expect(syncAlpha(live)).toBe(1);
-    expect(syncAlpha({ liveness: 'off', lastTickAt: 0 })).toBeLessThan(
-      syncAlpha({ liveness: 'stale', lastTickAt: 0 }),
-    );
   });
 });

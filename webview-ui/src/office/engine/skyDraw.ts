@@ -72,7 +72,6 @@ import {
   STARS,
   toCss,
 } from './skyCycle.js';
-import { drawSyncCraft } from './skySync.js';
 import { drawGroundPlanes, drawSkyFlyers, setSkyBorder, setSkyNight } from './skyTasks.js';
 
 function disc(
@@ -928,6 +927,4 @@ export function drawSky(
   }
   // planes by day, satellites by night, morphing into each other over dusk and dawn
   drawSkyFlyers(ctx, w, horizonY, px, nowSec);
-  // the ISS and a hot-air balloon blink once per Mac board-sync tick
-  drawSyncCraft(ctx, w, horizonY, px, nowSec);
 }
