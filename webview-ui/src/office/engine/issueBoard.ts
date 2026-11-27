@@ -10,8 +10,8 @@ export type IssueBoardCardView = IssueBoardCard;
 /** The board's columns, left to right, with the names the GitHub board shows. */
 export const ISSUE_BOARD_COLUMNS: ReadonlyArray<{ status: IssueBoardStatus; label: string }> = [
   { status: 'new', label: 'New' },
-  { status: 'needs_design', label: 'Needs design' },
   { status: 'ready', label: 'Ready' },
+  { status: 'needs_design', label: 'Needs design' },
   { status: 'in_progress', label: 'Coding' },
   { status: 'in_review', label: 'In review' },
   { status: 'needs_decision', label: 'Needs decision' },

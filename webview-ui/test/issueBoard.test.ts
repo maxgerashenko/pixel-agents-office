@@ -33,7 +33,7 @@ test('columns follow the board left to right, each with its own issues, empty on
   ]);
   assert.deepEqual(
     columns.map((c) => c.label),
-    ['Needs design', 'Ready', 'Coding', 'In review', 'Needs decision'],
+    ['Ready', 'Needs design', 'Coding', 'In review', 'Needs decision'],
   );
   assert.deepEqual(
     columns.map((c) => c.cards.map((x) => x.number)),
