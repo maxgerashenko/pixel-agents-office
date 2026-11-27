@@ -16,8 +16,7 @@ import { furnitureAt } from '../editor/editorActions.js';
 import { buildEditorRenderState } from '../editor/editorRenderState.js';
 import type { EditorState } from '../editor/editorState.js';
 import { startGameLoop } from '../engine/gameLoop.js';
-import { getIssueBoard } from '../engine/issueBoard.js';
-import { isMissionScreen, missionCounts, missionScreens } from '../engine/missionScreen.js';
+import { isMissionScreen } from '../engine/missionScreen.js';
 import type { OfficeState } from '../engine/officeState.js';
 import type {
   DeleteButtonBounds,
@@ -240,7 +239,6 @@ export function OfficeCanvas({
           officeState.getTableTennisBalls(),
           officeState.getTableTennisScores(),
           whiteboardPlates(layout, getSkyTasks().length),
-          missionScreens(layout, missionCounts(getIssueBoard())),
         );
         offsetRef.current = { x: offsetX, y: offsetY };
 

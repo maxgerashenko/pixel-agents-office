@@ -1,13 +1,13 @@
 {
   "id": "MISSION_SCREEN",
   "name": "Mission Screen",
-  "category": "wall",
+  "category": "decor",
   "type": "asset",
-  "canPlaceOnWalls": true,
+  "canPlaceOnWalls": false,
   "canPlaceOnSurfaces": false,
-  "backgroundTiles": 0,
+  "backgroundTiles": 1,
   "width": 144,
-  "height": 16,
+  "height": 32,
   "footprintW": 9,
-  "footprintH": 1
+  "footprintH": 2
 }

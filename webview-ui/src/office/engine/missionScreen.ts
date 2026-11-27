@@ -1,9 +1,9 @@
 /**
- * The mission screen: a MISSION_SCREEN item on the wall shows how many issues the GitHub board
- * (engine/issueBoard, the same data the sky and the whiteboard read) holds in each of the five
- * statuses that are active work, as five big coloured two-digit counts with the status name
- * under each. A tap on it opens the board, like the whiteboard. Pure and DOM-free; the canvas
- * draws the counts over the sprite.
+ * The mission screen: a MISSION_SCREEN item, a floor-standing unit one cell deep, shows how many
+ * issues the GitHub board (engine/issueBoard, the same data the sky and the whiteboard read) holds
+ * in each of the five statuses that are active work, as five big coloured two-digit counts with
+ * the status name under each. A tap on it opens the board, like the whiteboard. Pure and
+ * DOM-free; the renderer draws the counts over the sprite, in the scene's depth order.
  */
 import type { IssueBoardStatus } from '../../../../core/src/messages.js';
 import {
@@ -14,8 +14,6 @@ import {
   MISSION_SCREEN_DIGIT_W,
   MISSION_SCREEN_FURNITURE_TYPE,
 } from '../../constants.js';
-import type { OfficeLayout } from '../types.js';
-import { TILE_SIZE } from '../types.js';
 import type { IssueBoardCardView } from './issueBoard.js';
 
 /** The screen's columns, left to right: a board status and the word shown under its count. */
@@ -38,23 +36,6 @@ export function missionCounts(cards: IssueBoardCardView[]): number[] {
 export function missionDigits(count: number): string {
   const shown = Math.max(0, Math.min(MISSION_SCREEN_COUNT_MAX, Math.floor(count)));
   return String(shown).padStart(2, '0');
-}
-
-/** A screen to draw on: its sprite's top-left corner in world pixels, and the counts. */
-export interface MissionScreenPlate {
-  x: number;
-  y: number;
-  counts: number[];
-}
-
-/** One plate per mission screen in the layout, each carrying the same counts. */
-export function missionScreens(layout: OfficeLayout, counts: number[]): MissionScreenPlate[] {
-  const plates: MissionScreenPlate[] = [];
-  for (const f of layout.furniture) {
-    if (f.type !== MISSION_SCREEN_FURNITURE_TYPE) continue;
-    plates.push({ x: f.col * TILE_SIZE, y: f.row * TILE_SIZE, counts });
-  }
-  return plates;
 }
 
 /** True when the furniture a tap landed on is a mission screen. */

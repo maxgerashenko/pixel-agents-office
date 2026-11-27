@@ -103,12 +103,13 @@ import { CharacterState, TILE_SIZE, TileType } from '../types.js';
 import { getWallInstances, hasWallSprites, wallColorToHex } from '../wallTiles.js';
 import { characterDrawOffsetY, getCharacterSprite } from './characters.js';
 import { clockHands, currentClockTime } from './clockHands.js';
+import { getIssueBoard } from './issueBoard.js';
 import { renderMatrixEffect } from './matrixEffect.js';
 import {
   digitRects,
   MISSION_SCREEN_COLUMNS,
+  missionCounts,
   missionDigits,
-  type MissionScreenPlate,
 } from './missionScreen.js';
 import { getPetSpriteData } from './petEntity.js';
 import { drawReactionEmote } from './reactionEmote.js';
@@ -472,55 +473,51 @@ function renderWhiteboardPlates(
   ctx.restore();
 }
 
-/** Mission screens: the board's five status counts as big seven-segment digits, each with its status name under it. */
-function renderMissionScreens(
+/** A mission screen's face: the board's five status counts as big seven-segment digits, each with its status name under it. */
+function drawMissionCounts(
   ctx: CanvasRenderingContext2D,
-  plates: MissionScreenPlate[],
-  offsetX: number,
-  offsetY: number,
+  left: number,
+  top: number,
   zoom: number,
+  counts: number[],
 ): void {
   // The names are drawn in whole device pixels, smaller than a sprite pixel; at zoom 1 they cannot fit
   const unit = Math.max(1, Math.floor(zoom * MISSION_SCREEN_LABEL_SCALE));
   const pitch = MISSION_SCREEN_LABEL_GLYPH_W + MISSION_SCREEN_LABEL_GLYPH_GAP;
   const pairW = MISSION_SCREEN_DIGIT_W * 2 + MISSION_SCREEN_DIGIT_GAP;
-  ctx.save();
-  for (const p of plates) {
-    const left = Math.round(offsetX + p.x * zoom);
-    const top = Math.round(offsetY + p.y * zoom);
-    MISSION_SCREEN_COLUMNS.forEach(({ label }, i) => {
-      ctx.fillStyle = MISSION_SCREEN_COLORS[i];
-      const colX = MISSION_SCREEN_INNER_X + i * MISSION_SCREEN_COLUMN_W;
-      const pairX = colX + Math.floor((MISSION_SCREEN_COLUMN_W - pairW) / 2);
-      missionDigits(p.counts[i] ?? 0)
-        .split('')
-        .forEach((d, di) => {
-          const dx = pairX + di * (MISSION_SCREEN_DIGIT_W + MISSION_SCREEN_DIGIT_GAP);
-          for (const [x, y, w, h] of digitRects(d)) {
-            ctx.fillRect(
-              left + (dx + x) * zoom,
-              top + (MISSION_SCREEN_DIGIT_Y + y) * zoom,
-              w * zoom,
-              h * zoom,
-            );
-          }
-        });
-      if (zoom < 2) return;
-      const labelW = (label.length * pitch - MISSION_SCREEN_LABEL_GLYPH_GAP) * unit;
-      const labelX =
-        left + Math.round(((colX + MISSION_SCREEN_COLUMN_W / 2) * zoom - labelW / 2) / unit) * unit;
-      const labelY = top + Math.round(MISSION_SCREEN_LABEL_Y * zoom);
-      label.split('').forEach((ch, ci) => {
-        (MISSION_SCREEN_LABEL_GLYPHS[ch] ?? []).forEach((bits, ry) => {
-          for (let cx = 0; cx < MISSION_SCREEN_LABEL_GLYPH_W; cx++) {
-            if (!(bits & (1 << (MISSION_SCREEN_LABEL_GLYPH_W - 1 - cx)))) continue;
-            ctx.fillRect(labelX + (ci * pitch + cx) * unit, labelY + ry * unit, unit, unit);
-          }
-        });
+  const fill = ctx.fillStyle;
+  MISSION_SCREEN_COLUMNS.forEach(({ label }, i) => {
+    ctx.fillStyle = MISSION_SCREEN_COLORS[i];
+    const colX = MISSION_SCREEN_INNER_X + i * MISSION_SCREEN_COLUMN_W;
+    const pairX = colX + Math.floor((MISSION_SCREEN_COLUMN_W - pairW) / 2);
+    missionDigits(counts[i] ?? 0)
+      .split('')
+      .forEach((d, di) => {
+        const dx = pairX + di * (MISSION_SCREEN_DIGIT_W + MISSION_SCREEN_DIGIT_GAP);
+        for (const [x, y, w, h] of digitRects(d)) {
+          ctx.fillRect(
+            left + (dx + x) * zoom,
+            top + (MISSION_SCREEN_DIGIT_Y + y) * zoom,
+            w * zoom,
+            h * zoom,
+          );
+        }
+      });
+    if (zoom < 2) return;
+    const labelW = (label.length * pitch - MISSION_SCREEN_LABEL_GLYPH_GAP) * unit;
+    const labelX =
+      left + Math.round(((colX + MISSION_SCREEN_COLUMN_W / 2) * zoom - labelW / 2) / unit) * unit;
+    const labelY = top + Math.round(MISSION_SCREEN_LABEL_Y * zoom);
+    label.split('').forEach((ch, ci) => {
+      (MISSION_SCREEN_LABEL_GLYPHS[ch] ?? []).forEach((bits, ry) => {
+        for (let cx = 0; cx < MISSION_SCREEN_LABEL_GLYPH_W; cx++) {
+          if (!(bits & (1 << (MISSION_SCREEN_LABEL_GLYPH_W - 1 - cx)))) continue;
+          ctx.fillRect(labelX + (ci * pitch + cx) * unit, labelY + ry * unit, unit, unit);
+        }
       });
     });
-  }
-  ctx.restore();
+  });
+  ctx.fillStyle = fill;
 }
 
 /** The hands of the wall CLOCK for the device's local time, one sprite pixel per cell. */
@@ -545,6 +542,8 @@ export function renderScene(
   balls: TableBall[] = [],
 ): void {
   const drawables: ZDrawable[] = [];
+  // Every mission screen shows the same board counts
+  const missionScreenCounts = missionCounts(getIssueBoard());
 
   // Table-tennis balls: a shadow on the table top and the ball above it, both
   // sorted just after the table so the players stay in front
@@ -584,6 +583,7 @@ export function renderScene(
         draw: (c) => {
           c.drawImage(cached, fx, fy);
           if (f.clock) drawClockHands(c, fx, fy, zoom);
+          if (f.missionScreen) drawMissionCounts(c, fx, fy, zoom, missionScreenCounts);
         },
       });
     }
@@ -1182,7 +1182,6 @@ export function renderFrame(
   balls?: TableBall[],
   scores?: TableScore[],
   whiteboards?: WhiteboardPlate[],
-  missionScreens?: MissionScreenPlate[],
 ): { offsetX: number; offsetY: number } {
   // Clear, then the day/night sky (visible wherever the layout doesn't cover)
   ctx.clearRect(0, 0, canvasWidth, canvasHeight);
@@ -1257,9 +1256,6 @@ export function renderFrame(
   }
   if (whiteboards && whiteboards.length > 0) {
     renderWhiteboardPlates(ctx, whiteboards, offsetX, offsetY, zoom);
-  }
-  if (missionScreens && missionScreens.length > 0) {
-    renderMissionScreens(ctx, missionScreens, offsetX, offsetY, zoom);
   }
 
   // Character speech bubbles render in ToolOverlay (DOM, above the labels).

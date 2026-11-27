@@ -1,6 +1,7 @@
 """Draws the mission control furniture sprites:
 
-- MISSION_SCREEN (144x16, 9x1 tiles, wall): a framed dark screen with faint orbit tracks. The five status counts are drawn live by the renderer (engine/missionScreen.ts).
+- MISSION_SCREEN (144x32, 9x2 tiles with one background row, so 9 wide and 1 deep on the floor):
+  a free-standing cabinet with a dark screen and faint orbit tracks. The five status counts are drawn live by the renderer (engine/missionScreen.ts).
 - MISSION_DESK (48x32, 3x2 tiles with one background row, so 3x1 solid): the plain desk with a
   raised console of four small CRTs and the office PC at its right end. OFF plus three ON frames.
 
@@ -26,23 +27,33 @@ def rect(px, x0, y0, x1, y1, col):  # inclusive
 
 # ── MISSION_SCREEN ──────────────────────────────────────────────
 def draw_screen():
-    W, H = 144, 16
+    W, H = 144, 32
     im = Image.new('RGBA', (W, H), (0, 0, 0, 0))
     px = im.load()
-    EDGE, FRAME, FRAME_D = c('#394449'), c('#73787e'), c('#555a60')
+    EDGE, BODY, BODY_L, BODY_D = c('#1a1e30'), c('#3a4268'), c('#5a6490'), c('#2c3350')
     BG, MAP, TRACK = c('#10121c'), c('#2c1a38'), c('#173a24')
+    # the cabinet: a lit top edge, the screen housing, and a console strip along the floor
     rect(px, 0, 0, W - 1, H - 1, EDGE)
-    rect(px, 0, 0, W - 1, 0, FRAME)
-    rect(px, 0, H - 1, W - 1, H - 1, FRAME_D)
-    rect(px, 0, 1, 0, H - 2, FRAME)
-    rect(px, W - 1, 1, W - 1, H - 2, FRAME)
-    rect(px, 1, 1, W - 2, H - 2, BG)
-    # two orbit ground tracks and a few map specks, kept dim under the digits
+    rect(px, 1, 1, W - 2, 1, BODY_L)
+    rect(px, 1, 2, W - 2, 25, BODY)
+    rect(px, 1, 26, W - 2, H - 2, BODY_D)
+    rect(px, 1, 26, W - 2, 26, EDGE)
+    # the screen, set into the housing
+    rect(px, 2, 3, W - 3, 24, EDGE)
+    rect(px, 3, 4, W - 4, 23, BG)
+    # two orbit ground tracks, kept dim under the digits
     for phase, col in ((0.0, TRACK), (2.1, MAP)):
-        for x in range(1, W - 1):
-            y = round(7.5 + 5 * math.sin(x / 15.0 + phase))
-            if 1 <= y <= H - 2:
+        for x in range(3, W - 3):
+            y = round(13.5 + 8 * math.sin(x / 17.0 + phase))
+            if 4 <= y <= 23:
                 px[x, y] = col
+    # console strip: a status light and a speaker grille under each column, feet at the ends
+    lights = [c('#4f8df7'), c('#5fe04f'), c('#ffd83a'), c('#4f8df7'), c('#f0503c')]
+    for i, col in enumerate(lights):
+        x0 = 4 + i * 27 + 5
+        rect(px, x0, 28, x0 + 1, 29, col)
+        for g in range(5):
+            rect(px, x0 + 5 + g * 2, 28, x0 + 5 + g * 2, 29, EDGE)
     out = os.path.join(ROOT, 'MISSION_SCREEN')
     os.makedirs(out, exist_ok=True)
     im.save(os.path.join(out, 'MISSION_SCREEN.png'))

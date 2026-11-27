@@ -18,7 +18,6 @@ import {
   MISSION_SCREEN_COLUMNS,
   missionCounts,
   missionDigits,
-  missionScreens,
 } from '../src/office/engine/missionScreen.js';
 import { OfficeState } from '../src/office/engine/officeState.js';
 import {
@@ -28,6 +27,7 @@ import {
   getCatalogEntry,
   getOnStateType,
 } from '../src/office/layout/furnitureCatalog.js';
+import { layoutToFurnitureInstances } from '../src/office/layout/layoutSerializer.js';
 import type { OfficeLayout } from '../src/office/types.js';
 import { TILE_SIZE, TileType } from '../src/office/types.js';
 
@@ -41,13 +41,14 @@ function card(number: number, status: IssueBoardCardView['status']): IssueBoardC
   return { id: `r#${number}`, number, title: `t${number}`, status, url: '' } as IssueBoardCardView;
 }
 
-test('the screen is a 9x1 wall item in the Wall tab', () => {
+test('the screen stands on the floor: 9 wide, 1 deep plus a background row, never a work computer', () => {
   const entry = getCatalogEntry('MISSION_SCREEN');
   assert.ok(entry);
   assert.equal(entry.footprintW, 9);
-  assert.equal(entry.footprintH, 1);
-  assert.equal(entry.canPlaceOnWalls, true);
-  assert.ok(getCatalogByCategory('wall').some((e) => e.type === 'MISSION_SCREEN'));
+  assert.equal(entry.footprintH - (entry.backgroundTiles ?? 0), 1);
+  assert.ok(!entry.canPlaceOnWalls);
+  assert.notEqual(entry.category, 'electronics');
+  assert.ok(getCatalogByCategory('decor').some((e) => e.type === 'MISSION_SCREEN'));
 });
 
 test('counts follow the five columns and ignore every other status', () => {
@@ -84,25 +85,21 @@ test('seven-segment digits light the right bars and stay inside the digit box', 
   assert.equal(digitRects('0').length, 6);
   for (const d of '0123456789') {
     for (const [x, y, w, h] of digitRects(d)) {
-      assert.ok(x >= 0 && y >= 0 && x + w <= 6 && y + h <= 8, `digit ${d}`);
+      assert.ok(x >= 0 && y >= 0 && x + w <= 7 && y + h <= 12, `digit ${d}`);
     }
   }
 });
 
-test('each mission screen in the layout gets a plate at its corner; only it answers the tap', () => {
-  const layout = {
-    version: 1,
-    cols: 20,
-    rows: 11,
-    tiles: [],
-    furniture: [
-      { uid: 'm', type: 'MISSION_SCREEN', col: 4, row: 0 },
-      { uid: 'w', type: 'WHITEBOARD', col: 12, row: 0 },
-    ],
-  } as unknown as OfficeLayout;
-  const plates = missionScreens(layout, [1, 2, 3, 4, 5]);
-  assert.equal(plates.length, 1);
-  assert.deepEqual(plates[0], { x: 4 * TILE_SIZE, y: 0, counts: [1, 2, 3, 4, 5] });
+test('a placed mission screen is flagged for the renderer; only it answers the tap', () => {
+  const instances = layoutToFurnitureInstances([
+    { uid: 'm', type: 'MISSION_SCREEN', col: 4, row: 0 },
+    { uid: 'w', type: 'WHITEBOARD', col: 14, row: 0 },
+  ]);
+  assert.deepEqual(
+    instances.map((i) => i.missionScreen === true),
+    [true, false],
+  );
+  assert.equal(instances[0].x, 4 * TILE_SIZE);
   assert.equal(isMissionScreen('MISSION_SCREEN'), true);
   assert.equal(isMissionScreen('WHITEBOARD'), false);
   assert.equal(isMissionScreen(undefined), false);
