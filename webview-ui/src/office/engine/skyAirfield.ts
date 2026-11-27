@@ -1,9 +1,10 @@
 /**
- * The airfield at the right of the sky: a left lot (plan ready, needs decision and ready tasks wait here) beside the take-off
+ * The airfield at the right of the sky: a left lot (design, ready and needs decision tasks wait here) beside the take-off
  * runway, and a landing runway beside the right lot (in review tasks park here), seen from
  * above like a map. Pure geometry plus the static drawing; the tasks' planes live in skyTasks.
  */
 import {
+  SKY_AIRFIELD_CONTROLS_RESERVE_CSS_PX,
   SKY_AIRFIELD_GRASS_COLORS,
   SKY_AIRFIELD_HEIGHT_MAX,
   SKY_AIRFIELD_HEIGHT_MIN,
@@ -27,6 +28,7 @@ import {
   SKY_AIRFIELD_TERMINAL,
   SKY_AIRFIELD_TERMINAL_EDGE,
   SKY_AIRFIELD_TERMINAL_W,
+  SKY_AIRFIELD_TWIN_GAP,
   SKY_AIRFIELD_WIDTH,
   SKY_AIRFIELD_WOODS_HEIGHT_MAX,
   SKY_AIRFIELD_WOODS_HEIGHT_SHARE,
@@ -46,6 +48,11 @@ import {
   SKY_ROCKET_DUST_COLOR,
   SKY_ROCKET_FLAME_COLORS,
   SKY_ROCKET_LEG_COLOR,
+  SKY_TECH_HAT_COLOR,
+  SKY_TECH_LEGS_COLOR,
+  SKY_TECH_SKIN_COLOR,
+  SKY_TECH_VEST_COLOR,
+  SKY_TECH_WORK_SEC,
 } from '../../constants.js';
 import { mix, parseHex, toCss } from './skyCycle.js';
 
@@ -77,6 +84,8 @@ export interface Airfield {
   /** The narrow strip beside a full-size office: one runway, one taxi column and one lot, which
    *  plan tasks (upper bays) and ready tasks (lower bays) share. */
   strip: boolean;
+  /** Canvas pixels from this field to a second one standing beside it with the same layout (0 = one field). */
+  twinDx: number;
 }
 
 /** Where the office stands on the canvas, so the field can go in the woods beside it. */
@@ -103,8 +112,12 @@ function woodsTop(horizonY: number, hU: number, px: number, siteH: number): numb
  */
 export function airfieldLayout(w: number, horizonY: number, px: number): Airfield {
   const wU = SKY_AIRFIELD_WIDTH;
-  const gap = site ? w - (site.office.x + site.office.w) : 0;
+  // a field standing in the woods keeps clear of the zoom buttons in the bottom-right corner
+  const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
+  const woodsRight = w - Math.round(SKY_AIRFIELD_CONTROLS_RESERVE_CSS_PX * dpr);
+  const gap = site ? woodsRight - (site.office.x + site.office.w) : 0;
   const inWoods = site !== null && gap >= (wU + 2 * SKY_AIRFIELD_MARGIN) * px;
+  const twin = inWoods && gap >= (2 * wU + SKY_AIRFIELD_TWIN_GAP + 2 * SKY_AIRFIELD_MARGIN) * px;
   const stripW =
     SKY_AIRFIELD_RUNWAY_W +
     SKY_AIRFIELD_TAXI_W +
@@ -123,7 +136,8 @@ export function airfieldLayout(w: number, horizonY: number, px: number): Airfiel
         Math.floor(((site.h - horizonY) * SKY_AIRFIELD_WOODS_HEIGHT_SHARE) / px),
       ),
     );
-    left = Math.round((w - gap / 2 - (wU * px) / 2) / px) * px;
+    const total = (twin ? 2 * wU + SKY_AIRFIELD_TWIN_GAP : wU) * px;
+    left = Math.round((woodsRight - gap / 2 - total / 2) / px) * px;
     top = woodsTop(horizonY, hU, px, site.h);
   } else {
     hU = Math.max(
@@ -163,6 +177,7 @@ export function airfieldLayout(w: number, horizonY: number, px: number): Airfiel
     slotTop: top + 6 * px,
     slotRows: Math.max(1, Math.floor(slotsH / SKY_AIRFIELD_SLOT_PITCH)),
     strip: false,
+    twinDx: twin ? (wU + SKY_AIRFIELD_TWIN_GAP) * px : 0,
   };
 }
 
@@ -203,14 +218,25 @@ function stripLayout(horizonY: number, px: number, wU: number, s: AirfieldSite):
     slotTop: top + 6 * px,
     slotRows: Math.max(1, Math.floor(rows / 2)),
     strip: true,
+    twinDx: 0,
   };
+}
+
+/**
+ * Which field a slot is on: with two fields the bays alternate between them, first one row of the
+ * first field, then one row of the second. Returns the canvas pixels to add to x, and the column.
+ */
+export function slotField(f: Airfield, slot: number): { dx: number; col: number } {
+  const unit = Math.floor(slot / f.slotRows);
+  if (f.twinDx === 0) return { dx: 0, col: unit };
+  return { dx: (unit % 2) * f.twinDx, col: Math.floor(unit / 2) };
 }
 
 /** Where a parked plane's middle sits. Extra planes beyond the rows tuck in beside the first column. */
 export function slotPoint(f: Airfield, lot: AirfieldLot, slot: number): [number, number] {
   const row = slot % f.slotRows;
-  const col = Math.floor(slot / f.slotRows);
-  const x = (lot === 'left' ? f.lotL : f.lotR) + (col % 2 === 0 ? 1 : -1) * col * 2 * f.px;
+  const { dx, col } = slotField(f, slot);
+  const x = (lot === 'left' ? f.lotL : f.lotR) + dx + (col % 2 === 0 ? 1 : -1) * col * 2 * f.px;
   // in the strip the right bays sit below the left bays, in the same lot
   const shift = f.strip && lot === 'right' ? f.slotRows * SKY_AIRFIELD_SLOT_PITCH : 0;
   const y = f.slotTop + (shift + row * SKY_AIRFIELD_SLOT_PITCH + col * 4) * f.px;
@@ -430,10 +456,47 @@ function drawBeacon(
   });
 }
 
+/** Stages whose parked task has a technician at work beside it (design and ready; decision and review wait for Max). */
+const TECHNICIAN_STAGES = ['designing', 'plan_ready', 'ready'];
+
+/** A technician (3 x 5): `h` hard hat, `s` skin, `v` hi-vis vest, `l` legs. */
+const TECHNICIAN: string[] = ['.h.', 'hsh', 'vvv', '.v.', 'l.l'];
+
+/** Draws a technician standing at (cx, cy) (its middle), one arm lifting now and then as it works on the plane. */
+function drawTechnician(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  px: number,
+  sec: number,
+  phase: number,
+): void {
+  const arm = Math.floor((sec / SKY_TECH_WORK_SEC + phase) % 2) === 0;
+  TECHNICIAN.forEach((row, ry) => {
+    for (let rx = 0; rx < row.length; rx++) {
+      const c = row[rx];
+      if (c === '.') continue;
+      ctx.fillStyle =
+        c === 'h'
+          ? SKY_TECH_HAT_COLOR
+          : c === 's'
+            ? SKY_TECH_SKIN_COLOR
+            : c === 'v'
+              ? SKY_TECH_VEST_COLOR
+              : SKY_TECH_LEGS_COLOR;
+      ctx.fillRect(cx + (rx - 1) * px, cy + (ry - 2) * px, px, px);
+    }
+  });
+  // the working arm reaches toward the plane and back
+  ctx.fillStyle = SKY_TECH_VEST_COLOR;
+  ctx.fillRect(cx - 2 * px, cy + (arm ? -1 : 0) * px, px, px);
+}
+
 /**
  * What stands round a parked plane (or rocket) centred on (x, y): one siren beacon on the lot's outer
- * edge, its colour the status (blue plan ready, yellow needs decision, green ready and in review).
- * `seed` offsets the flashing so neighbours don't pulse together.
+ * edge, its colour the status (blue design, red needs decision, green ready, pink in review), and
+ * a technician beside the plane for design and ready tasks. `seed` offsets the flashing so
+ * neighbours don't pulse together.
  */
 export function drawGroundCrew(
   ctx: CanvasRenderingContext2D,
@@ -446,8 +509,9 @@ export function drawGroundCrew(
 ): void {
   if (!(stage in SKY_BEACON_COLORS)) return;
   // one beacon per bay, on the lot's outer edge: the left edge of the left lot, the right edge of the right one
-  const outer = stage === 'in_review' ? 6 : -6;
+  const outer = stage === 'in_review' || stage === 'needs_decision' ? 6 : -6;
   drawBeacon(ctx, x + outer * px, y, px, stage as SignalStage, sec, seed);
+  if (TECHNICIAN_STAGES.includes(stage)) drawTechnician(ctx, x + 6 * px, y, px, sec, seed);
 }
 
 /** The pull request number a task id ends in (`branch#12` -> 12), or null. */
@@ -483,6 +547,30 @@ export function drawPrNumber(
 
 /** The field itself: grass, lots, terminals, taxiways and the two runways. `night` is 0..1. */
 export function drawAirfield(
+  ctx: CanvasRenderingContext2D,
+  f: Airfield,
+  sec: number,
+  night: number,
+): void {
+  drawOneAirfield(ctx, f, sec, night);
+  if (f.twinDx === 0) return;
+  drawOneAirfield(ctx, { ...f, left: f.left + f.twinDx }, sec, night);
+  // the taxiway runs on across the small gap between the two fields
+  const px = f.px;
+  const hU = f.height / px;
+  const bandY = hU - SKY_AIRFIELD_TAXI_ROW_FROM_BOTTOM - SKY_AIRFIELD_TAXI_BAND_H / 2;
+  ctx.fillStyle = toCss(
+    mix(parseHex(SKY_AIRFIELD_TARMAC.day), parseHex(SKY_AIRFIELD_TARMAC.night), night),
+  );
+  ctx.fillRect(
+    f.left + f.width - SKY_AIRFIELD_TERMINAL_W * px,
+    f.top + bandY * px,
+    f.twinDx - f.width + 2 * SKY_AIRFIELD_TERMINAL_W * px,
+    SKY_AIRFIELD_TAXI_BAND_H * px,
+  );
+}
+
+function drawOneAirfield(
   ctx: CanvasRenderingContext2D,
   f: Airfield,
   sec: number,
