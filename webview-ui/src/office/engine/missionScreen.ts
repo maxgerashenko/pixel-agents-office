@@ -18,9 +18,9 @@ import type { IssueBoardCardView } from './issueBoard.js';
 
 /** The screen's columns, left to right: a board status and the word shown under its count. */
 export const MISSION_SCREEN_COLUMNS: ReadonlyArray<{ status: IssueBoardStatus; label: string }> = [
-  { status: 'needs_design', label: 'DESIGN' },
   { status: 'ready', label: 'READY' },
-  { status: 'in_progress', label: 'PROGRESS' },
+  { status: 'needs_design', label: 'DESIGN' },
+  { status: 'in_progress', label: 'CODING' },
   { status: 'in_review', label: 'REVIEW' },
   { status: 'needs_decision', label: 'DECISION' },
 ];

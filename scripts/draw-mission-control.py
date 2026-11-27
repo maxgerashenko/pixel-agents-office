@@ -53,7 +53,7 @@ def draw_screen():
             if 8 <= y <= 25:
                 px[x, y] = col
     # console strip: a status light and a speaker grille under each column
-    lights = [c('#4f8df7'), c('#5fe04f'), c('#ffd83a'), c('#4f8df7'), c('#f0503c')]
+    lights = [c('#5fe04f'), c('#4f8df7'), c('#ffd83a'), c('#ff7ac8'), c('#f0503c')]
     for i, col in enumerate(lights):
         x0 = 4 + i * 27 + 5
         rect(px, x0, 28, x0 + 1, 29, col)

@@ -1,7 +1,7 @@
 {
   "id": "MISSION_SCREEN",
   "name": "Mission Screen",
-  "category": "decor",
+  "category": "electronics",
   "type": "asset",
   "canPlaceOnWalls": false,
   "canPlaceOnSurfaces": false,

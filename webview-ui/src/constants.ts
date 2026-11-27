@@ -1391,8 +1391,8 @@ export const WHITEBOARD_MODAL_Z_INDEX = 52;
 
 // ── Mission screen (the MISSION_SCREEN item shows the board's five status counts) ──
 export const MISSION_SCREEN_FURNITURE_TYPE = 'MISSION_SCREEN';
-/** Count and label colour per column: design, ready, progress, review, decision. */
-export const MISSION_SCREEN_COLORS = ['#4f8df7', '#5fe04f', '#ffd83a', '#4f8df7', '#f0503c'];
+/** Count and label colour per column: ready, design, coding, review, decision. */
+export const MISSION_SCREEN_COLORS = ['#5fe04f', '#4f8df7', '#ffd83a', '#ff7ac8', '#f0503c'];
 export const MISSION_SCREEN_COUNT_MAX = 99;
 /** The dark screen inside the frame starts here, and each of the five columns is this wide (sprite pixels). */
 export const MISSION_SCREEN_INNER_X = 4;
