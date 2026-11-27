@@ -74,11 +74,11 @@ import {
   updateCharacter,
 } from './characters.js';
 import { advanceMatrixEffect, startMatrixEffect } from './matrixEffectState.js';
+import { isMissionScreen } from './missionScreen.js';
 import type { PetHome, PetSofaSpot, PetTreeSpot } from './petEntity.js';
 import { createPet, findPetHome, isNearPetHome, petClaims, updatePet } from './petEntity.js';
 import type { ReactionKind } from './reactions.js';
 import { advanceReaction, startReaction } from './reactions.js';
-import { isMissionScreen } from './missionScreen.js';
 import {
   anchorTile,
   closestFreeSeat,
