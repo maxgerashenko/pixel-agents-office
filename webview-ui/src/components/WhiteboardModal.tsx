@@ -4,6 +4,7 @@ import { WHITEBOARD_MODAL_Z_INDEX, WHITEBOARD_REFRESH_MS } from '../constants.js
 import {
   getIssueBoard,
   isOpenableIssueUrl,
+  ISSUE_BOARD_COLUMNS,
   issueBoardColumns,
   issueBoardShownCount,
 } from '../office/engine/issueBoard.js';
@@ -12,15 +13,18 @@ import { Modal } from './ui/Modal.js';
 /** The whiteboard's big view: the GitHub board, one column per Status, kept live while open. */
 export function WhiteboardModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const [cards, setCards] = useState(getIssueBoard);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isOpen) return;
     const read = () => setCards(getIssueBoard());
     read();
+    setSelectedId(null);
     const timer = window.setInterval(read, WHITEBOARD_REFRESH_MS);
     return () => window.clearInterval(timer);
   }, [isOpen]);
 
+  const selected = cards.find((c) => c.id === selectedId) ?? null;
   const openCount = issueBoardShownCount(cards);
 
   return (
@@ -47,8 +51,7 @@ export function WhiteboardModal({ isOpen, onClose }: { isOpen: boolean; onClose:
                   <button
                     type="button"
                     title={card.id}
-                    disabled={!isOpenableIssueUrl(card.url)}
-                    onClick={() => window.open(card.url, '_blank', 'noopener,noreferrer')}
+                    onClick={() => setSelectedId(card.id)}
                     className="w-full text-left text-sm bg-bg border-2 border-border p-4 cursor-pointer hover:border-accent"
                     style={{ lineHeight: 1.3 }}
                   >
@@ -61,6 +64,40 @@ export function WhiteboardModal({ isOpen, onClose }: { isOpen: boolean; onClose:
           </section>
         ))}
       </div>
+      {selected && (
+        <div
+          data-testid="issue-details"
+          className="mx-4 mb-4 border-2 border-border bg-bg-dark p-4 text-text"
+        >
+          <div className="text-accent-bright">#{selected.number}</div>
+          <div className="my-2 text-base" style={{ lineHeight: 1.3 }}>
+            {selected.title}
+          </div>
+          <div className="text-sm text-text-muted mb-4">
+            {ISSUE_BOARD_COLUMNS.find((c) => c.status === selected.status)?.label ??
+              selected.status}
+            {selected.progress ? ` · ${selected.progress.replace('_', ' ')}` : ''}
+          </div>
+          <div className="flex gap-4">
+            <button
+              type="button"
+              data-testid="issue-open-github"
+              disabled={!isOpenableIssueUrl(selected.url)}
+              onClick={() => window.open(selected.url, '_blank', 'noopener,noreferrer')}
+              className="text-sm bg-bg border-2 border-border p-4 cursor-pointer hover:border-accent"
+            >
+              Open on GitHub
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedId(null)}
+              className="text-sm bg-bg border-2 border-border p-4 cursor-pointer hover:border-accent"
+            >
+              Close details
+            </button>
+          </div>
+        </div>
+      )}
     </Modal>
   );
 }

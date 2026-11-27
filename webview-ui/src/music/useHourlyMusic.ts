@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import {
   MUSIC_DRIFT_TOLERANCE_SEC,
+  MUSIC_RESUME_CHECK_MS,
   MUSIC_RESYNC_CHECK_MS,
   MUSIC_SEEK_LEAD_SEC,
   MUSIC_URL_CHANGED_EVENT,
@@ -156,6 +157,36 @@ export function useHourlyMusic(host: React.RefObject<HTMLDivElement | null>) {
     }, MUSIC_RESYNC_CHECK_MS);
     return () => clearInterval(id);
   }, [on, sync]);
+
+  // Coming back to the app (e.g. after "Open on GitHub" sent it to the background) pauses the
+  // iframe on iOS. Try to resume; if iOS refuses without a tap, show the music as off so one tap
+  // on the music button restarts it.
+  useEffect(() => {
+    let check: number | undefined;
+    const resume = () => {
+      if (document.visibilityState === 'hidden' || !wantOn.current) return;
+      const p = player.current;
+      if (!p || !ready.current || p.getPlayerState() === YT_PLAYING) return;
+      p.playVideo();
+      sync();
+      window.clearTimeout(check);
+      check = window.setTimeout(() => {
+        if (wantOn.current && player.current?.getPlayerState() !== YT_PLAYING) {
+          wantOn.current = false;
+          setOn(false);
+        }
+      }, MUSIC_RESUME_CHECK_MS);
+    };
+    document.addEventListener('visibilitychange', resume);
+    window.addEventListener('pageshow', resume);
+    window.addEventListener('focus', resume);
+    return () => {
+      window.clearTimeout(check);
+      document.removeEventListener('visibilitychange', resume);
+      window.removeEventListener('pageshow', resume);
+      window.removeEventListener('focus', resume);
+    };
+  }, [sync]);
 
   /** Must run inside the tap handler so iOS allows sound. */
   const toggle = useCallback(() => {
