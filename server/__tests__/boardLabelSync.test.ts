@@ -38,6 +38,9 @@ describe('planLabelChanges', () => {
   it('leaves a card alone when its column did not change', () => {
     expect(planLabelChanges([item(1, 'coding', [])], { 'o/r#1': 'coding' })).toEqual([]);
   });
+  it('skips cards labelled local-only', () => {
+    expect(planLabelChanges([item(1, 'ready', ['local-only'])], { 'o/r#1': 'new' })).toEqual([]);
+  });
   it('skips when labels already agree', () => {
     expect(planLabelChanges([item(1, 'review', ['in-review'])], { 'o/r#1': 'coding' })).toEqual([]);
   });
