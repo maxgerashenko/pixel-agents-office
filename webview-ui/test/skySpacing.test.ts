@@ -20,6 +20,7 @@ import {
   setSkyTasks,
   skyMotionKind,
   skyStateForTest,
+  trackOfStatus,
   type SkyTask,
 } from '../src/office/engine/skyTasks.js';
 
@@ -36,20 +37,22 @@ beforeEach(() => {
   setSkyNight(0);
 });
 
-/** The closest two cruising flyers are along the orbit, in canvas pixels (Infinity when fewer than two). */
+/** The closest two cruising flyers on one track are along it, in canvas pixels (Infinity when none share a track). */
 function closest(ids: string[], sec: number): number {
-  const xs = ids
-    .filter((id) => {
-      const p = skyStateForTest(id, sec, W, H, PX);
-      return p && skyMotionKind(id) === 'cruise';
-    })
-    .map((id) => skyStateForTest(id, sec, W, H, PX)!.x);
+  const byTrack = new Map<number | null, number[]>();
+  for (const id of ids) {
+    const p = skyStateForTest(id, sec, W, H, PX);
+    if (!p || skyMotionKind(id) !== 'cruise') continue;
+    const track = trackOfStatus({ id, title: id, stage: 'coding' });
+    byTrack.set(track, [...(byTrack.get(track) ?? []), p.x]);
+  }
   let best = Infinity;
-  for (let i = 0; i < xs.length; i++)
-    for (let j = i + 1; j < xs.length; j++) {
-      const d = Math.abs(xs[i] - xs[j]);
-      best = Math.min(best, d, SPAN - d);
-    }
+  for (const xs of byTrack.values())
+    for (let i = 0; i < xs.length; i++)
+      for (let j = i + 1; j < xs.length; j++) {
+        const d = Math.abs(xs[i] - xs[j]);
+        best = Math.min(best, d, SPAN - d);
+      }
   return best;
 }
 
@@ -80,13 +83,13 @@ test('a crowded orbit shares its length evenly instead of asking for the impossi
 });
 
 test('flyers that start together on one orbit are spread beyond the minimum gap', () => {
-  const ids = ['a', 'b', 'c', 'd', 'e'];
+  const ids = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j'];
   setSkyTasks(ids.map((id) => t(id, 'coding')));
   assert.ok(closest(ids, 0) >= MIN_PX);
 });
 
 test('several take-offs at once never end up closer than the minimum gap', () => {
-  const ids = ['a', 'b', 'c', 'd'];
+  const ids = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j'];
   setSkyTasks(ids.map((id) => t(id, 'plan_ready')));
   skyStateForTest('a', 0, W, H, PX);
   setSkyTasks(ids.map((id) => t(id, 'coding')));
@@ -143,7 +146,7 @@ test('a task that changes orbit onto an occupied spot drifts clear without jumpi
 
 test('the gap holds at night too, where a rocket climbs to the track', () => {
   setSkyNight(1);
-  const ids = ['a', 'b', 'c'];
+  const ids = ['a', 'b', 'c', 'd', 'e', 'f', 'g'];
   setSkyTasks(ids.map((id) => t(id, 'plan_ready')));
   skyStateForTest('a', 0, W, H, PX);
   setSkyTasks(ids.map((id) => t(id, 'testing')));

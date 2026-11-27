@@ -1096,13 +1096,13 @@ export const SKY_TASK_STAGES = [
 ] as const;
 /** Plane body colour per stage, in stage order. */
 export const SKY_TASK_COLORS = [
-  '#9aa0b4',
-  '#f2c14e',
-  '#f08a3c',
-  '#6aa8e8',
-  '#ffd23f',
-  '#6fd36f',
-  '#b48ae8',
+  '#4f8df7',
+  '#ffd83a',
+  '#ffd83a',
+  '#4f8df7',
+  '#f0503c',
+  '#5fe04f',
+  '#ff7ac8',
   '#ffffff',
 ];
 export const SKY_TASK_TRAIL_COLOR = '#ffffff';
@@ -1121,13 +1121,13 @@ export const SKY_TASK_PLANE_SCALE = 1;
 export const SKY_TASK_PLANE_TRAIL_GAP = 9;
 export const SKY_TASK_SAT_TRAIL_GAP = 6;
 /** Parallel orbits, one per flying status (designing, coding, testing), all the same arc, each shifted up by a gap (fractions of the skyline height). The other statuses wait on the airfield instead. */
-export const SKY_TASK_TRACKS = 3;
+export const SKY_TASK_TRACKS = 5;
 /** The statuses that fly an orbit, low to high. The other statuses wait on the airfield. */
-export const SKY_TASK_FLYING_STAGES = ['designing', 'coding', 'testing'] as const;
+export const SKY_TASK_FLYING_STAGES = ['coding', 'testing'] as const;
 export const SKY_TASK_GROUND = 0.97;
 export const SKY_TASK_TRACK_GAP = 0.09;
 /** Flyers on one orbit stay at least this many sprite pixels apart along it (a plane is 14 long). */
-export const SKY_TASK_MIN_GAP = 26;
+export const SKY_TASK_MIN_GAP = 22;
 /** A flyer pushed by a neighbour drifts at most this many sprite pixels per second off its normal speed. */
 export const SKY_TASK_NUDGE_PX_PER_SEC = 5;
 /** A take-off waits on the ground until its joining point is clear, checked in these steps. */
@@ -1149,10 +1149,12 @@ export const SKY_AIRFIELD_HEIGHT_MAX = 60;
 /** In the woods right of the office (when the gap there is wide enough) the field is long:
  *  it starts this far below the skyline and takes this share of the height below it. */
 export const SKY_AIRFIELD_WOODS_TOP = 18;
-export const SKY_AIRFIELD_WOODS_HEIGHT_SHARE = 0.58;
+export const SKY_AIRFIELD_WOODS_HEIGHT_SHARE = 0.78;
 /** Sprite pixels between the trees standing down each side of the field. */
 export const SKY_AIRFIELD_TREE_STEP = 20;
-export const SKY_AIRFIELD_WOODS_HEIGHT_MAX = 130;
+export const SKY_AIRFIELD_WOODS_HEIGHT_MAX = 190;
+/** With room for two fields in the woods they stand side by side, this many sprite pixels apart, each as long as the single field. */
+export const SKY_AIRFIELD_TWIN_GAP = 3;
 /** Gap between the airfield and the right edge of the sky. */
 export const SKY_AIRFIELD_MARGIN = 3;
 /** Gap between the village and the airfield. */
@@ -1169,7 +1171,7 @@ export const SKY_AIRFIELD_RUNWAY_W = 9;
 export const SKY_AIRFIELD_TAXI_ROW_FROM_BOTTOM = 6;
 export const SKY_AIRFIELD_TAXI_BAND_H = 6;
 /** Parked planes are this far apart (a plane is 9 long). */
-export const SKY_AIRFIELD_SLOT_PITCH = 11;
+export const SKY_AIRFIELD_SLOT_PITCH = 10;
 /** Seconds each leg of a take-off and a landing takes. */
 export const SKY_AIRFIELD_TAKEOFF_TAXI_SEC = [0.5, 0.7, 0.6] as const;
 export const SKY_AIRFIELD_TAKEOFF_ROLL_SEC = 1.8;
@@ -1233,11 +1235,19 @@ export const SKY_BEACON_GLOW_ALPHA = 0.3;
 export const SKY_BEACON_BASE_COLOR = '#1c1c24';
 export const SKY_BEACON_RIM_COLOR = '#b3322a';
 export const SKY_BEACON_COLORS = {
-  plan_ready: { dome: '#4aa3ff', core: '#d2e8ff', glow: '#6fb8ff' },
-  needs_decision: { dome: '#ffd23f', core: '#fff3b0', glow: '#ffe066' },
-  ready: { dome: '#3ddc5a', core: '#c4ffd0', glow: '#4fe070' },
-  in_review: { dome: '#3ddc5a', core: '#c4ffd0', glow: '#4fe070' },
+  designing: { dome: '#4f8df7', core: '#d2e4ff', glow: '#6fa3ff' },
+  plan_ready: { dome: '#4f8df7', core: '#d2e4ff', glow: '#6fa3ff' },
+  needs_decision: { dome: '#f0503c', core: '#ffd0c8', glow: '#ff7a68' },
+  ready: { dome: '#5fe04f', core: '#d0ffc8', glow: '#7aef6c' },
+  in_review: { dome: '#ff7ac8', core: '#ffd6ee', glow: '#ff9ad6' },
 } as const;
+/** The technician beside a parked design or ready task (3 x 5 sprite pixels): hard hat, hi-vis vest, trousers, skin. */
+export const SKY_TECH_HAT_COLOR = '#ffd83a';
+export const SKY_TECH_SKIN_COLOR = '#f0c8a0';
+export const SKY_TECH_VEST_COLOR = '#ff8a2a';
+export const SKY_TECH_LEGS_COLOR = '#2c3350';
+/** Seconds per arm swing of the working technician. */
+export const SKY_TECH_WORK_SEC = 0.6;
 /** The "#N" pull request number under each parked plane or rocket: text colour, shadow, size in sprite pixels, gap below the bay centre. */
 export const SKY_PR_NUMBER_COLOR = 'rgba(255, 255, 255, 0.95)';
 export const SKY_PR_NUMBER_SHADOW_COLOR = 'rgba(10, 10, 20, 0.85)';

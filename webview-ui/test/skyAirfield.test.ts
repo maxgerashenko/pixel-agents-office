@@ -20,7 +20,9 @@ import {
 import {
   drawGroundPlanes,
   lotOfStage,
-  orbitOfStage,
+  flies,
+  trackOfStatus,
+  placeTasks,
   resetSkyMotion,
   setSkyNight,
   setSkyTasks,
@@ -43,21 +45,39 @@ beforeEach(() => {
   setSkyNight(0);
 });
 
-test('designing, coding and testing fly an orbit, low to high; the rest wait on the ground', () => {
-  assert.equal(orbitOfStage('designing'), 0);
-  assert.equal(orbitOfStage('coding'), 1);
-  assert.equal(orbitOfStage('testing'), 2);
-  for (const parked of ['plan_ready', 'needs_decision', 'ready', 'in_review'] as const) {
-    assert.equal(orbitOfStage(parked), null, parked);
+test('only coding (and its tests) fly; design, ready, decision and review wait on the ground', () => {
+  assert.equal(flies('coding'), true);
+  assert.equal(flies('testing'), true);
+  for (const parked of [
+    'designing',
+    'plan_ready',
+    'needs_decision',
+    'ready',
+    'in_review',
+  ] as const) {
+    assert.equal(flies(parked), false, parked);
   }
 });
 
-test('plan ready, needs decision and ready park in the left lot, in review in the right', () => {
-  for (const left of ['plan_ready', 'needs_decision', 'ready'] as const) {
+test('design, ready and needs decision park in the left lot, in review in the right', () => {
+  for (const left of ['designing', 'plan_ready', 'needs_decision', 'ready'] as const) {
     assert.equal(lotOfStage(left), 'left', left);
   }
   assert.equal(lotOfStage('in_review'), 'right');
   assert.equal(lotOfStage('coding'), null);
+});
+
+test('coding tasks each fly their own track, kept while they fly', () => {
+  const list = ['a', 'b', 'c', 'd'].map((id) => ({ id, title: id, stage: 'coding' as const }));
+  const places = placeTasks(list);
+  assert.equal(new Set(places.map((p) => p.orbit)).size, 4);
+  const first = list.map((t) => trackOfStatus(t));
+  placeTasks(list.slice(1));
+  assert.deepEqual(
+    list.slice(1).map((t) => trackOfStatus(t)),
+    first.slice(1),
+  );
+  assert.equal(trackOfStatus({ id: 'x', title: 'x', stage: 'ready' }), null);
 });
 
 test('the airfield sits at the right of the sky, left lot before right lot', () => {
@@ -311,10 +331,14 @@ function assertReadyCrew(w: number, h: number, px: number, sec: number): void {
 }
 const colours = coloursAroundBay;
 
-test('a parked task has a lit beacon; plan ready, needs decision and ready/in review are three colours', () => {
+test('a parked task has a lit beacon: design blue, ready green, decision red, review pink', () => {
   const domeOf = (stage: keyof typeof SKY_BEACON_COLORS): string => SKY_BEACON_COLORS[stage].dome;
-  assert.equal(new Set([domeOf('plan_ready'), domeOf('needs_decision'), domeOf('ready')]).size, 3);
-  assert.equal(domeOf('ready'), domeOf('in_review'));
+  assert.equal(
+    new Set([domeOf('plan_ready'), domeOf('needs_decision'), domeOf('ready'), domeOf('in_review')])
+      .size,
+    4,
+  );
+  assert.equal(domeOf('designing'), domeOf('plan_ready'));
   for (const stage of ['plan_ready', 'needs_decision', 'ready', 'in_review'] as const) {
     for (const night of [0, 1]) {
       resetSkyMotion();
@@ -453,5 +477,21 @@ test('a plan or tests number stands outside the field edge on the left, level wi
     assert.ok(label, stage);
     assert.equal(label.align, 'right');
     assert.ok(label.x <= field.left, 'left of the field edge');
+  }
+});
+
+test('with room for two fields in the woods they stand side by side, bays alternate between them', () => {
+  const office = { x: 0, y: 200, w: 300, h: 400 };
+  setAirfieldSite({ h: 800, office });
+  try {
+    const wide = airfieldLayout(1600, 200, PX);
+    assert.ok(wide.twinDx > wide.width, 'a small gap between two fields');
+    const [x0] = slotPoint(wide, 'left', 0);
+    const [x1] = slotPoint(wide, 'left', wide.slotRows);
+    assert.equal(x1 - x0, wide.twinDx);
+    const single = airfieldLayout(300 + 54 * PX + 30, 200, PX);
+    assert.equal(single.twinDx, 0);
+  } finally {
+    setAirfieldSite(null);
   }
 });
