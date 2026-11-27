@@ -259,6 +259,23 @@ test('beside a full-size office the field narrows to a strip, a tiny gap off the
   }
 });
 
+test('in the woods the field sits low: the gap under it is half what it was, never negative', () => {
+  const office = { x: 100, y: 200, w: 600, h: 400 };
+  const w = office.x + office.w + 400;
+  setAirfieldSite({ h: 700, office });
+  try {
+    const f = airfieldLayout(w, 150, 6);
+    assert.equal(f.strip, false);
+    const oldTop = Math.round((150 + 18 * 6) / 6) * 6;
+    const oldGap = 700 - (oldTop + f.height);
+    const gap = 700 - (f.top + f.height);
+    assert.ok(gap >= 0);
+    assert.ok(Math.abs(gap - oldGap / 2) <= 6);
+  } finally {
+    setAirfieldSite(null);
+  }
+});
+
 // ── Beacons: a siren on every parked task ──────────────────────
 
 const GREEN_SIREN: string = SKY_BEACON_COLORS.in_review.dome;
