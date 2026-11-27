@@ -33,12 +33,12 @@ export type IssueBoardStatus = (typeof ISSUE_BOARD_STATUSES)[number];
  * these labels, so the office and the board agree.
  */
 const FLOW_LABEL_TO_STATUS_IN_PRIORITY_ORDER: ReadonlyArray<[string, IssueBoardStatus]> = [
-  ['needs-decision', 'needs_decision'],
+  ['decision', 'needs_decision'],
   ['blocked', 'blocked'],
-  ['in-review', 'in_review'],
-  ['in-progress', 'in_progress'],
-  ['status:ready', 'ready'],
-  ['needs-design', 'needs_design'],
+  ['review', 'in_review'],
+  ['coding', 'in_progress'],
+  ['ready', 'ready'],
+  ['design', 'needs_design'],
 ];
 
 /** What the agent is doing on a card, for the sky: set only for needs design and in progress. */

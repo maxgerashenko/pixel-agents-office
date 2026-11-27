@@ -1469,3 +1469,15 @@ export const CLOUD_TITLE_MAX_CHARS = 60;
 
 /** After returning to the app, how long to wait for the music to resume before showing it as off. */
 export const MUSIC_RESUME_CHECK_MS = 2000;
+
+// ── Board sync craft (ISS + hot-air balloon blink once per Mac sync tick) ──
+export const SYNC_POLL_MS = 30_000;
+export const SYNC_FLASH_MS = 1500;
+/** The lamp beats shallowly every SYNC_BEAT_MS (SYNC_BEAT_PULSE_MS lit), rests dim between beats, flashes white on a tick. */
+export const SYNC_BEAT_MS = 5000;
+export const SYNC_BEAT_PULSE_MS = 500;
+export const SYNC_LAMP_DIM_COLOR = '#7a5a28';
+export const SYNC_LAMP_COLOR = '#ffe27a';
+export const SYNC_LAMP_FLASH_COLOR = '#ffffff';
+export const SYNC_FLAME_OUTER_COLOR = '#ff4d00';
+export const SYNC_FLAME_INNER_COLOR = '#ffe27a';
