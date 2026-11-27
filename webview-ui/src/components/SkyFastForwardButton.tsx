@@ -8,6 +8,7 @@ import {
   SKY_BUTTON_SCALE,
   SYNC_FLAME_INNER_COLOR,
   SYNC_FLAME_OUTER_COLOR,
+  SYNC_LAMP_DIM_COLOR,
   SYNC_LAMP_FLASH_COLOR,
 } from '../constants.js';
 import { isCelebrating, subscribeCelebrating } from '../office/engine/mergeCelebrationEvents.js';
@@ -85,6 +86,7 @@ export function SkyFastForwardButton({ className = '' }: { className?: string })
     return () => clearInterval(id);
   }, []);
   const flashing = lamp === SYNC_LAMP_FLASH_COLOR;
+  const resting = lamp === SYNC_LAMP_DIM_COLOR;
 
   // a merge celebration draws the sprite itself, so the button's own steps aside
   const celebrating = useSyncExternalStore(subscribeCelebrating, isCelebrating);
@@ -115,27 +117,32 @@ export function SkyFastForwardButton({ className = '' }: { className?: string })
           {lamp && !night && (
             <>
               <rect
-                x={4}
-                y={flashing ? 10 : 11 - (beat % 2)}
-                width={3}
-                height={flashing ? 3 : 2 + (beat % 2)}
+                x={resting ? 5 : 4}
+                y={flashing ? 10 : resting ? 12 : 11 - (beat % 2)}
+                width={resting ? 1 : 3}
+                height={flashing ? 3 : resting ? 1 : 2 + (beat % 2)}
                 fill={SYNC_FLAME_OUTER_COLOR}
+                fillOpacity={resting ? 0.55 : 1}
               />
-              <rect
-                x={5}
-                y={flashing ? 11 : 12 - (beat % 2)}
-                width={1}
-                height={flashing ? 2 : 1 + (beat % 2)}
-                fill={flashing ? lamp : SYNC_FLAME_INNER_COLOR}
-              />
+              {!resting && (
+                <rect
+                  x={5}
+                  y={flashing ? 11 : 12 - (beat % 2)}
+                  width={1}
+                  height={flashing ? 2 : 1 + (beat % 2)}
+                  fill={flashing ? lamp : SYNC_FLAME_INNER_COLOR}
+                />
+              )}
             </>
           )}
           {lamp && night && (
             <>
               <rect x={8} y={2} width={1} height={1} fill={lamp} />
               <rect x={8} y={6} width={1} height={1} fill={lamp} />
-              <rect x={flashing ? 1 : 0} y={flashing ? 1 : 0} width={1} height={1} fill={lamp} />
-              <rect x={flashing ? 15 : 16} y={flashing ? 5 : 6} width={1} height={1} fill={lamp} />
+              {!resting && <rect x={0} y={0} width={1} height={1} fill={lamp} />}
+              {!resting && <rect x={16} y={6} width={1} height={1} fill={lamp} />}
+              {flashing && <rect x={1} y={1} width={1} height={1} fill={lamp} />}
+              {flashing && <rect x={15} y={5} width={1} height={1} fill={lamp} />}
             </>
           )}
         </PixelSprite>

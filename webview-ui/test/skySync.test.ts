@@ -4,12 +4,12 @@ import { syncLampColor } from '../src/office/engine/skySync.js';
 
 describe('syncLampColor', () => {
   const live = { liveness: 'live' as const, lastTickAt: 10_000 };
-  it('flashes right after a tick, glows steady later', () => {
+  it('flashes on a tick, beats every 5 s, rests dim between', () => {
     const flash = syncLampColor(live, 10_500);
-    const steady = syncLampColor(live, 60_000);
-    expect(flash).not.toBeNull();
-    expect(steady).not.toBeNull();
-    expect(flash).not.toBe(steady);
+    const beat = syncLampColor(live, 40_200);
+    const rest = syncLampColor(live, 42_000);
+    expect(new Set([flash, beat, rest]).size).toBe(3);
+    expect(syncLampColor(live, 45_100)).toBe(beat);
   });
   it('is dark when stale or off', () => {
     expect(syncLampColor({ liveness: 'stale', lastTickAt: 0 }, 5)).toBeNull();
