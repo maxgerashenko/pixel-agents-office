@@ -90,8 +90,8 @@ export function columnOfLabels(labels: string[]): string {
  * that direction. Done never changes labels (it would also have to close the issue), and a
  * card with no earlier sighting is only recorded.
  */
-/** Issues with this label are skipped by the sync, so the cloud picker never sees them as ready. */
-export const LOCAL_ONLY_LABEL = 'local-only';
+/** Issues with one of these labels are skipped by the sync, so the cloud picker never sees them as ready. */
+export const LOCAL_ONLY_LABELS = ['local-only', 'runs-on:mac'];
 
 export function planLabelChanges(
   items: BoardItem[],
@@ -102,7 +102,7 @@ export function planLabelChanges(
     const previous = lastSeen[itemKey(item)];
     if (previous === undefined || previous === item.status) continue;
     // Mac-only work stays out of the cloud picker's hands: never touch its labels.
-    if (item.labels.includes(LOCAL_ONLY_LABEL)) continue;
+    if (item.labels.some((l) => LOCAL_ONLY_LABELS.includes(l))) continue;
     if (item.status === 'done' || !(item.status in LABEL_OF_COLUMN)) continue;
     const labelColumn = columnOfLabels(item.labels);
     if (labelColumn === item.status) continue;
