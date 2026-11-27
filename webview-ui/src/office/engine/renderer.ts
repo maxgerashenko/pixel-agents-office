@@ -32,6 +32,17 @@ import {
   GRID_LINE_COLOR,
   HEADLESS_CHARACTER_ALPHA,
   HOVERED_OUTLINE_ALPHA,
+  MISSION_SCREEN_COLORS,
+  MISSION_SCREEN_COLUMN_W,
+  MISSION_SCREEN_DIGIT_GAP,
+  MISSION_SCREEN_DIGIT_W,
+  MISSION_SCREEN_DIGIT_Y,
+  MISSION_SCREEN_INNER_X,
+  MISSION_SCREEN_LABEL_GLYPH_GAP,
+  MISSION_SCREEN_LABEL_GLYPH_W,
+  MISSION_SCREEN_LABEL_GLYPHS,
+  MISSION_SCREEN_LABEL_SCALE,
+  MISSION_SCREEN_LABEL_Y,
   OUTLINE_Z_SORT_OFFSET,
   REACTION_EMOTE_Z_OFFSET,
   ROTATE_BUTTON_BG,
@@ -93,6 +104,12 @@ import { getWallInstances, hasWallSprites, wallColorToHex } from '../wallTiles.j
 import { characterDrawOffsetY, getCharacterSprite } from './characters.js';
 import { clockHands, currentClockTime } from './clockHands.js';
 import { renderMatrixEffect } from './matrixEffect.js';
+import {
+  digitRects,
+  MISSION_SCREEN_COLUMNS,
+  missionDigits,
+  type MissionScreenPlate,
+} from './missionScreen.js';
 import { getPetSpriteData } from './petEntity.js';
 import { drawReactionEmote } from './reactionEmote.js';
 import { headTopRowOf, reactionHopPx, reactionShakePx } from './reactions.js';
@@ -451,6 +468,57 @@ function renderWhiteboardPlates(
       });
       x += WHITEBOARD_GLYPH_W * WHITEBOARD_GLYPH_STROKE + WHITEBOARD_GLYPH_GAP;
     }
+  }
+  ctx.restore();
+}
+
+/** Mission screens: the board's five status counts as big seven-segment digits, each with its status name under it. */
+function renderMissionScreens(
+  ctx: CanvasRenderingContext2D,
+  plates: MissionScreenPlate[],
+  offsetX: number,
+  offsetY: number,
+  zoom: number,
+): void {
+  // The names are drawn in whole device pixels, smaller than a sprite pixel; at zoom 1 they cannot fit
+  const unit = Math.max(1, Math.floor(zoom * MISSION_SCREEN_LABEL_SCALE));
+  const pitch = MISSION_SCREEN_LABEL_GLYPH_W + MISSION_SCREEN_LABEL_GLYPH_GAP;
+  const pairW = MISSION_SCREEN_DIGIT_W * 2 + MISSION_SCREEN_DIGIT_GAP;
+  ctx.save();
+  for (const p of plates) {
+    const left = Math.round(offsetX + p.x * zoom);
+    const top = Math.round(offsetY + p.y * zoom);
+    MISSION_SCREEN_COLUMNS.forEach(({ label }, i) => {
+      ctx.fillStyle = MISSION_SCREEN_COLORS[i];
+      const colX = MISSION_SCREEN_INNER_X + i * MISSION_SCREEN_COLUMN_W;
+      const pairX = colX + Math.floor((MISSION_SCREEN_COLUMN_W - pairW) / 2);
+      missionDigits(p.counts[i] ?? 0)
+        .split('')
+        .forEach((d, di) => {
+          const dx = pairX + di * (MISSION_SCREEN_DIGIT_W + MISSION_SCREEN_DIGIT_GAP);
+          for (const [x, y, w, h] of digitRects(d)) {
+            ctx.fillRect(
+              left + (dx + x) * zoom,
+              top + (MISSION_SCREEN_DIGIT_Y + y) * zoom,
+              w * zoom,
+              h * zoom,
+            );
+          }
+        });
+      if (zoom < 2) return;
+      const labelW = (label.length * pitch - MISSION_SCREEN_LABEL_GLYPH_GAP) * unit;
+      const labelX =
+        left + Math.round(((colX + MISSION_SCREEN_COLUMN_W / 2) * zoom - labelW / 2) / unit) * unit;
+      const labelY = top + MISSION_SCREEN_LABEL_Y * zoom;
+      label.split('').forEach((ch, ci) => {
+        (MISSION_SCREEN_LABEL_GLYPHS[ch] ?? []).forEach((bits, ry) => {
+          for (let cx = 0; cx < MISSION_SCREEN_LABEL_GLYPH_W; cx++) {
+            if (!(bits & (1 << (MISSION_SCREEN_LABEL_GLYPH_W - 1 - cx)))) continue;
+            ctx.fillRect(labelX + (ci * pitch + cx) * unit, labelY + ry * unit, unit, unit);
+          }
+        });
+      });
+    });
   }
   ctx.restore();
 }
@@ -1114,6 +1182,7 @@ export function renderFrame(
   balls?: TableBall[],
   scores?: TableScore[],
   whiteboards?: WhiteboardPlate[],
+  missionScreens?: MissionScreenPlate[],
 ): { offsetX: number; offsetY: number } {
   // Clear, then the day/night sky (visible wherever the layout doesn't cover)
   ctx.clearRect(0, 0, canvasWidth, canvasHeight);
@@ -1188,6 +1257,9 @@ export function renderFrame(
   }
   if (whiteboards && whiteboards.length > 0) {
     renderWhiteboardPlates(ctx, whiteboards, offsetX, offsetY, zoom);
+  }
+  if (missionScreens && missionScreens.length > 0) {
+    renderMissionScreens(ctx, missionScreens, offsetX, offsetY, zoom);
   }
 
   // Character speech bubbles render in ToolOverlay (DOM, above the labels).
