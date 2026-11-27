@@ -68,7 +68,7 @@ export function WhiteboardModal({ isOpen, onClose }: { isOpen: boolean; onClose:
         {selected && (
           <div
             data-testid="issue-details"
-            className="absolute inset-x-4 top-4 z-10 flex items-start gap-4 border-2 border-border bg-bg-dark p-4 text-text overflow-auto"
+            className="absolute inset-x-4 top-4 z-10 flex items-start gap-[16px] border-2 border-border bg-bg-dark p-4 text-text overflow-auto"
           >
             <div className="flex-1 min-w-0">
               <div className="text-accent-bright">#{selected.number}</div>
@@ -82,7 +82,7 @@ export function WhiteboardModal({ isOpen, onClose }: { isOpen: boolean; onClose:
               data-testid="issue-open-github"
               disabled={!isOpenableIssueUrl(selected.url)}
               onClick={() => window.open(selected.url, '_blank', 'noopener,noreferrer')}
-              className="flex-none text-sm bg-bg border-2 border-border p-4 cursor-pointer hover:border-accent"
+              className="flex-none text-sm bg-bg border-2 border-border px-[16px] py-[10px] cursor-pointer hover:border-accent"
             >
               Open on GitHub
             </button>
@@ -91,7 +91,7 @@ export function WhiteboardModal({ isOpen, onClose }: { isOpen: boolean; onClose:
               data-testid="issue-details-close"
               aria-label="Close details"
               onClick={() => setSelectedId(null)}
-              className="flex-none text-sm bg-bg border-2 border-border p-4 cursor-pointer hover:border-accent"
+              className="flex-none text-sm bg-bg border-2 border-border px-[16px] py-[10px] cursor-pointer hover:border-accent"
             >
               X
             </button>
