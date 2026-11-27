@@ -1155,6 +1155,8 @@ export const SKY_AIRFIELD_TREE_STEP = 20;
 export const SKY_AIRFIELD_WOODS_HEIGHT_MAX = 190;
 /** With room for two fields in the woods they stand side by side, this many sprite pixels apart, each as long as the single field. */
 export const SKY_AIRFIELD_TWIN_GAP = 3;
+/** A field in the woods stays this many CSS pixels from the right edge, clear of the zoom (+/-) buttons in the bottom-right corner. */
+export const SKY_AIRFIELD_CONTROLS_RESERVE_CSS_PX = 56;
 /** Gap between the airfield and the right edge of the sky. */
 export const SKY_AIRFIELD_MARGIN = 3;
 /** Gap between the village and the airfield. */

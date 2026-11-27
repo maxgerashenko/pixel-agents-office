@@ -10,7 +10,7 @@ import assert from 'node:assert/strict';
 
 import { beforeEach, test } from 'vitest';
 
-import { SKY_BEACON_COLORS } from '../src/constants.js';
+import { SKY_AIRFIELD_CONTROLS_RESERVE_CSS_PX, SKY_BEACON_COLORS } from '../src/constants.js';
 import {
   airfieldLayout,
   prNumberOfTaskId,
@@ -260,7 +260,7 @@ test('a plan with a link is a button over its bay too', () => {
 test('beside a full-size office the field narrows to a strip, a tiny gap off the office, parking on the right', () => {
   const office = { x: 100, y: 200, w: 1000, h: 400 };
   // 173px gap at 6px per sprite pixel: too narrow for the full field, wide enough for a strip
-  const w = office.x + office.w + 173;
+  const w = office.x + office.w + 173 + SKY_AIRFIELD_CONTROLS_RESERVE_CSS_PX;
   setAirfieldSite({ h: 700, office });
   try {
     const f = airfieldLayout(w, 150, 6);
@@ -282,7 +282,7 @@ test('beside a full-size office the field narrows to a strip, a tiny gap off the
 
 test('in the woods the field sits low: the gap under it is half what it was, never negative', () => {
   const office = { x: 100, y: 200, w: 600, h: 400 };
-  const w = office.x + office.w + 400;
+  const w = office.x + office.w + 400 + SKY_AIRFIELD_CONTROLS_RESERVE_CSS_PX;
   setAirfieldSite({ h: 700, office });
   try {
     const f = airfieldLayout(w, 150, 6);
@@ -377,7 +377,7 @@ test('a task that lands, or moves into in review from needs decision or plan rea
 
 test('the strip beside the office crews a ready-to-merge plane the same way', () => {
   const office = { x: 100, y: 200, w: 1000, h: 400 };
-  const w = office.x + office.w + 173;
+  const w = office.x + office.w + 173 + SKY_AIRFIELD_CONTROLS_RESERVE_CSS_PX;
   setAirfieldSite({ h: 700, office });
   try {
     for (const night of [0, 0.5, 1]) {

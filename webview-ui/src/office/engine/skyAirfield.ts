@@ -4,6 +4,7 @@
  * above like a map. Pure geometry plus the static drawing; the tasks' planes live in skyTasks.
  */
 import {
+  SKY_AIRFIELD_CONTROLS_RESERVE_CSS_PX,
   SKY_AIRFIELD_GRASS_COLORS,
   SKY_AIRFIELD_HEIGHT_MAX,
   SKY_AIRFIELD_HEIGHT_MIN,
@@ -111,7 +112,10 @@ function woodsTop(horizonY: number, hU: number, px: number, siteH: number): numb
  */
 export function airfieldLayout(w: number, horizonY: number, px: number): Airfield {
   const wU = SKY_AIRFIELD_WIDTH;
-  const gap = site ? w - (site.office.x + site.office.w) : 0;
+  // a field standing in the woods keeps clear of the zoom buttons in the bottom-right corner
+  const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
+  const woodsRight = w - Math.round(SKY_AIRFIELD_CONTROLS_RESERVE_CSS_PX * dpr);
+  const gap = site ? woodsRight - (site.office.x + site.office.w) : 0;
   const inWoods = site !== null && gap >= (wU + 2 * SKY_AIRFIELD_MARGIN) * px;
   const twin = inWoods && gap >= (2 * wU + SKY_AIRFIELD_TWIN_GAP + 2 * SKY_AIRFIELD_MARGIN) * px;
   const stripW =
@@ -133,7 +137,7 @@ export function airfieldLayout(w: number, horizonY: number, px: number): Airfiel
       ),
     );
     const total = (twin ? 2 * wU + SKY_AIRFIELD_TWIN_GAP : wU) * px;
-    left = Math.round((w - gap / 2 - total / 2) / px) * px;
+    left = Math.round((woodsRight - gap / 2 - total / 2) / px) * px;
     top = woodsTop(horizonY, hU, px, site.h);
   } else {
     hU = Math.max(
