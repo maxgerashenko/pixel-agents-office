@@ -66,7 +66,7 @@ function WeekLine({
   ].filter(Boolean);
   return (
     <div
-      className="relative h-8 border-2 border-border bg-bg-dark"
+      className="relative h-4 border border-border bg-bg-dark"
       role="progressbar"
       aria-label="Weekly limits"
       aria-valuemin={0}
