@@ -86,11 +86,15 @@ export function drawSyncCraft(
   if (lamp) {
     // Burner flame: a flickering orange tongue with a bright core, white-hot on a tick.
     const flashing = lamp === SYNC_LAMP_FLASH_COLOR;
-    const tall = flashing ? 3 : 2 + (Math.floor(nowSec * 8) % 2);
+    const tall = flashing ? 4 : 3 + (Math.floor(nowSec * 8) % 2);
+    const glowA = ctx.globalAlpha;
+    ctx.globalAlpha = glowA * (flashing ? 0.5 : 0.3);
     ctx.fillStyle = SYNC_FLAME_OUTER_COLOR;
+    ctx.fillRect(bx + 2 * bp, by + (8 - tall - 1) * bp, 4 * bp, (tall + 1) * bp);
+    ctx.globalAlpha = glowA;
     ctx.fillRect(bx + 3 * bp, by + (8 - tall) * bp, 2 * bp, tall * bp);
     ctx.fillStyle = lamp;
-    ctx.fillRect(bx + 3 * bp, by + (9 - tall) * bp, 2 * bp, (tall - 1) * bp);
+    ctx.fillRect(bx + 3.5 * bp, by + (9 - tall) * bp, bp, (tall - 1) * bp);
   }
   ctx.globalAlpha = prevAlpha;
 }
