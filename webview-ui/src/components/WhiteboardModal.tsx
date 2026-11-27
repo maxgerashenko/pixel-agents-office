@@ -19,10 +19,13 @@ export function WhiteboardModal({ isOpen, onClose }: { isOpen: boolean; onClose:
   // Where the tapped card sat, in px from the top of the board wrapper.
   const [tapTop, setTapTop] = useState(0);
   const [detailsTop, setDetailsTop] = useState(0);
+  // The tapped card's height: the details row is exactly as tall, so it replaces the card in place.
+  const [tapHeight, setTapHeight] = useState(0);
 
   const selectCard = (id: string, button: HTMLElement) => {
     const wrap = wrapRef.current;
     if (wrap) setTapTop(button.getBoundingClientRect().top - wrap.getBoundingClientRect().top);
+    setTapHeight(button.getBoundingClientRect().height);
     setSelectedId(id);
   };
 
@@ -44,7 +47,7 @@ export function WhiteboardModal({ isOpen, onClose }: { isOpen: boolean; onClose:
       max = Math.min(max, view.bottom - wrapTop - height);
     }
     setDetailsTop(Math.max(0, Math.min(tapTop, Math.max(min, max))));
-  }, [selectedId, tapTop]);
+  }, [selectedId, tapTop, tapHeight]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -67,7 +70,11 @@ export function WhiteboardModal({ isOpen, onClose }: { isOpen: boolean; onClose:
       className="min-w-[min(960px,100%)]!"
     >
       <div ref={wrapRef} className="relative">
-        <div data-testid="issue-board" className="flex gap-4 px-4 py-4 overflow-x-auto text-text">
+        <div
+          data-testid="issue-board"
+          onClick={() => setSelectedId(null)}
+          className="flex gap-4 px-4 py-4 overflow-x-auto text-text"
+        >
           {issueBoardColumns(cards).map((column) => (
             <section
               key={column.status}
@@ -83,7 +90,10 @@ export function WhiteboardModal({ isOpen, onClose }: { isOpen: boolean; onClose:
                     <button
                       type="button"
                       title={card.id}
-                      onClick={(e) => selectCard(card.id, e.currentTarget)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        selectCard(card.id, e.currentTarget);
+                      }}
                       className="w-full text-left text-sm bg-bg border-2 border-border p-4 cursor-pointer hover:border-accent"
                       style={{ lineHeight: 1.3 }}
                     >
@@ -100,22 +110,30 @@ export function WhiteboardModal({ isOpen, onClose }: { isOpen: boolean; onClose:
           <div
             ref={detailsRef}
             data-testid="issue-details"
-            style={{ top: detailsTop }}
-            className="absolute inset-x-4 z-10 flex items-center gap-[16px] border-2 border-border bg-bg-dark p-[24px] text-text overflow-auto"
+            style={{ top: detailsTop, height: tapHeight }}
+            className="absolute inset-x-0 z-10 flex items-center gap-[8px] border-2 border-border bg-bg-dark px-[12px] py-[4px] text-text overflow-hidden box-border"
           >
             <div className="flex-1 min-w-0">
-              <div className="text-accent-bright">#{selected.number}</div>
-              <div className="my-2 text-base" style={{ lineHeight: 1.3 }}>
+              <div
+                className="text-sm overflow-hidden"
+                style={{
+                  lineHeight: 1.2,
+                  display: '-webkit-box',
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: 'vertical',
+                }}
+              >
+                <span className="text-accent-bright">#{selected.number} </span>
                 {selected.title}
               </div>
-              <div className="text-sm text-text-muted">{issueDetailsLine(selected)}</div>
+              <div className="text-xs text-text-muted truncate">{issueDetailsLine(selected)}</div>
             </div>
             <button
               type="button"
               data-testid="issue-open-github"
               disabled={!isOpenableIssueUrl(selected.url)}
               onClick={() => window.open(selected.url, '_blank', 'noopener,noreferrer')}
-              className="flex-none text-sm bg-bg border-2 border-border px-[16px] py-[10px] cursor-pointer hover:border-accent"
+              className="flex-none text-sm bg-bg border-2 border-border px-[10px] py-[4px] cursor-pointer hover:border-accent"
             >
               Open on GitHub
             </button>
@@ -124,7 +142,7 @@ export function WhiteboardModal({ isOpen, onClose }: { isOpen: boolean; onClose:
               data-testid="issue-details-close"
               aria-label="Close details"
               onClick={() => setSelectedId(null)}
-              className="flex-none text-sm bg-bg border-2 border-border px-[16px] py-[10px] cursor-pointer hover:border-accent"
+              className="flex-none text-sm bg-bg border-2 border-border px-[10px] py-[4px] cursor-pointer hover:border-accent"
             >
               X
             </button>

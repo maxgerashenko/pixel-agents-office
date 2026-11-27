@@ -10,11 +10,11 @@ export type IssueBoardCardView = IssueBoardCard;
 /** The board's columns, left to right, with the names the GitHub board shows. */
 export const ISSUE_BOARD_COLUMNS: ReadonlyArray<{ status: IssueBoardStatus; label: string }> = [
   { status: 'new', label: 'New' },
-  { status: 'needs_design', label: 'Needs design' },
+  { status: 'needs_design', label: 'Design' },
   { status: 'ready', label: 'Ready' },
-  { status: 'in_progress', label: 'In progress' },
-  { status: 'in_review', label: 'In review' },
-  { status: 'needs_decision', label: 'Needs decision' },
+  { status: 'in_progress', label: 'Coding' },
+  { status: 'in_review', label: 'Review' },
+  { status: 'needs_decision', label: 'Decision' },
   { status: 'blocked', label: 'Blocked' },
   { status: 'done', label: 'Done' },
 ];
@@ -64,5 +64,6 @@ export function isOpenableIssueUrl(url: string): boolean {
 /** The details line for a card: its column name, plus its progress step when it has one. */
 export function issueDetailsLine(card: IssueBoardCardView): string {
   const column = ISSUE_BOARD_COLUMNS.find((c) => c.status === card.status)?.label ?? card.status;
-  return card.progress ? `${column} \u00b7 ${card.progress.replace('_', ' ')}` : column;
+  const step = card.progress?.replace('_', ' ');
+  return step && step !== column.toLowerCase() ? `${column} \u00b7 ${step}` : column;
 }
