@@ -1,7 +1,7 @@
 /**
- * Airfield in the task sky: plan tasks park on the left, a task moving to an active status
- * takes off and joins its orbit, a ready-to-merge task lands and parks on the right (green siren, no technician),
- * and every parked task carries its pull request number.
+ * Airfield in the task sky: plan ready, needs decision and ready tasks park on the left, a task moving to a flying status
+ * takes off and joins its orbit, an in review task lands and parks on the right (green siren),
+ * and every parked task carries its issue number.
  *
  * Run with: npm test
  */
@@ -10,7 +10,7 @@ import assert from 'node:assert/strict';
 
 import { beforeEach, test } from 'vitest';
 
-import { SKY_BEACON_COLORS, SKY_TECH_VEST_COLOR } from '../src/constants.js';
+import { SKY_BEACON_COLORS } from '../src/constants.js';
 import {
   airfieldLayout,
   prNumberOfTaskId,
@@ -19,6 +19,7 @@ import {
 } from '../src/office/engine/skyAirfield.js';
 import {
   drawGroundPlanes,
+  lotOfStage,
   orbitOfStage,
   resetSkyMotion,
   setSkyNight,
@@ -42,12 +43,21 @@ beforeEach(() => {
   setSkyNight(0);
 });
 
-test('only coding and review fly an orbit; plan, tests and ready wait on the ground', () => {
-  assert.equal(orbitOfStage('plan'), null);
-  assert.equal(orbitOfStage('tests'), null);
-  assert.equal(orbitOfStage('coding'), 0);
-  assert.equal(orbitOfStage('review'), 1);
-  assert.equal(orbitOfStage('ready_to_merge'), null);
+test('designing, coding and testing fly an orbit, low to high; the rest wait on the ground', () => {
+  assert.equal(orbitOfStage('designing'), 0);
+  assert.equal(orbitOfStage('coding'), 1);
+  assert.equal(orbitOfStage('testing'), 2);
+  for (const parked of ['plan_ready', 'needs_decision', 'ready', 'in_review'] as const) {
+    assert.equal(orbitOfStage(parked), null, parked);
+  }
+});
+
+test('plan ready, needs decision and ready park in the left lot, in review in the right', () => {
+  for (const left of ['plan_ready', 'needs_decision', 'ready'] as const) {
+    assert.equal(lotOfStage(left), 'left', left);
+  }
+  assert.equal(lotOfStage('in_review'), 'right');
+  assert.equal(lotOfStage('coding'), null);
 });
 
 test('the airfield sits at the right of the sky, left lot before right lot', () => {
@@ -57,20 +67,20 @@ test('the airfield sits at the right of the sky, left lot before right lot', () 
   assert.ok(field.runwayR < field.lotR);
 });
 
-test('a plan task is parked in the left lot, a ready one in the right lot', () => {
-  setSkyTasks([task('plan')]);
+test('a plan ready task is parked in the left lot, an in review one in the right lot', () => {
+  setSkyTasks([task('plan_ready')]);
   const p = at(0);
   assert.equal(p?.mode, 'ground');
   assert.ok(p && p.x < field.runwayL);
-  setSkyTasks([{ id: 'a', title: 'a', stage: 'ready_to_merge' }]);
+  setSkyTasks([{ id: 'a', title: 'a', stage: 'in_review' }]);
   resetSkyMotion();
   const r = at(0);
   assert.equal(r?.mode, 'ground');
   assert.ok(r && r.x > field.runwayR);
 });
 
-test('a plan task moving to coding rolls up the left runway, takes off and cruises', () => {
-  setSkyTasks([task('plan')]);
+test('a plan ready task moving to coding rolls up the left runway, takes off and cruises', () => {
+  setSkyTasks([task('plan_ready')]);
   at(0);
   setSkyTasks([task('coding')]);
   assert.equal(at(10)?.mode, 'ground');
@@ -85,10 +95,10 @@ test('a plan task moving to coding rolls up the left runway, takes off and cruis
 });
 
 test('a cruising task that becomes ready lands on the right runway and parks right', () => {
-  setSkyTasks([task('review')]);
+  setSkyTasks([task('testing')]);
   at(0);
   assert.equal(skyMotionKind('a'), 'cruise');
-  setSkyTasks([{ id: 'a', title: 'a', stage: 'ready_to_merge' }]);
+  setSkyTasks([{ id: 'a', title: 'a', stage: 'in_review' }]);
   let sec: number;
   let landed = false;
   for (sec = 0; sec < 120 && !landed; sec += 0.25) {
@@ -106,7 +116,7 @@ test('a cruising task that becomes ready lands on the right runway and parks rig
 test('a coding task that moves to tests lands, taxies across to the left lot and parks there', () => {
   setSkyTasks([task('coding')]);
   at(0);
-  setSkyTasks([task('tests')]);
+  setSkyTasks([task('needs_decision')]);
   let sec = 0;
   let landed = false;
   for (; sec < 120 && !landed; sec += 0.25) {
@@ -122,26 +132,26 @@ test('a coding task that moves to tests lands, taxies across to the left lot and
 });
 
 test('a tests task moving to review takes off from the left lot', () => {
-  setSkyTasks([task('tests')]);
+  setSkyTasks([task('needs_decision')]);
   at(0);
   assert.equal(skyMotionKind('a'), 'parked');
-  setSkyTasks([task('review')]);
+  setSkyTasks([task('testing')]);
   at(10);
   assert.equal(skyMotionKind('a'), 'takeoff');
   assert.equal(at(10 + 20)?.mode, 'air');
 });
 
 test('a merged task leaves the airfield', () => {
-  setSkyTasks([task('plan')]);
+  setSkyTasks([task('plan_ready')]);
   at(0);
-  setSkyTasks([{ id: 'a', title: 'a', stage: 'merged' }]);
+  setSkyTasks([{ id: 'a', title: 'a', stage: 'done' }]);
   assert.equal(at(1), null);
   assert.equal(skyMotionKind('a'), undefined);
 });
 
 test('at night a take-off is a rocket: it climbs straight up from the left lot, not down a runway', () => {
   setSkyNight(1);
-  setSkyTasks([task('plan')]);
+  setSkyTasks([task('plan_ready')]);
   const pad = at(0);
   setSkyTasks([task('coding')]);
   assert.equal(at(10)?.mode, 'ground');
@@ -157,9 +167,9 @@ test('at night a take-off is a rocket: it climbs straight up from the left lot, 
 
 test('at night a landing is a rocket coming down onto the right lot', () => {
   setSkyNight(1);
-  setSkyTasks([task('review')]);
+  setSkyTasks([task('testing')]);
   at(0);
-  setSkyTasks([{ id: 'a', title: 'a', stage: 'ready_to_merge' }]);
+  setSkyTasks([{ id: 'a', title: 'a', stage: 'in_review' }]);
   let sec = 0;
   for (; sec < 120 && skyMotionKind('a') !== 'landing'; sec += 0.25) at(sec);
   assert.equal(skyMotionKind('a'), 'landing');
@@ -170,7 +180,7 @@ test('at night a landing is a rocket coming down onto the right lot', () => {
   assert.equal(skyMotionKind('a'), 'parked');
 });
 
-test('a ready-to-merge task with a link is a button over its bay, day or night; other tasks are not', () => {
+test('a parked task with a link is a button over its bay, day or night; a task with none, or a flyer, is not', () => {
   const calls: unknown[] = [];
   const ctx = new Proxy(
     {},
@@ -180,7 +190,7 @@ test('a ready-to-merge task with a link is a button over its bay, day or night; 
   for (const night of [0, 1]) {
     resetSkyMotion();
     setSkyNight(night);
-    setSkyTasks([{ id: 'a', title: 'a', stage: 'ready_to_merge', url }]);
+    setSkyTasks([{ id: 'a', title: 'a', stage: 'in_review', url }]);
     const p = at(0);
     assert.ok(p);
     drawGroundPlanes(ctx, W, H, PX, 0);
@@ -188,18 +198,27 @@ test('a ready-to-merge task with a link is a button over its bay, day or night; 
     assert.equal(skyLinkAt(p.x + 5 * PX, p.y + 4 * PX), url);
     assert.equal(skyLinkAt(p.x - 20 * PX, p.y), null);
   }
-  // no link, or not ready to merge: nothing to press
+  // no link, or not parked: nothing to press
   resetSkyMotion();
   setSkyNight(0);
-  setSkyTasks([{ id: 'a', title: 'a', stage: 'ready_to_merge' }]);
+  setSkyTasks([{ id: 'a', title: 'a', stage: 'in_review' }]);
   const q = at(0);
   drawGroundPlanes(ctx, W, H, PX, 0);
   assert.equal(q && skyLinkAt(q.x, q.y), null);
-  setSkyTasks([{ id: 'a', title: 'a', stage: 'tests', url }]);
+  // any parked task with a link is a button, whatever its status
+  for (const stage of ['plan_ready', 'needs_decision', 'ready'] as const) {
+    setSkyTasks([{ id: 'a', title: 'a', stage, url }]);
+    resetSkyMotion();
+    const t = at(0);
+    drawGroundPlanes(ctx, W, H, PX, 0);
+    assert.equal(t && skyLinkAt(t.x, t.y), url, stage);
+  }
+  // a flying task is not a button
+  setSkyTasks([{ id: 'a', title: 'a', stage: 'coding', url }]);
   resetSkyMotion();
-  const t = at(0);
+  const f = at(0);
   drawGroundPlanes(ctx, W, H, PX, 0);
-  assert.equal(t && skyLinkAt(t.x, t.y), null);
+  assert.equal(f && skyLinkAt(f.x, f.y), null);
 });
 
 test('a plan with a link is a button over its bay too', () => {
@@ -210,7 +229,7 @@ test('a plan with a link is a button over its bay too', () => {
   const url = 'https://github.com/o/r/pull/7/files';
   resetSkyMotion();
   setSkyNight(0);
-  setSkyTasks([{ id: 'a', title: 'a', stage: 'plan', url }]);
+  setSkyTasks([{ id: 'a', title: 'a', stage: 'plan_ready', url }]);
   const p = at(0);
   assert.ok(p);
   drawGroundPlanes(ctx, W, H, PX, 0);
@@ -229,8 +248,8 @@ test('beside a full-size office the field narrows to a strip, a tiny gap off the
     assert.ok(f.left + f.width <= w);
     assert.ok(f.runwayL === f.runwayR && f.runwayL < f.lotL);
     // plan bays above, ready bays below, in the one lot
-    const [, planY] = slotPoint(f, 'plan', 0);
-    const [, readyY] = slotPoint(f, 'ready', 0);
+    const [, planY] = slotPoint(f, 'left', 0);
+    const [, readyY] = slotPoint(f, 'right', 0);
     assert.ok(readyY > planY);
     // a wide gap keeps the full field; none at all puts it on the skyline
     setAirfieldSite({ h: 700, office: { ...office, w: 600 } });
@@ -240,10 +259,9 @@ test('beside a full-size office the field narrows to a strip, a tiny gap off the
   }
 });
 
-// ── Ready to merge: a green siren, never a technician ──────────────────────
+// ── Beacons: a siren on every parked task ──────────────────────
 
-const GREEN_SIREN: string = SKY_BEACON_COLORS.ready_to_merge.dome;
-const TECH_VEST: string = SKY_TECH_VEST_COLOR;
+const GREEN_SIREN: string = SKY_BEACON_COLORS.in_review.dome;
 
 /** Draws the ground and returns every fill colour used by a rect inside the parked task's bay. */
 function coloursAroundBay(w: number, h: number, px: number, sec: number): Set<string> {
@@ -273,27 +291,40 @@ function coloursAroundBay(w: number, h: number, px: number, sec: number): Set<st
 function assertReadyCrew(w: number, h: number, px: number, sec: number): void {
   const used = colours(w, h, px, sec);
   assert.ok(used.has(GREEN_SIREN), 'the green siren is on');
-  assert.ok(!used.has(TECH_VEST), 'no technician');
 }
 const colours = coloursAroundBay;
 
-test('a parked ready-to-merge plane or rocket has the green siren and no technician, at every hour', () => {
+test('a parked task has a lit beacon; plan ready, needs decision and ready/in review are three colours', () => {
+  const domeOf = (stage: keyof typeof SKY_BEACON_COLORS): string => SKY_BEACON_COLORS[stage].dome;
+  assert.equal(new Set([domeOf('plan_ready'), domeOf('needs_decision'), domeOf('ready')]).size, 3);
+  assert.equal(domeOf('ready'), domeOf('in_review'));
+  for (const stage of ['plan_ready', 'needs_decision', 'ready', 'in_review'] as const) {
+    for (const night of [0, 1]) {
+      resetSkyMotion();
+      setSkyNight(night);
+      setSkyTasks([{ id: 'a', title: 'a', stage }]);
+      assert.ok(colours(W, H, PX, 0).has(domeOf(stage)), `${stage} lit at night ${night}`);
+    }
+  }
+});
+
+test('a parked ready-to-merge plane or rocket has the green siren, at every hour', () => {
   for (const night of [0, 0.3, 0.5, 0.8, 1]) {
     resetSkyMotion();
     setSkyNight(night);
-    setSkyTasks([{ id: 'a', title: 'a', stage: 'ready_to_merge' }]);
+    setSkyTasks([{ id: 'a', title: 'a', stage: 'in_review' }]);
     assertReadyCrew(W, H, PX, 0);
     assertReadyCrew(W, H, PX, 0.4);
   }
 });
 
-test('a task that lands, or moves into ready to merge from tests or plan, is crewed by the siren alone', () => {
-  for (const from of ['plan', 'tests', 'review'] as const) {
+test('a task that lands, or moves into in review from needs decision or plan ready, has the siren on', () => {
+  for (const from of ['plan_ready', 'needs_decision', 'testing'] as const) {
     resetSkyMotion();
     setSkyNight(0);
     setSkyTasks([task(from)]);
     at(0);
-    setSkyTasks([task('ready_to_merge')]);
+    setSkyTasks([task('in_review')]);
     let sec = 0;
     for (; sec < 300 && skyMotionKind('a') !== 'parked'; sec += 0.25) at(sec);
     assert.equal(skyMotionKind('a'), 'parked', from);
@@ -310,7 +341,7 @@ test('the strip beside the office crews a ready-to-merge plane the same way', ()
     for (const night of [0, 0.5, 1]) {
       resetSkyMotion();
       setSkyNight(night);
-      setSkyTasks([task('ready_to_merge')]);
+      setSkyTasks([task('in_review')]);
       assertReadyCrew(w, 150, 6, 0);
     }
   } finally {
@@ -333,8 +364,8 @@ test('every parked plane or rocket is labelled with its pull request number', ()
       },
     ) as unknown as CanvasRenderingContext2D;
     setSkyTasks([
-      { id: 'a#7', title: 'a', stage: 'ready_to_merge' },
-      { id: 'b#8', title: 'b', stage: 'plan' },
+      { id: 'a#7', title: 'a', stage: 'in_review' },
+      { id: 'b#8', title: 'b', stage: 'plan_ready' },
     ]);
     drawGroundPlanes(ctx, W, H, PX, 0);
     assert.ok(texts.includes('#7') && texts.includes('#8'), texts.join());
@@ -349,7 +380,7 @@ test('the ready-to-merge number stands outside the field edge beside its plane, 
     const f = airfieldLayout(w, 150, 6);
     resetSkyMotion();
     setSkyNight(0);
-    setSkyTasks([{ id: 'a#5', title: 'a', stage: 'ready_to_merge' }]);
+    setSkyTasks([{ id: 'a#5', title: 'a', stage: 'in_review' }]);
     const p = skyStateForTest('a#5', 0, w, 150, 6);
     assert.ok(p);
     const seen: { t: string; x: number; y: number; align: string }[] = [];
@@ -379,7 +410,7 @@ test('the ready-to-merge number stands outside the field edge beside its plane, 
 });
 
 test('a plan or tests number stands outside the field edge on the left, level with its plane', () => {
-  for (const stage of ['plan', 'tests'] as const) {
+  for (const stage of ['plan_ready', 'needs_decision'] as const) {
     resetSkyMotion();
     setSkyNight(0);
     setSkyTasks([{ id: 'a#6', title: 'a', stage }]);

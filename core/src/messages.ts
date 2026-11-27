@@ -29,6 +29,7 @@ export type ServerMessage =
   | UsageUpdate
   | TasksUpdate
   | CloudSessionsUpdate
+  | IssueBoardUpdate
   | LayoutLoaded
   | FurnitureAssetsLoaded
   | CharacterSpritesLoaded
@@ -256,6 +257,32 @@ export interface CloudSessionInfo {
 }
 
 export type AnonymousSchema_90 = 'working' | 'permission' | 'idle';
+
+export interface IssueBoardUpdate {
+  type: 'issueBoardUpdate';
+  issues: IssueBoardCard[];
+}
+
+export interface IssueBoardCard {
+  id: string;
+  number: number;
+  title: string;
+  status: IssueBoardStatus;
+  url: string;
+  progress?: IssueBoardProgress;
+}
+
+export type IssueBoardStatus =
+  | 'new'
+  | 'needs_design'
+  | 'ready'
+  | 'in_progress'
+  | 'in_review'
+  | 'needs_decision'
+  | 'blocked'
+  | 'done';
+
+export type IssueBoardProgress = 'writing_plan' | 'plan_ready' | 'coding' | 'testing';
 
 export interface LayoutLoaded {
   type: 'layoutLoaded';

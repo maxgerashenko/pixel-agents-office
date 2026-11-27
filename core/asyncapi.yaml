@@ -107,6 +107,8 @@ components:
         - $ref: '#/components/schemas/TasksUpdate'
         # Cloud sessions (characters working at desks)
         - $ref: '#/components/schemas/CloudSessionsUpdate'
+        # Issue board (the whiteboard's big view)
+        - $ref: '#/components/schemas/IssueBoardUpdate'
         # Layout
         - $ref: '#/components/schemas/LayoutLoaded'
         # Assets
@@ -602,6 +604,59 @@ components:
         url:
           type: string
           description: The session's page on claude.ai; a click on its character opens it.
+
+    IssueBoardUpdate:
+      description: |
+        The issues of the user's Directories' GitHub repos, one card per issue,
+        each in its board Status column. The column comes from the issue's
+        labels in the same priority order the GitHub board sync uses; a closed
+        issue is done and stays on the board for a week. The server asks the
+        user's own `gh` while a page is open and sends the whole board when it
+        changes, and during the connect handshake. Display data, so read-only
+        clients get it too.
+      type: object
+      additionalProperties: false
+      required: [type, issues]
+      properties:
+        type:
+          const: issueBoardUpdate
+        issues:
+          type: array
+          items:
+            $ref: '#/components/schemas/IssueBoardCard'
+
+    IssueBoardCard:
+      type: object
+      additionalProperties: false
+      required: [id, number, title, status, url]
+      properties:
+        id:
+          type: string
+          description: owner/repo#number.
+        number:
+          type: integer
+        title:
+          type: string
+        status:
+          $ref: '#/components/schemas/IssueBoardStatus'
+        url:
+          type: string
+          description: The issue's page on github.com; a tap on its card opens it.
+        progress:
+          $ref: '#/components/schemas/IssueBoardProgress'
+          description: >-
+            What the agent is doing, for the sky. Set only for needs design (writing_plan, or
+            plan_ready once its plan file exists) and in progress (coding, or testing once its pull
+            request has checks running or is in review).
+
+    IssueBoardProgress:
+      type: string
+      enum: [writing_plan, plan_ready, coding, testing]
+
+    IssueBoardStatus:
+      type: string
+      description: The board Status column, left to right.
+      enum: [new, needs_design, ready, in_progress, in_review, needs_decision, blocked, done]
 
     LayoutLoaded:
       description: |

@@ -19,6 +19,7 @@ import {
   SERVERS_DIR,
 } from './constants.js';
 import { createHttpServer } from './httpServer.js';
+import { IssueBoardTracker } from './issueBoardTracker.js';
 import type { ServerConfig, StandaloneAccess } from './serverConfig.js';
 import { isServerConfig, isServerTarget, sameStandaloneAccess } from './serverConfig.js';
 import { loadOrCreateStandaloneToken } from './serverToken.js';
@@ -59,6 +60,7 @@ export class PixelAgentsServer {
   private usageTracker: UsageTracker | null = null;
   private taskTracker: TaskTracker | null = null;
   private cloudSessionTracker: CloudSessionTracker | null = null;
+  private issueBoardTracker: IssueBoardTracker | null = null;
 
   /** The usage tracker of the server THIS instance started (null when it reused another process's server, which then owns the snapshot). */
   get usage(): UsageTracker | null {
@@ -144,6 +146,7 @@ export class PixelAgentsServer {
     this.usageTracker = store ? new UsageTracker(store) : null;
     this.taskTracker = store ? new TaskTracker(store) : null;
     this.cloudSessionTracker = store ? new CloudSessionTracker(store) : null;
+    this.issueBoardTracker = store ? new IssueBoardTracker(store) : null;
 
     const { app, port } = await createHttpServer({
       embedded,
@@ -154,6 +157,7 @@ export class PixelAgentsServer {
       usage: this.usageTracker ?? undefined,
       tasks: this.taskTracker ?? undefined,
       cloudSessions: this.cloudSessionTracker ?? undefined,
+      issueBoard: this.issueBoardTracker ?? undefined,
       runtime: options?.runtime,
       staticDir: options?.staticDir,
       assetCache: options?.assetCache,
@@ -207,6 +211,8 @@ export class PixelAgentsServer {
     this.taskTracker = null;
     this.cloudSessionTracker?.dispose();
     this.cloudSessionTracker = null;
+    this.issueBoardTracker?.dispose();
+    this.issueBoardTracker = null;
   }
 
   /** Returns the current server config, or null if not started. */

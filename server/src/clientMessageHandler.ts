@@ -22,6 +22,7 @@ import {
 } from './directories.js';
 import { collectDirectorySuggestions } from './directorySuggestions.js';
 import { hostDirectory } from './hostDirectory.js';
+import type { IssueBoardTracker } from './issueBoardTracker.js';
 import { readLayoutFromFile } from './layoutPersistence.js';
 import type { ConsentEffects } from './providers/hook/consentExecutor.js';
 import { applyConsentChoice } from './providers/hook/consentExecutor.js';
@@ -64,6 +65,8 @@ export interface ClientMessageContext {
   /** Current task board, replayed on webviewReady (display data). */
   tasks?: TaskTracker;
   cloudSessions?: CloudSessionTracker;
+  /** Current issue board, replayed on webviewReady (display data). */
+  issueBoard?: IssueBoardTracker;
   store: AgentStateStore;
   runtime?: AgentRuntime;
   cache: AssetCache | null;
@@ -473,6 +476,7 @@ function handleWebviewReady(send: WsSend, ctx: ClientMessageContext): void {
 
   if (ctx.tasks) send(ctx.tasks.currentMessage());
   if (ctx.cloudSessions) send(ctx.cloudSessions.currentMessage());
+  if (ctx.issueBoard) send(ctx.issueBoard.currentMessage());
 
   // 1. Provider capabilities (must arrive before any agent messages)
   send({

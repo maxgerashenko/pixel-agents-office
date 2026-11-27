@@ -8,9 +8,15 @@ import { playDoneSound, playPermissionSound, setSoundEnabled } from '../notifica
 import { type CloudSessionView, syncCloudSessions } from '../office/engine/cloudAgents.js';
 import type { ExistingAgentMeta, PendingAgent } from '../office/engine/existingAgents.js';
 import { reconcileExistingAgents } from '../office/engine/existingAgents.js';
+import {
+  getIssueBoard,
+  type IssueBoardCardView,
+  setIssueBoard,
+} from '../office/engine/issueBoard.js';
 import type { OfficeState } from '../office/engine/officeState.js';
 import { setGhostHeadlessAgents as setRendererGhostHeadlessAgents } from '../office/engine/renderer.js';
-import { setSkyTasks, type SkyTask } from '../office/engine/skyTasks.js';
+import { skyTasksFromBoard } from '../office/engine/skyFromBoard.js';
+import { setSkyTasks } from '../office/engine/skyTasks.js';
 import { setFloorSprites } from '../office/floorTiles.js';
 import { buildDynamicCatalog } from '../office/layout/furnitureCatalog.js';
 import { migrateLayoutColors } from '../office/layout/layoutSerializer.js';
@@ -812,8 +818,11 @@ export function useExtensionMessages(
           latestCloudSessions = msg.sessions as CloudSessionView[];
           if (layoutReadyRef.current) syncCloudSessions(os, latestCloudSessions);
         }
-      } else if (msg.type === 'tasksUpdate') {
-        if (Array.isArray(msg.tasks)) setSkyTasks(msg.tasks as SkyTask[]);
+      } else if (msg.type === 'issueBoardUpdate') {
+        if (Array.isArray(msg.issues)) {
+          setIssueBoard(msg.issues as IssueBoardCardView[]);
+          setSkyTasks(skyTasksFromBoard(getIssueBoard()));
+        }
       } else if (msg.type === 'usageUpdate') {
         if (typeof msg.providerId === 'string') {
           const providerId = msg.providerId;
