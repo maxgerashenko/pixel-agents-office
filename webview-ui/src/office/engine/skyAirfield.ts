@@ -89,6 +89,14 @@ export function setAirfieldSite(next: AirfieldSite | null): void {
   site = next;
 }
 
+/** Top of a field standing in the woods: it starts `SKY_AIRFIELD_WOODS_TOP` below the skyline, then
+ *  slides down so the gap under it is half what that leaves (never past the bottom edge). */
+function woodsTop(horizonY: number, hU: number, px: number, siteH: number): number {
+  const top = Math.round((horizonY + SKY_AIRFIELD_WOODS_TOP * px) / px) * px;
+  const gap = Math.max(0, siteH - (top + hU * px));
+  return top + Math.round(gap / 2 / px) * px;
+}
+
 /**
  * The field stands in the woods right of the office, long and thin, when the gap there is wide
  * enough; otherwise at the right of the sky, on the skyline.
@@ -116,7 +124,7 @@ export function airfieldLayout(w: number, horizonY: number, px: number): Airfiel
       ),
     );
     left = Math.round((w - gap / 2 - (wU * px) / 2) / px) * px;
-    top = Math.round((horizonY + SKY_AIRFIELD_WOODS_TOP * px) / px) * px;
+    top = woodsTop(horizonY, hU, px, site.h);
   } else {
     hU = Math.max(
       SKY_AIRFIELD_HEIGHT_MIN,
@@ -168,7 +176,7 @@ function stripLayout(horizonY: number, px: number, wU: number, s: AirfieldSite):
     ),
   );
   const left = Math.round((s.office.x + s.office.w + SKY_AIRFIELD_STRIP_GAP * px) / px) * px;
-  const top = Math.round((horizonY + SKY_AIRFIELD_WOODS_TOP * px) / px) * px;
+  const top = woodsTop(horizonY, hU, px, s.h);
   const R = SKY_AIRFIELD_RUNWAY_W;
   const G = SKY_AIRFIELD_TAXI_W;
   const L = SKY_AIRFIELD_STRIP_LOT_W;
