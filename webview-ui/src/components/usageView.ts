@@ -125,6 +125,23 @@ export function pickWeekWindows(
   return {};
 }
 
+/** One fill of the weekly line, from the left edge, in percent of the track. */
+export interface WeekLineLayer {
+  kind: 'week' | 'fable';
+  width: number;
+}
+
+/** Both weekly fills start at the left edge: the all-models week in the main
+ *  colour, Fable's week in the second colour. The longer one is the
+ *  background and the shorter is drawn over it, so the longer shows only past
+ *  the shorter's tip. Returned back to front; a tie puts the week in front. */
+export function weekLineLayers(weekPct: number | null, fablePct: number | null): WeekLineLayer[] {
+  const layers: WeekLineLayer[] = [];
+  if (fablePct !== null) layers.push({ kind: 'fable', width: fablePct });
+  if (weekPct !== null) layers.push({ kind: 'week', width: weekPct });
+  return layers.sort((a, b) => b.width - a.width);
+}
+
 /** Validate one wire window; anything malformed counts as absent. */
 export function asUsageWindow(value: unknown): UsageWindowView | undefined {
   if (typeof value !== 'object' || value === null) return undefined;

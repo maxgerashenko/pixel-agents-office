@@ -11,6 +11,7 @@ import {
   sessionClock,
   type UsageView,
   type UsageWindowView,
+  weekLineLayers,
 } from './usageView.js';
 
 /** Grid size and stroke of the session ring, in sprite pixels (drawn at 2×). */
@@ -40,9 +41,10 @@ function SessionRing({ percent }: { percent: number }) {
   );
 }
 
-/** One thin line holding both weekly limits: Fable's week is always yellow,
- *  the all-models week is the main fill colour. The longer layer is drawn
- *  behind and the shorter in front, so neither hides the other. */
+/** One thin line holding both weekly limits, each a fill from the left edge:
+ *  the all-models week in the main colour, Fable's week in the second colour
+ *  the session bar uses. The shorter is drawn over the longer (see
+ *  `weekLineLayers`). */
 function WeekLine({
   week,
   fable,
@@ -54,7 +56,6 @@ function WeekLine({
 }) {
   const weekPct = week ? displayPercent(week.usedPercentage) : null;
   const fablePct = fable ? displayPercent(fable.usedPercentage) : null;
-  const fableAhead = fablePct !== null && (weekPct === null || fablePct > weekPct);
   const tips = [
     fable && fablePct !== null
       ? `Fable this week: ${fablePct}% used, resets in ${formatTimeLeft(fable.resetsAt, now)}`
@@ -65,32 +66,21 @@ function WeekLine({
   ].filter(Boolean);
   return (
     <div
-      className="relative h-8 border-2 border-border bg-bg-dark"
+      className="relative h-4 border border-border bg-bg-dark"
       role="progressbar"
       aria-label="Weekly limits"
       aria-valuemin={0}
       aria-valuemax={100}
-      aria-valuenow={fablePct ?? weekPct ?? 0}
+      aria-valuenow={weekPct ?? fablePct ?? 0}
       title={tips.join('\n')}
     >
-      {fablePct !== null && fableAhead && (
+      {weekLineLayers(weekPct, fablePct).map(({ kind, width }) => (
         <div
-          className="absolute inset-y-0 left-0 bg-usage-last-hour-behind"
-          style={{ width: `${fablePct}%` }}
+          key={kind}
+          className={`absolute inset-y-0 left-0 ${kind === 'week' ? 'bg-accent-bright' : 'bg-usage-last-hour'}`}
+          style={{ width: `${width}%` }}
         />
-      )}
-      {weekPct !== null && (
-        <div
-          className="absolute inset-y-0 left-0 bg-accent-bright"
-          style={{ width: `${weekPct}%` }}
-        />
-      )}
-      {fablePct !== null && !fableAhead && (
-        <div
-          className="absolute inset-y-0 left-0 bg-usage-last-hour-behind"
-          style={{ width: `${fablePct}%` }}
-        />
-      )}
+      ))}
     </div>
   );
 }
