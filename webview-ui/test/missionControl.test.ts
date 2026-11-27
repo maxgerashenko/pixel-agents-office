@@ -54,7 +54,7 @@ test('the screen stands on the floor: 9 wide, 1 deep plus a background row, in t
 test('counts follow the five columns and ignore every other status', () => {
   assert.deepEqual(
     MISSION_SCREEN_COLUMNS.map((c) => c.label),
-    ['DESIGN', 'READY', 'PROGRESS', 'REVIEW', 'DECISION'],
+    ['READY', 'DESIGN', 'CODING', 'REVIEW', 'DECISION'],
   );
   const cards = [
     card(1, 'needs_design'),
@@ -68,7 +68,7 @@ test('counts follow the five columns and ignore every other status', () => {
     card(9, 'blocked'),
     card(10, 'done'),
   ];
-  assert.deepEqual(missionCounts(cards), [2, 1, 3, 0, 1]);
+  assert.deepEqual(missionCounts(cards), [1, 2, 3, 0, 1]);
   assert.deepEqual(missionCounts([]), [0, 0, 0, 0, 0]);
 });
 
