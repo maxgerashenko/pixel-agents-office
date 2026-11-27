@@ -33,7 +33,7 @@ test('columns follow the board left to right, each with its own issues, empty on
   ]);
   assert.deepEqual(
     columns.map((c) => c.label),
-    ['Ready', 'Needs design', 'Coding', 'In review', 'Needs decision'],
+    ['Design', 'Ready', 'Coding', 'Review', 'Decision'],
   );
   assert.deepEqual(
     columns.map((c) => c.cards.map((x) => x.number)),
@@ -45,7 +45,7 @@ test('New, Blocked and Done are not shown on the board', () => {
   const columns = issueBoardColumns([card(1, 'new'), card(2, 'blocked'), card(3, 'done')]);
   assert.deepEqual(
     columns.map((c) => c.status),
-    ['ready', 'needs_design', 'in_progress', 'in_review', 'needs_decision'],
+    ['needs_design', 'ready', 'in_progress', 'in_review', 'needs_decision'],
   );
   assert.equal(
     columns.some((c) => c.cards.length > 0),
