@@ -870,7 +870,8 @@ export function drawSky(
   // the airfield at the right, with the planes resting and rolling on it
   const nowSec = now.getTime() / 1000;
   drawAirfield(ctx, field, nowSec, sky.starAlpha);
-  if (field.top >= horizonY && !field.strip) drawAirfieldTrees(ctx, field, sky.starAlpha);
+  if (field.top >= horizonY && !field.strip)
+    drawAirfieldTrees(ctx, { ...field, width: field.width + field.twinDx }, sky.starAlpha);
   setSkyNight(sky.starAlpha);
   drawGroundPlanes(ctx, w, horizonY, px, nowSec);
 

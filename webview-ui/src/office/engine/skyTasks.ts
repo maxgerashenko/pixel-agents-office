@@ -1,9 +1,9 @@
 /**
  * Tasks in the sky: the board's issues. By day each flying task is a plane with a white contrail,
- * by night a satellite with blinking lights. Designing, coding and testing fly (three orbits, low to
- * high); an agent is working. The rest wait on the airfield (skyAirfield) for Max: plan ready (blue
- * beacon), needs decision (yellow) and ready (green) in the left lot, in review (green) in the right
- * lot. A task that moves to a flying status taxis to the left runway, takes off and joins its orbit;
+ * by night a satellite with blinking lights. Only coding flies, each task on its own track (its own
+ * altitude, five tracks, low to high), so coding tasks don't overlap. The rest are parked on the
+ * airfield (skyAirfield): design (blue beacon) and ready (green) in the left lot with a technician by each,
+ * needs decision (red) and in review (pink) in the right lot with none. A task that moves to coding taxis to the left runway, takes off and joins its track;
  * orbits arc across the whole sky from left to right, the same arc shifted up one gap each. A task
  * that moves to a waiting status stays on its orbit until it comes round to the airfield, glides
  * down onto the right runway, lands and parks (left-lot tasks taxi on across). A done task leaves
@@ -74,6 +74,7 @@ import {
   type Heading,
   PLANE_TOP_LENGTH,
   prNumberOfTaskId,
+  slotField,
   slotPoint,
 } from './skyAirfield.js';
 
@@ -124,16 +125,40 @@ export interface TaskPlace {
   phase: number;
 }
 
-/** The orbit a status flies on (coding, review), or null when the task waits on the airfield. */
-export function orbitOfStage(stage: SkyTaskStage): number | null {
-  const i = (SKY_TASK_FLYING_STAGES as readonly SkyTaskStage[]).indexOf(stage);
-  return i >= 0 ? i : null;
+/** Whether a status flies (coding and its tests) or waits on the airfield. */
+export function flies(stage: SkyTaskStage): boolean {
+  return (SKY_TASK_FLYING_STAGES as readonly SkyTaskStage[]).includes(stage);
 }
 
-/** The lot a waiting status parks in: plan ready, needs decision and ready on the left, in review on the right. */
+/** The lot a waiting status parks in: design and ready on the left, decision and review on the right. */
 export function lotOfStage(stage: SkyTaskStage): AirfieldLot | null {
-  if (stage === 'plan_ready' || stage === 'needs_decision' || stage === 'ready') return 'left';
-  return stage === 'in_review' ? 'right' : null;
+  if (stage === 'designing' || stage === 'plan_ready' || stage === 'ready') return 'left';
+  return stage === 'in_review' || stage === 'needs_decision' ? 'right' : null;
+}
+
+/** The track (altitude, 0 = lowest) each flying task keeps for as long as it flies. */
+const trackOfTask = new Map<string, number>();
+
+/**
+ * Pure-ish: gives every flying task its own track. A task keeps its track; a newcomer takes the
+ * least crowded one (the lowest when tied), so coding tasks fly at different heights and don't overlap.
+ */
+function assignTracks(list: SkyTask[]): void {
+  const flying = new Set(list.filter((t) => flies(t.stage)).map((t) => t.id));
+  for (const id of [...trackOfTask.keys()]) if (!flying.has(id)) trackOfTask.delete(id);
+  const load = new Array<number>(SKY_TASK_TRACKS).fill(0);
+  for (const o of trackOfTask.values()) load[o]++;
+  for (const t of [...list].sort((a, b) => (a.id < b.id ? -1 : 1))) {
+    if (!flying.has(t.id) || trackOfTask.has(t.id)) continue;
+    const o = load.indexOf(Math.min(...load));
+    trackOfTask.set(t.id, o);
+    load[o]++;
+  }
+}
+
+/** The track a flying task is on, or null when its status waits on the airfield. */
+export function trackOfStatus(task: SkyTask): number | null {
+  return flies(task.stage) ? (trackOfTask.get(task.id) ?? null) : null;
 }
 
 /**
@@ -142,9 +167,10 @@ export function lotOfStage(stage: SkyTaskStage): AirfieldLot | null {
  * airfield get orbit 0 and are not counted.
  */
 export function placeTasks(list: SkyTask[]): TaskPlace[] {
+  assignTracks(list);
   const byOrbit = new Map<number, number[]>();
   list.forEach((t, i) => {
-    const o = orbitOfStage(t.stage);
+    const o = trackOfStatus(t);
     if (o !== null) byOrbit.set(o, [...(byOrbit.get(o) ?? []), i]);
   });
   const out: TaskPlace[] = list.map(() => ({ orbit: 0, phase: 0 }));
@@ -310,6 +336,7 @@ export function skyMotionKind(id: string): SkyMotionKind | undefined {
 }
 export function resetSkyMotion(): void {
   motions.clear();
+  trackOfTask.clear();
   border = null;
   lastSyncSec = null;
 }
@@ -373,11 +400,12 @@ const sum = (legs: Leg[]): number => legs.reduce((a, l) => a + l.dur, 0);
 function takeoffLegs(f: Airfield, slot: number): { start: [number, number]; legs: Leg[] } {
   const start = slotPoint(f, 'left', slot);
   const [a, b, c] = SKY_AIRFIELD_TAKEOFF_TAXI_SEC;
+  const gapX = f.gapL + slotField(f, slot).dx;
   return {
     start,
     legs: [
-      { x: f.gapL, y: start[1], dur: a, ease: 'lin' },
-      { x: f.gapL, y: f.taxiY, dur: b, ease: 'lin' },
+      { x: gapX, y: start[1], dur: a, ease: 'lin' },
+      { x: gapX, y: f.taxiY, dur: b, ease: 'lin' },
       { x: f.runwayL, y: f.taxiY, dur: c, ease: 'lin' },
       { x: f.runwayL, y: f.runwayTop, dur: SKY_AIRFIELD_TAKEOFF_ROLL_SEC, ease: 'in' },
     ],
@@ -395,7 +423,7 @@ function landingLegs(
 ): { start: [number, number]; legs: Leg[] } {
   const target = slotPoint(f, lot, slot);
   const [a, b, c] = SKY_AIRFIELD_LANDING_TAXI_SEC;
-  const gap = lot === 'right' ? f.gapR : f.gapL;
+  const gap = (lot === 'right' ? f.gapR : f.gapL) + slotField(f, slot).dx;
   return {
     start: [f.runwayR, f.runwayTop],
     legs: [
@@ -618,7 +646,7 @@ function syncSkyMotion(sec: number, g: Geo): void {
   for (const id of [...motions.keys()]) if (!live.has(id)) motions.delete(id);
   const places = placeTasks(tasks);
   tasks.forEach((t, i) => {
-    const orbit = orbitOfStage(t.stage);
+    const orbit = trackOfStatus(t);
     const lot = lotOfStage(t.stage);
     let m = motions.get(t.id);
     if (!m) {
@@ -1011,7 +1039,7 @@ export function drawGroundPlanes(
           ) +
           SKY_PR_NUMBER_EDGE_GAP_UNITS * px;
         let outside: number | undefined;
-        if (task.stage === 'in_review')
+        if (task.stage === 'in_review' || task.stage === 'needs_decision')
           outside =
             w - (s.x + dist) >= need ? s.x + dist : s.x + SKY_PR_NUMBER_FREE_SIDE_UNITS * px;
         else if (!f.strip && s.x - dist >= need) outside = s.x - dist;

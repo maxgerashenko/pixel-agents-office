@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import {
   MUSIC_DRIFT_TOLERANCE_SEC,
+  MUSIC_ON_STORAGE_KEY,
   MUSIC_RESUME_CHECK_MS,
   MUSIC_RESYNC_CHECK_MS,
   MUSIC_SEEK_LEAD_SEC,
@@ -62,10 +63,28 @@ export function readMusicUrl(): string {
   }
 }
 
+/** True once the user has turned the music off themselves; it then stays off on load. */
+export function readMusicMuted(): boolean {
+  try {
+    return localStorage.getItem(MUSIC_ON_STORAGE_KEY) === 'off';
+  } catch {
+    return false;
+  }
+}
+export function writeMusicMuted(muted: boolean): void {
+  try {
+    localStorage.setItem(MUSIC_ON_STORAGE_KEY, muted ? 'off' : 'on');
+  } catch {
+    /* storage unavailable */
+  }
+}
+
 /**
  * Plays the configured YouTube track in step with the real hourly clock.
  * `host` is the element the (hidden) player mounts into. Sound needs one tap
- * on iOS, so playback only starts from `toggle` (a user gesture), never on load.
+ * on iOS. On load it tries to start by itself (works where autoplay is allowed);
+ * if the browser refuses, the first tap anywhere on the page starts it instead.
+ * A user who turned the music off stays opted out across reloads.
  */
 export function useHourlyMusic(host: React.RefObject<HTMLDivElement | null>) {
   const [url, setUrl] = useState(readMusicUrl);
@@ -106,6 +125,19 @@ export function useHourlyMusic(host: React.RefObject<HTMLDivElement | null>) {
         events: {
           onReady: () => {
             ready.current = true;
+            if (readMusicMuted()) return;
+            // Try to autoplay; if the browser blocks it, the first-tap listener takes over.
+            wantOn.current = true;
+            player.current?.playVideo();
+            sync();
+            setOn(true);
+            window.setTimeout(() => {
+              if (cancelled || !wantOn.current) return;
+              if (player.current?.getPlayerState() !== YT_PLAYING) {
+                wantOn.current = false;
+                setOn(false);
+              }
+            }, MUSIC_RESUME_CHECK_MS);
           },
           onStateChange: (e) => {
             if (e.data === YT_PLAYING && wantOn.current) {
@@ -188,16 +220,39 @@ export function useHourlyMusic(host: React.RefObject<HTMLDivElement | null>) {
     };
   }, [sync]);
 
+  // Autoplay blocked: start on the first tap anywhere (the music button has its own handler).
+  useEffect(() => {
+    if (!videoId) return;
+    const onGesture = (e: Event) => {
+      if (wantOn.current || readMusicMuted()) return;
+      const p = player.current;
+      if (!p || !ready.current) return;
+      if ((e.target as Element | null)?.closest?.('[data-testid="music-toggle"]')) return;
+      wantOn.current = true;
+      p.playVideo();
+      sync();
+      setOn(true);
+    };
+    document.addEventListener('pointerup', onGesture, true);
+    document.addEventListener('touchend', onGesture, true);
+    return () => {
+      document.removeEventListener('pointerup', onGesture, true);
+      document.removeEventListener('touchend', onGesture, true);
+    };
+  }, [videoId, sync]);
+
   /** Must run inside the tap handler so iOS allows sound. */
   const toggle = useCallback(() => {
     const p = player.current;
     if (!p || !ready.current) return;
     if (wantOn.current) {
       wantOn.current = false;
+      writeMusicMuted(true);
       p.pauseVideo();
       setOn(false);
     } else {
       wantOn.current = true;
+      writeMusicMuted(false);
       p.playVideo();
       sync();
       setOn(true);
