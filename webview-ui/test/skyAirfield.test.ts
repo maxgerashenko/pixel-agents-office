@@ -59,11 +59,12 @@ test('only coding (and its tests) fly; design, ready, decision and review wait o
   }
 });
 
-test('design, ready and needs decision park in the left lot, in review in the right', () => {
-  for (const left of ['designing', 'plan_ready', 'needs_decision', 'ready'] as const) {
+test('design and ready park in the left lot, needs decision and in review in the right', () => {
+  for (const left of ['designing', 'plan_ready', 'ready'] as const) {
     assert.equal(lotOfStage(left), 'left', left);
   }
   assert.equal(lotOfStage('in_review'), 'right');
+  assert.equal(lotOfStage('needs_decision'), 'right');
   assert.equal(lotOfStage('coding'), null);
 });
 
@@ -133,10 +134,10 @@ test('a cruising task that becomes ready lands on the right runway and parks rig
   assert.ok(p && p.x > field.runwayR);
 });
 
-test('a coding task that moves to tests lands, taxies across to the left lot and parks there', () => {
+test('a coding task that moves to plan ready lands, taxies across to the left lot and parks there', () => {
   setSkyTasks([task('coding')]);
   at(0);
-  setSkyTasks([task('needs_decision')]);
+  setSkyTasks([task('plan_ready')]);
   let sec = 0;
   let landed = false;
   for (; sec < 120 && !landed; sec += 0.25) {
@@ -451,7 +452,7 @@ test('the ready-to-merge number stands outside the field edge beside its plane, 
 });
 
 test('a plan or tests number stands outside the field edge on the left, level with its plane', () => {
-  for (const stage of ['plan_ready', 'needs_decision'] as const) {
+  for (const stage of ['plan_ready', 'ready'] as const) {
     resetSkyMotion();
     setSkyNight(0);
     setSkyTasks([{ id: 'a#6', title: 'a', stage }]);

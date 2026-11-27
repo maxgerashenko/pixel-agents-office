@@ -505,7 +505,7 @@ export function drawGroundCrew(
 ): void {
   if (!(stage in SKY_BEACON_COLORS)) return;
   // one beacon per bay, on the lot's outer edge: the left edge of the left lot, the right edge of the right one
-  const outer = stage === 'in_review' ? 6 : -6;
+  const outer = stage === 'in_review' || stage === 'needs_decision' ? 6 : -6;
   drawBeacon(ctx, x + outer * px, y, px, stage as SignalStage, sec, seed);
   if (TECHNICIAN_STAGES.includes(stage)) drawTechnician(ctx, x + 6 * px, y, px, sec, seed);
 }

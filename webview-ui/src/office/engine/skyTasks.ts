@@ -2,9 +2,8 @@
  * Tasks in the sky: the board's issues. By day each flying task is a plane with a white contrail,
  * by night a satellite with blinking lights. Only coding flies, each task on its own track (its own
  * altitude, five tracks, low to high), so coding tasks don't overlap. The rest are parked on the
- * airfield (skyAirfield): design (blue beacon), ready (green) and needs decision (red) in the left lot
- * - a technician stands by design and ready, none by decision - and in review (pink, no technician)
- * in the right lot. A task that moves to coding taxis to the left runway, takes off and joins its track;
+ * airfield (skyAirfield): design (blue beacon) and ready (green) in the left lot with a technician by each,
+ * needs decision (red) and in review (pink) in the right lot with none. A task that moves to coding taxis to the left runway, takes off and joins its track;
  * orbits arc across the whole sky from left to right, the same arc shifted up one gap each. A task
  * that moves to a waiting status stays on its orbit until it comes round to the airfield, glides
  * down onto the right runway, lands and parks (left-lot tasks taxi on across). A done task leaves
@@ -131,16 +130,10 @@ export function flies(stage: SkyTaskStage): boolean {
   return (SKY_TASK_FLYING_STAGES as readonly SkyTaskStage[]).includes(stage);
 }
 
-/** The lot a waiting status parks in: design, ready and decision on the left, review on the right. */
+/** The lot a waiting status parks in: design and ready on the left, decision and review on the right. */
 export function lotOfStage(stage: SkyTaskStage): AirfieldLot | null {
-  if (
-    stage === 'designing' ||
-    stage === 'plan_ready' ||
-    stage === 'needs_decision' ||
-    stage === 'ready'
-  )
-    return 'left';
-  return stage === 'in_review' ? 'right' : null;
+  if (stage === 'designing' || stage === 'plan_ready' || stage === 'ready') return 'left';
+  return stage === 'in_review' || stage === 'needs_decision' ? 'right' : null;
 }
 
 /** The track (altitude, 0 = lowest) each flying task keeps for as long as it flies. */
@@ -1046,7 +1039,7 @@ export function drawGroundPlanes(
           ) +
           SKY_PR_NUMBER_EDGE_GAP_UNITS * px;
         let outside: number | undefined;
-        if (task.stage === 'in_review')
+        if (task.stage === 'in_review' || task.stage === 'needs_decision')
           outside =
             w - (s.x + dist) >= need ? s.x + dist : s.x + SKY_PR_NUMBER_FREE_SIDE_UNITS * px;
         else if (!f.strip && s.x - dist >= need) outside = s.x - dist;
