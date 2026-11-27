@@ -1358,6 +1358,9 @@ export const MONITOR_GLOW_PALETTES: Record<'edit' | 'shell' | 'read', Record<str
 
 // ── Live whiteboard ──────────────────────────────────────────
 export const WHITEBOARD_FURNITURE_TYPE = 'WHITEBOARD';
+/** The 1x1 whiteboard: same count and tap, digits straight on its clean face. Two digits are all it holds. */
+export const WHITEBOARD_SMALL_FURNITURE_TYPE = 'WHITEBOARD_SMALL';
+export const WHITEBOARD_SMALL_COUNT_MAX = 99;
 /** The count's plate, as a fraction of the board's footprint. */
 /** The count is drawn from a 3x5 pixel font, each lit pixel 2 wide so it reads bold. Rows of 3 bits, top first. */
 export const WHITEBOARD_GLYPHS: Record<string, readonly number[]> = {
@@ -1385,6 +1388,56 @@ export const WHITEBOARD_PLATE_COLOR = '#efebe8';
 /** How often the open list re-reads the board, ms. */
 export const WHITEBOARD_REFRESH_MS = 1000;
 export const WHITEBOARD_MODAL_Z_INDEX = 52;
+
+// ── Mission screen (the MISSION_SCREEN item shows the board's five status counts) ──
+export const MISSION_SCREEN_FURNITURE_TYPE = 'MISSION_SCREEN';
+/** Count and label colour per column: design, ready, progress, review, decision. */
+export const MISSION_SCREEN_COLORS = ['#4f8df7', '#5fe04f', '#ffd83a', '#4f8df7', '#f0503c'];
+export const MISSION_SCREEN_COUNT_MAX = 99;
+/** The dark screen inside the frame starts here, and each of the five columns is this wide (sprite pixels). */
+export const MISSION_SCREEN_INNER_X = 4;
+export const MISSION_SCREEN_COLUMN_W = 27;
+/** Seven-segment digits: box size, bar thickness, gap between the two digits, top edge (sprite pixels). */
+export const MISSION_SCREEN_DIGIT_W = 7;
+export const MISSION_SCREEN_DIGIT_H = 10;
+export const MISSION_SCREEN_DIGIT_STROKE = 2;
+export const MISSION_SCREEN_DIGIT_GAP = 2;
+export const MISSION_SCREEN_DIGIT_Y = 9;
+/** Lit bars per digit (a top, b upper right, c lower right, d bottom, e lower left, f upper left, g middle). */
+export const MISSION_SCREEN_DIGIT_SEGMENTS: Record<string, string> = {
+  '0': 'abcdef',
+  '1': 'bc',
+  '2': 'abged',
+  '3': 'abgcd',
+  '4': 'fgbc',
+  '5': 'afgcd',
+  '6': 'afgecd',
+  '7': 'abc',
+  '8': 'abcdefg',
+  '9': 'abfgcd',
+};
+/** The status names use a 3x5 pixel font drawn smaller than a sprite pixel so the longest fits its column. */
+export const MISSION_SCREEN_LABEL_Y = 20.5;
+export const MISSION_SCREEN_LABEL_SCALE = 0.8;
+export const MISSION_SCREEN_LABEL_GLYPH_W = 3;
+export const MISSION_SCREEN_LABEL_GLYPH_GAP = 1;
+/** Rows of 3 bits, top first. */
+export const MISSION_SCREEN_LABEL_GLYPHS: Record<string, readonly number[]> = {
+  A: [2, 5, 7, 5, 5],
+  C: [7, 4, 4, 4, 7],
+  D: [6, 5, 5, 5, 6],
+  E: [7, 4, 6, 4, 7],
+  G: [7, 4, 5, 5, 7],
+  I: [7, 2, 2, 2, 7],
+  N: [6, 5, 5, 5, 5],
+  O: [7, 5, 5, 5, 7],
+  P: [7, 5, 7, 4, 4],
+  R: [6, 5, 6, 5, 5],
+  S: [7, 4, 7, 1, 7],
+  V: [5, 5, 5, 5, 2],
+  W: [5, 5, 5, 7, 7],
+  Y: [5, 5, 2, 2, 2],
+};
 
 // ── Wall clock (the CLOCK item shows the device's local time) ──
 /** The CLOCK sprite pixel the hands turn about (a face pixel, so a hand starts on it). */

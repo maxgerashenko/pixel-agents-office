@@ -1,0 +1,59 @@
+{
+  "id": "MISSION_DESK",
+  "name": "Mission Control Desk",
+  "category": "electronics",
+  "type": "group",
+  "groupType": "state",
+  "canPlaceOnWalls": false,
+  "canPlaceOnSurfaces": false,
+  "backgroundTiles": 1,
+  "members": [
+    {
+      "type": "group",
+      "groupType": "animation",
+      "state": "on",
+      "members": [
+        {
+          "type": "asset",
+          "id": "MISSION_DESK_ON_1",
+          "file": "MISSION_DESK_ON_1.png",
+          "width": 48,
+          "height": 32,
+          "footprintW": 3,
+          "footprintH": 2,
+          "frame": 0
+        },
+        {
+          "type": "asset",
+          "id": "MISSION_DESK_ON_2",
+          "file": "MISSION_DESK_ON_2.png",
+          "width": 48,
+          "height": 32,
+          "footprintW": 3,
+          "footprintH": 2,
+          "frame": 1
+        },
+        {
+          "type": "asset",
+          "id": "MISSION_DESK_ON_3",
+          "file": "MISSION_DESK_ON_3.png",
+          "width": 48,
+          "height": 32,
+          "footprintW": 3,
+          "footprintH": 2,
+          "frame": 2
+        }
+      ]
+    },
+    {
+      "type": "asset",
+      "id": "MISSION_DESK_OFF",
+      "file": "MISSION_DESK_OFF.png",
+      "width": 48,
+      "height": 32,
+      "footprintW": 3,
+      "footprintH": 2,
+      "state": "off"
+    }
+  ]
+}

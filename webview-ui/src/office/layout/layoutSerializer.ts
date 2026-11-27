@@ -1,5 +1,5 @@
 import type { ColorValue } from '../../components/ui/types.js';
-import { CLOCK_TYPE } from '../../constants.js';
+import { CLOCK_TYPE, MISSION_SCREEN_FURNITURE_TYPE } from '../../constants.js';
 import { getColorizedSprite } from '../colorize.js';
 import type {
   FurnitureInstance,
@@ -102,6 +102,7 @@ export function layoutToFurnitureInstances(furniture: PlacedFurniture[]): Furnit
       zY,
       ...(mirrored ? { mirrored: true } : {}),
       ...(item.type === CLOCK_TYPE ? { clock: true } : {}),
+      ...(item.type === MISSION_SCREEN_FURNITURE_TYPE ? { missionScreen: true } : {}),
     });
   }
   return instances;

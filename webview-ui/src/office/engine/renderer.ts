@@ -32,6 +32,17 @@ import {
   GRID_LINE_COLOR,
   HEADLESS_CHARACTER_ALPHA,
   HOVERED_OUTLINE_ALPHA,
+  MISSION_SCREEN_COLORS,
+  MISSION_SCREEN_COLUMN_W,
+  MISSION_SCREEN_DIGIT_GAP,
+  MISSION_SCREEN_DIGIT_W,
+  MISSION_SCREEN_DIGIT_Y,
+  MISSION_SCREEN_INNER_X,
+  MISSION_SCREEN_LABEL_GLYPH_GAP,
+  MISSION_SCREEN_LABEL_GLYPH_W,
+  MISSION_SCREEN_LABEL_GLYPHS,
+  MISSION_SCREEN_LABEL_SCALE,
+  MISSION_SCREEN_LABEL_Y,
   OUTLINE_Z_SORT_OFFSET,
   REACTION_EMOTE_Z_OFFSET,
   ROTATE_BUTTON_BG,
@@ -92,7 +103,14 @@ import { CharacterState, TILE_SIZE, TileType } from '../types.js';
 import { getWallInstances, hasWallSprites, wallColorToHex } from '../wallTiles.js';
 import { characterDrawOffsetY, getCharacterSprite } from './characters.js';
 import { clockHands, currentClockTime } from './clockHands.js';
+import { getIssueBoard } from './issueBoard.js';
 import { renderMatrixEffect } from './matrixEffect.js';
+import {
+  digitRects,
+  MISSION_SCREEN_COLUMNS,
+  missionCounts,
+  missionDigits,
+} from './missionScreen.js';
 import { getPetSpriteData } from './petEntity.js';
 import { drawReactionEmote } from './reactionEmote.js';
 import { headTopRowOf, reactionHopPx, reactionShakePx } from './reactions.js';
@@ -432,8 +450,10 @@ function renderWhiteboardPlates(
     const h = WHITEBOARD_GLYPH_H + WHITEBOARD_PLATE_MARGIN * 2;
     const left = Math.round(offsetX + (p.x - w / 2) * zoom);
     const top = Math.round(offsetY + (p.y - h / 2) * zoom);
-    ctx.fillStyle = WHITEBOARD_PLATE_COLOR;
-    ctx.fillRect(left, top, w * zoom, h * zoom);
+    if (!p.bare) {
+      ctx.fillStyle = WHITEBOARD_PLATE_COLOR;
+      ctx.fillRect(left, top, w * zoom, h * zoom);
+    }
     ctx.fillStyle = WHITEBOARD_COUNT_COLOR;
     let x = WHITEBOARD_PLATE_MARGIN;
     for (const d of digits) {
@@ -453,6 +473,53 @@ function renderWhiteboardPlates(
     }
   }
   ctx.restore();
+}
+
+/** A mission screen's face: the board's five status counts as big seven-segment digits, each with its status name under it. */
+function drawMissionCounts(
+  ctx: CanvasRenderingContext2D,
+  left: number,
+  top: number,
+  zoom: number,
+  counts: number[],
+): void {
+  // The names are drawn in whole device pixels, smaller than a sprite pixel; at zoom 1 they cannot fit
+  const unit = Math.max(1, Math.floor(zoom * MISSION_SCREEN_LABEL_SCALE));
+  const pitch = MISSION_SCREEN_LABEL_GLYPH_W + MISSION_SCREEN_LABEL_GLYPH_GAP;
+  const pairW = MISSION_SCREEN_DIGIT_W * 2 + MISSION_SCREEN_DIGIT_GAP;
+  const fill = ctx.fillStyle;
+  MISSION_SCREEN_COLUMNS.forEach(({ label }, i) => {
+    ctx.fillStyle = MISSION_SCREEN_COLORS[i];
+    const colX = MISSION_SCREEN_INNER_X + i * MISSION_SCREEN_COLUMN_W;
+    const pairX = colX + Math.floor((MISSION_SCREEN_COLUMN_W - pairW) / 2);
+    missionDigits(counts[i] ?? 0)
+      .split('')
+      .forEach((d, di) => {
+        const dx = pairX + di * (MISSION_SCREEN_DIGIT_W + MISSION_SCREEN_DIGIT_GAP);
+        for (const [x, y, w, h] of digitRects(d)) {
+          ctx.fillRect(
+            left + (dx + x) * zoom,
+            top + (MISSION_SCREEN_DIGIT_Y + y) * zoom,
+            w * zoom,
+            h * zoom,
+          );
+        }
+      });
+    if (zoom < 2) return;
+    const labelW = (label.length * pitch - MISSION_SCREEN_LABEL_GLYPH_GAP) * unit;
+    const labelX =
+      left + Math.round(((colX + MISSION_SCREEN_COLUMN_W / 2) * zoom - labelW / 2) / unit) * unit;
+    const labelY = top + Math.round(MISSION_SCREEN_LABEL_Y * zoom);
+    label.split('').forEach((ch, ci) => {
+      (MISSION_SCREEN_LABEL_GLYPHS[ch] ?? []).forEach((bits, ry) => {
+        for (let cx = 0; cx < MISSION_SCREEN_LABEL_GLYPH_W; cx++) {
+          if (!(bits & (1 << (MISSION_SCREEN_LABEL_GLYPH_W - 1 - cx)))) continue;
+          ctx.fillRect(labelX + (ci * pitch + cx) * unit, labelY + ry * unit, unit, unit);
+        }
+      });
+    });
+  });
+  ctx.fillStyle = fill;
 }
 
 /** The hands of the wall CLOCK for the device's local time, one sprite pixel per cell. */
@@ -477,6 +544,8 @@ export function renderScene(
   balls: TableBall[] = [],
 ): void {
   const drawables: ZDrawable[] = [];
+  // Every mission screen shows the same board counts
+  const missionScreenCounts = missionCounts(getIssueBoard());
 
   // Table-tennis balls: a shadow on the table top and the ball above it, both
   // sorted just after the table so the players stay in front
@@ -516,6 +585,7 @@ export function renderScene(
         draw: (c) => {
           c.drawImage(cached, fx, fy);
           if (f.clock) drawClockHands(c, fx, fy, zoom);
+          if (f.missionScreen) drawMissionCounts(c, fx, fy, zoom, missionScreenCounts);
         },
       });
     }

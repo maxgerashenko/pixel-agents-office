@@ -69,6 +69,8 @@ export interface FurnitureInstance {
   mirrored?: boolean;
   /** The wall CLOCK: the renderer draws the current time's hands over its sprite */
   clock?: boolean;
+  /** The MISSION_SCREEN: the renderer draws the board's status counts over its sprite */
+  missionScreen?: boolean;
 }
 
 export interface ToolActivity {

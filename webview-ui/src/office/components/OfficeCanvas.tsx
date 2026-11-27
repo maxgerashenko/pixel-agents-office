@@ -16,6 +16,7 @@ import { furnitureAt } from '../editor/editorActions.js';
 import { buildEditorRenderState } from '../editor/editorRenderState.js';
 import type { EditorState } from '../editor/editorState.js';
 import { startGameLoop } from '../engine/gameLoop.js';
+import { isMissionScreen } from '../engine/missionScreen.js';
 import type { OfficeState } from '../engine/officeState.js';
 import type {
   DeleteButtonBounds,
@@ -678,13 +679,13 @@ export function OfficeCanvas({
         return;
       }
 
-      // A whiteboard: list the active tasks
+      // A whiteboard or mission screen: show the board
       if (onWhiteboardTap) {
         const wbTile = screenToTile(clientX, clientY);
-        if (
-          wbTile &&
-          isWhiteboard(furnitureAt(officeState.getLayout(), wbTile.col, wbTile.row)?.type)
-        ) {
+        const wbType = wbTile
+          ? furnitureAt(officeState.getLayout(), wbTile.col, wbTile.row)?.type
+          : undefined;
+        if (isWhiteboard(wbType) || isMissionScreen(wbType)) {
           onWhiteboardTap();
           return;
         }
