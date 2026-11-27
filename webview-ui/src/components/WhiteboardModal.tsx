@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 import { WHITEBOARD_MODAL_Z_INDEX, WHITEBOARD_REFRESH_MS } from '../constants.js';
 import {
@@ -14,6 +14,37 @@ import { Modal } from './ui/Modal.js';
 export function WhiteboardModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const [cards, setCards] = useState(getIssueBoard);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const detailsRef = useRef<HTMLDivElement>(null);
+  // Where the tapped card sat, in px from the top of the board wrapper.
+  const [tapTop, setTapTop] = useState(0);
+  const [detailsTop, setDetailsTop] = useState(0);
+
+  const selectCard = (id: string, button: HTMLElement) => {
+    const wrap = wrapRef.current;
+    if (wrap) setTapTop(button.getBoundingClientRect().top - wrap.getBoundingClientRect().top);
+    setSelectedId(id);
+  };
+
+  // Sit the row over the tapped card, kept inside the board and the visible part of its scroller.
+  useLayoutEffect(() => {
+    const wrap = wrapRef.current;
+    const row = detailsRef.current;
+    if (!wrap || !row || selectedId === null) return;
+    const height = row.offsetHeight;
+    let min = 0;
+    let max = wrap.offsetHeight - height;
+    let scroller: HTMLElement | null = wrap.parentElement;
+    while (scroller && scroller.scrollHeight <= scroller.clientHeight)
+      scroller = scroller.parentElement;
+    if (scroller) {
+      const wrapTop = wrap.getBoundingClientRect().top;
+      const view = scroller.getBoundingClientRect();
+      min = Math.max(min, view.top - wrapTop);
+      max = Math.min(max, view.bottom - wrapTop - height);
+    }
+    setDetailsTop(Math.max(0, Math.min(tapTop, Math.max(min, max))));
+  }, [selectedId, tapTop]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -35,7 +66,7 @@ export function WhiteboardModal({ isOpen, onClose }: { isOpen: boolean; onClose:
       zIndex={WHITEBOARD_MODAL_Z_INDEX}
       className="min-w-[min(960px,100%)]!"
     >
-      <div className="relative">
+      <div ref={wrapRef} className="relative">
         <div data-testid="issue-board" className="flex gap-4 px-4 py-4 overflow-x-auto text-text">
           {issueBoardColumns(cards).map((column) => (
             <section
@@ -52,7 +83,7 @@ export function WhiteboardModal({ isOpen, onClose }: { isOpen: boolean; onClose:
                     <button
                       type="button"
                       title={card.id}
-                      onClick={() => setSelectedId(card.id)}
+                      onClick={(e) => selectCard(card.id, e.currentTarget)}
                       className="w-full text-left text-sm bg-bg border-2 border-border p-4 cursor-pointer hover:border-accent"
                       style={{ lineHeight: 1.3 }}
                     >
@@ -67,8 +98,10 @@ export function WhiteboardModal({ isOpen, onClose }: { isOpen: boolean; onClose:
         </div>
         {selected && (
           <div
+            ref={detailsRef}
             data-testid="issue-details"
-            className="absolute inset-x-4 top-4 z-10 flex items-center gap-[16px] border-2 border-border bg-bg-dark p-[24px] text-text overflow-auto"
+            style={{ top: detailsTop }}
+            className="absolute inset-x-4 z-10 flex items-center gap-[16px] border-2 border-border bg-bg-dark p-[24px] text-text overflow-auto"
           >
             <div className="flex-1 min-w-0">
               <div className="text-accent-bright">#{selected.number}</div>
