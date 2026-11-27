@@ -45,7 +45,7 @@ test('New, Blocked and Done are not shown on the board', () => {
   const columns = issueBoardColumns([card(1, 'new'), card(2, 'blocked'), card(3, 'done')]);
   assert.deepEqual(
     columns.map((c) => c.status),
-    ['needs_design', 'ready', 'in_progress', 'in_review', 'needs_decision'],
+    ['ready', 'needs_design', 'in_progress', 'in_review', 'needs_decision'],
   );
   assert.equal(
     columns.some((c) => c.cards.length > 0),
