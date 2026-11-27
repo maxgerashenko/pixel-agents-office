@@ -33,7 +33,7 @@ test('columns follow the board left to right, each with its own issues, empty on
   ]);
   assert.deepEqual(
     columns.map((c) => c.label),
-    ['Needs design', 'Ready', 'In progress', 'In review', 'Needs decision'],
+    ['Needs design', 'Ready', 'Coding', 'In review', 'Needs decision'],
   );
   assert.deepEqual(
     columns.map((c) => c.cards.map((x) => x.number)),
@@ -71,6 +71,6 @@ test('details line names the column and the progress step', () => {
   assert.equal(issueDetailsLine(card(1, 'ready')), 'Ready');
   assert.equal(
     issueDetailsLine({ ...card(2, 'in_progress'), progress: 'plan_ready' }),
-    'In progress \u00b7 plan ready',
+    'Coding \u00b7 plan ready',
   );
 });
