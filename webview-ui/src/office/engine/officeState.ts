@@ -78,6 +78,7 @@ import type { PetHome, PetSofaSpot, PetTreeSpot } from './petEntity.js';
 import { createPet, findPetHome, isNearPetHome, petClaims, updatePet } from './petEntity.js';
 import type { ReactionKind } from './reactions.js';
 import { advanceReaction, startReaction } from './reactions.js';
+import { isMissionScreen } from './missionScreen.js';
 import {
   anchorTile,
   closestFreeSeat,
@@ -427,6 +428,8 @@ export class OfficeState {
     for (const item of this.layout.furniture) {
       const entry = getCatalogEntry(item.type);
       if (!entry || entry.category !== 'electronics') continue;
+      // The mission screen lives in the Tech tab but is a display, not a computer.
+      if (isMissionScreen(item.type)) continue;
       for (let dr = 0; dr < entry.footprintH; dr++) {
         for (let dc = 0; dc < entry.footprintW; dc++) {
           out.add(`${item.col + dc},${item.row + dr}`);

@@ -41,14 +41,14 @@ function card(number: number, status: IssueBoardCardView['status']): IssueBoardC
   return { id: `r#${number}`, number, title: `t${number}`, status, url: '' } as IssueBoardCardView;
 }
 
-test('the screen stands on the floor: 9 wide, 1 deep plus a background row, never a work computer', () => {
+test('the screen stands on the floor: 9 wide, 1 deep plus a background row, in the Tech tab but never a work computer', () => {
   const entry = getCatalogEntry('MISSION_SCREEN');
   assert.ok(entry);
   assert.equal(entry.footprintW, 9);
   assert.equal(entry.footprintH - (entry.backgroundTiles ?? 0), 1);
   assert.ok(!entry.canPlaceOnWalls);
-  assert.notEqual(entry.category, 'electronics');
-  assert.ok(getCatalogByCategory('decor').some((e) => e.type === 'MISSION_SCREEN'));
+  assert.equal(entry.category, 'electronics');
+  assert.ok(getCatalogByCategory('electronics').some((e) => e.type === 'MISSION_SCREEN'));
 });
 
 test('counts follow the five columns and ignore every other status', () => {
@@ -145,4 +145,21 @@ test('a chair facing the desk is a work seat, and the desk lights up when its ag
     (t) => getCatalogEntry(t)?.sprite,
   );
   assert.ok(lit.includes(drawn.sprite), 'the desk shows a lit frame');
+});
+
+test('a chair facing the mission screen is not a work seat, even from the Tech tab', () => {
+  const cols = 12;
+  const rows = 6;
+  const layout: OfficeLayout = {
+    version: 1,
+    cols,
+    rows,
+    tiles: new Array(cols * rows).fill(TileType.FLOOR_1),
+    furniture: [
+      { uid: 'screen', type: 'MISSION_SCREEN', col: 1, row: 1 },
+      { uid: 'chair', type: 'WOODEN_CHAIR_BACK', col: 4, row: 3 },
+    ],
+  };
+  const os = new OfficeState(layout);
+  assert.equal(os.isWorkSeat('chair'), false);
 });
