@@ -30,7 +30,7 @@ describe('planLabelChanges', () => {
         number: 1,
         from: 'coding',
         to: 'review',
-        add: ['in-review'],
+        add: ['review'],
         remove: ['in-progress'],
       },
     ]);
@@ -42,7 +42,7 @@ describe('planLabelChanges', () => {
     expect(planLabelChanges([item(1, 'ready', ['local-only'])], { 'o/r#1': 'new' })).toEqual([]);
   });
   it('skips when labels already agree', () => {
-    expect(planLabelChanges([item(1, 'review', ['in-review'])], { 'o/r#1': 'coding' })).toEqual([]);
+    expect(planLabelChanges([item(1, 'review', ['review'])], { 'o/r#1': 'coding' })).toEqual([]);
   });
   it('moving to New removes flow labels, Done changes nothing', () => {
     expect(

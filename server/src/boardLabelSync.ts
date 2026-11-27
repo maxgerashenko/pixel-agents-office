@@ -32,10 +32,10 @@ export type BoardSyncMode = 'off' | 'dry-run' | 'on';
 /** Board Status column to the flow label it carries. New and Done carry none. */
 const LABEL_OF_COLUMN: Readonly<Record<string, string | null>> = {
   new: null,
-  ready: 'status:ready',
-  design: 'needs-design',
+  ready: 'ready',
+  design: 'design',
   coding: 'in-progress',
-  review: 'in-review',
+  review: 'review',
   decision: 'needs-decision',
   blocked: 'blocked',
   stale: 'status:stale',
@@ -48,10 +48,10 @@ const COLUMN_OF_LABEL_IN_PRIORITY_ORDER: ReadonlyArray<[string, string]> = [
   ['needs-decision', 'decision'],
   ['status:stale', 'stale'],
   ['blocked', 'blocked'],
-  ['in-review', 'review'],
+  ['review', 'review'],
   ['in-progress', 'coding'],
-  ['status:ready', 'ready'],
-  ['needs-design', 'design'],
+  ['ready', 'ready'],
+  ['design', 'design'],
 ];
 
 export interface BoardItem {

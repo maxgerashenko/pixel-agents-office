@@ -21,13 +21,13 @@ describe('boardStatusOfIssue', () => {
   it('follows the board sync: a closed issue is done, else the first flow label wins', () => {
     expect(boardStatusOfIssue(issue({}))).toBe('new');
     expect(boardStatusOfIssue(issue({ labels: labels('bug') }))).toBe('new');
-    expect(boardStatusOfIssue(issue({ labels: labels('needs-design') }))).toBe('needs_design');
-    expect(boardStatusOfIssue(issue({ labels: labels('status:ready') }))).toBe('ready');
+    expect(boardStatusOfIssue(issue({ labels: labels('design') }))).toBe('needs_design');
+    expect(boardStatusOfIssue(issue({ labels: labels('ready') }))).toBe('ready');
     expect(boardStatusOfIssue(issue({ labels: labels('In-Progress') }))).toBe('in_progress');
-    expect(boardStatusOfIssue(issue({ labels: labels('in-progress', 'in-review') }))).toBe(
+    expect(boardStatusOfIssue(issue({ labels: labels('in-progress', 'review') }))).toBe(
       'in_review',
     );
-    expect(boardStatusOfIssue(issue({ labels: labels('in-review', 'blocked') }))).toBe('blocked');
+    expect(boardStatusOfIssue(issue({ labels: labels('review', 'blocked') }))).toBe('blocked');
     expect(boardStatusOfIssue(issue({ labels: labels('blocked', 'needs-decision') }))).toBe(
       'needs_decision',
     );
@@ -41,7 +41,7 @@ describe('progress of a card', () => {
     issueBoardFromIssues([issue(over)], now)[0].progress;
 
   it('needs design: writing the plan until a plan file exists, then ready for review', () => {
-    const labelsNeedsDesign = labels('needs-design');
+    const labelsNeedsDesign = labels('design');
     expect(progressOf({ labels: labelsNeedsDesign })).toBe('writing_plan');
     expect(progressOf({ labels: labelsNeedsDesign, hasPlanFile: true })).toBe('plan_ready');
   });
@@ -56,8 +56,8 @@ describe('progress of a card', () => {
   });
 
   it('other statuses carry no progress', () => {
-    expect(progressOf({ labels: labels('status:ready') })).toBeUndefined();
-    expect(progressOf({ labels: labels('in-review') })).toBeUndefined();
+    expect(progressOf({ labels: labels('ready') })).toBeUndefined();
+    expect(progressOf({ labels: labels('review') })).toBeUndefined();
     expect(progressOf({ labels: labels('needs-decision') })).toBeUndefined();
   });
 });
