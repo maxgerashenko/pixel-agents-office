@@ -36,10 +36,7 @@ export function WhiteboardModal({ isOpen, onClose }: { isOpen: boolean; onClose:
       className="min-w-[min(960px,100%)]!"
     >
       <div className="relative">
-        <div
-          data-testid="issue-board"
-          className="flex gap-4 px-4 py-4 overflow-x-auto text-text min-h-[200px]"
-        >
+        <div data-testid="issue-board" className="flex gap-4 px-4 py-4 overflow-x-auto text-text">
           {issueBoardColumns(cards).map((column) => (
             <section
               key={column.status}
@@ -71,7 +68,7 @@ export function WhiteboardModal({ isOpen, onClose }: { isOpen: boolean; onClose:
         {selected && (
           <div
             data-testid="issue-details"
-            className="absolute inset-4 z-10 flex items-start gap-4 border-2 border-border bg-bg-dark p-4 text-text overflow-auto"
+            className="absolute inset-x-4 top-4 z-10 flex items-start gap-4 border-2 border-border bg-bg-dark p-4 text-text overflow-auto"
           >
             <div className="flex-1 min-w-0">
               <div className="text-accent-bright">#{selected.number}</div>
