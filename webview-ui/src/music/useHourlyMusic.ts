@@ -64,14 +64,14 @@ export function readMusicUrl(): string {
 }
 
 /** True once the user has turned the music off themselves; it then stays off on load. */
-function readMusicMuted(): boolean {
+export function readMusicMuted(): boolean {
   try {
     return localStorage.getItem(MUSIC_ON_STORAGE_KEY) === 'off';
   } catch {
     return false;
   }
 }
-function writeMusicMuted(muted: boolean): void {
+export function writeMusicMuted(muted: boolean): void {
   try {
     localStorage.setItem(MUSIC_ON_STORAGE_KEY, muted ? 'off' : 'on');
   } catch {
