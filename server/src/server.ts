@@ -6,6 +6,7 @@ import * as path from 'path';
 
 import type { AgentRuntime } from './agentRuntime.js';
 import type { AgentStateStore } from './agentStateStore.js';
+import { BoardLabelSync } from './boardLabelSync.js';
 import type {
   AssetCache,
   ReloadAssetsSideEffect,
@@ -61,6 +62,7 @@ export class PixelAgentsServer {
   private taskTracker: TaskTracker | null = null;
   private cloudSessionTracker: CloudSessionTracker | null = null;
   private issueBoardTracker: IssueBoardTracker | null = null;
+  private boardLabelSync: BoardLabelSync | null = null;
 
   /** The usage tracker of the server THIS instance started (null when it reused another process's server, which then owns the snapshot). */
   get usage(): UsageTracker | null {
@@ -147,6 +149,11 @@ export class PixelAgentsServer {
     this.taskTracker = store ? new TaskTracker(store) : null;
     this.cloudSessionTracker = store ? new CloudSessionTracker(store) : null;
     this.issueBoardTracker = store ? new IssueBoardTracker(store) : null;
+    // Standalone only, and only when PIXEL_AGENTS_BOARD_SYNC is dry-run or on (default off).
+    if (!embedded) {
+      this.boardLabelSync = new BoardLabelSync();
+      this.boardLabelSync.start();
+    }
 
     const { app, port } = await createHttpServer({
       embedded,
@@ -213,6 +220,8 @@ export class PixelAgentsServer {
     this.cloudSessionTracker = null;
     this.issueBoardTracker?.dispose();
     this.issueBoardTracker = null;
+    this.boardLabelSync?.dispose();
+    this.boardLabelSync = null;
   }
 
   /** Returns the current server config, or null if not started. */
