@@ -12,7 +12,7 @@ import { LAYOUT_FILE_DIR } from './constants.js';
  * swapped to match. Each tick also writes a heartbeat file the page reads to show the sync is live.
  */
 
-export const BOARD_SYNC_TICK_MS = 4 * 60_000;
+export const BOARD_SYNC_TICK_MS = 2 * 60_000;
 /** A heartbeat older than this many ticks counts as stale. */
 export const BOARD_SYNC_STALE_AFTER_TICKS = 2;
 export const BOARD_SYNC_ENV = 'PIXEL_AGENTS_BOARD_SYNC';
