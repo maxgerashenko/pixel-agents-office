@@ -11,7 +11,7 @@ import {
   sessionClock,
   type UsageView,
   type UsageWindowView,
-  weekLineSegments,
+  weekLineLayers,
 } from './usageView.js';
 
 /** Grid size and stroke of the session ring, in sprite pixels (drawn at 2×). */
@@ -41,10 +41,10 @@ function SessionRing({ percent }: { percent: number }) {
   );
 }
 
-/** One thin line holding both weekly limits: the all-models week is the fill
- *  in the main colour, and Fable's week shows only as its difference from it,
- *  in the second colour the session bar uses, at the fill's right tip (see
- *  `weekLineSegments`). */
+/** One thin line holding both weekly limits, each a fill from the left edge:
+ *  the all-models week in the main colour, Fable's week in the second colour
+ *  the session bar uses. The shorter is drawn over the longer (see
+ *  `weekLineLayers`). */
 function WeekLine({
   week,
   fable,
@@ -56,7 +56,6 @@ function WeekLine({
 }) {
   const weekPct = week ? displayPercent(week.usedPercentage) : null;
   const fablePct = fable ? displayPercent(fable.usedPercentage) : null;
-  const { mainWidth, diffLeft, diffWidth } = weekLineSegments(weekPct, fablePct);
   const tips = [
     fable && fablePct !== null
       ? `Fable this week: ${fablePct}% used, resets in ${formatTimeLeft(fable.resetsAt, now)}`
@@ -75,18 +74,13 @@ function WeekLine({
       aria-valuenow={weekPct ?? fablePct ?? 0}
       title={tips.join('\n')}
     >
-      {mainWidth > 0 && (
+      {weekLineLayers(weekPct, fablePct).map(({ kind, width }) => (
         <div
-          className="absolute inset-y-0 left-0 bg-accent-bright"
-          style={{ width: `${mainWidth}%` }}
+          key={kind}
+          className={`absolute inset-y-0 left-0 ${kind === 'week' ? 'bg-accent-bright' : 'bg-usage-last-hour'}`}
+          style={{ width: `${width}%` }}
         />
-      )}
-      {diffWidth > 0 && (
-        <div
-          className="absolute inset-y-0 bg-usage-last-hour"
-          style={{ left: `${diffLeft}%`, width: `${diffWidth}%` }}
-        />
-      )}
+      ))}
     </div>
   );
 }

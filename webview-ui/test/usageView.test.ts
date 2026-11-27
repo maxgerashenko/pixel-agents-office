@@ -10,7 +10,7 @@ import {
   ringHue,
   ringPixelPaths,
   sessionClock,
-  weekLineSegments,
+  weekLineLayers,
 } from '../src/components/usageView.js';
 
 describe('formatTimeLeft', () => {
@@ -118,18 +118,25 @@ describe('pickWeekWindows', () => {
   });
 });
 
-describe('weekLineSegments', () => {
-  it('extends past the week fill when Fable is ahead', () => {
-    expect(weekLineSegments(57, 60)).toEqual({ mainWidth: 57, diffLeft: 57, diffWidth: 3 });
+describe('weekLineLayers', () => {
+  it('puts Fable behind the week when Fable is ahead', () => {
+    expect(weekLineLayers(57, 70)).toEqual([
+      { kind: 'fable', width: 70 },
+      { kind: 'week', width: 57 },
+    ]);
   });
-  it('recolours the end of the week fill when Fable is behind', () => {
-    expect(weekLineSegments(57, 40)).toEqual({ mainWidth: 40, diffLeft: 40, diffWidth: 17 });
+  it('puts the week behind Fable when Fable is behind', () => {
+    expect(weekLineLayers(57, 40)).toEqual([
+      { kind: 'week', width: 57 },
+      { kind: 'fable', width: 40 },
+    ]);
   });
-  it('has no diff when equal or when Fable is missing', () => {
-    expect(weekLineSegments(57, 57).diffWidth).toBe(0);
-    expect(weekLineSegments(57, null)).toEqual({ mainWidth: 57, diffLeft: 57, diffWidth: 0 });
+  it('keeps the week in front on a tie', () => {
+    expect(weekLineLayers(57, 57).map((l) => l.kind)).toEqual(['fable', 'week']);
   });
-  it('shows Fable alone as the diff when the week is missing', () => {
-    expect(weekLineSegments(null, 30)).toEqual({ mainWidth: 0, diffLeft: 0, diffWidth: 30 });
+  it('draws whichever window is reported alone', () => {
+    expect(weekLineLayers(57, null)).toEqual([{ kind: 'week', width: 57 }]);
+    expect(weekLineLayers(null, 30)).toEqual([{ kind: 'fable', width: 30 }]);
+    expect(weekLineLayers(null, null)).toEqual([]);
   });
 });
