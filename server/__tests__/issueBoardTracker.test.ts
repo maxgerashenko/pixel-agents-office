@@ -23,10 +23,8 @@ describe('boardStatusOfIssue', () => {
     expect(boardStatusOfIssue(issue({ labels: labels('bug') }))).toBe('new');
     expect(boardStatusOfIssue(issue({ labels: labels('design') }))).toBe('needs_design');
     expect(boardStatusOfIssue(issue({ labels: labels('ready') }))).toBe('ready');
-    expect(boardStatusOfIssue(issue({ labels: labels('In-Progress') }))).toBe('in_progress');
-    expect(boardStatusOfIssue(issue({ labels: labels('in-progress', 'review') }))).toBe(
-      'in_review',
-    );
+    expect(boardStatusOfIssue(issue({ labels: labels('Coding') }))).toBe('in_progress');
+    expect(boardStatusOfIssue(issue({ labels: labels('coding', 'review') }))).toBe('in_review');
     expect(boardStatusOfIssue(issue({ labels: labels('review', 'blocked') }))).toBe('blocked');
     expect(boardStatusOfIssue(issue({ labels: labels('blocked', 'needs-decision') }))).toBe(
       'needs_decision',
@@ -47,7 +45,7 @@ describe('progress of a card', () => {
   });
 
   it('in progress: coding until its pull request has checks running or is in review', () => {
-    const labelsInProgress = labels('in-progress');
+    const labelsInProgress = labels('coding');
     expect(progressOf({ labels: labelsInProgress })).toBe('coding');
     expect(progressOf({ labels: labelsInProgress, pullRequestStage: 'plan' })).toBe('coding');
     expect(progressOf({ labels: labelsInProgress, pullRequestStage: 'coding' })).toBe('coding');
@@ -68,7 +66,7 @@ describe('issueBoardFromIssues', () => {
   it('keeps every open issue and only recently closed ones', () => {
     const cards = issueBoardFromIssues(
       [
-        issue({ number: 5, labels: labels('in-progress') }),
+        issue({ number: 5, labels: labels('coding') }),
         issue({ number: 6, state: 'CLOSED', closedAt: '2026-11-25T12:00:00Z' }),
         issue({ number: 7, state: 'CLOSED', closedAt: '2026-11-01T12:00:00Z' }),
       ],

@@ -34,7 +34,7 @@ const LABEL_OF_COLUMN: Readonly<Record<string, string | null>> = {
   new: null,
   ready: 'ready',
   design: 'design',
-  coding: 'in-progress',
+  coding: 'coding',
   review: 'review',
   decision: 'needs-decision',
   blocked: 'blocked',
@@ -49,7 +49,7 @@ const COLUMN_OF_LABEL_IN_PRIORITY_ORDER: ReadonlyArray<[string, string]> = [
   ['status:stale', 'stale'],
   ['blocked', 'blocked'],
   ['review', 'review'],
-  ['in-progress', 'coding'],
+  ['coding', 'coding'],
   ['ready', 'ready'],
   ['design', 'design'],
 ];

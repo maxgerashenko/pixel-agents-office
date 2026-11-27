@@ -36,7 +36,7 @@ const FLOW_LABEL_TO_STATUS_IN_PRIORITY_ORDER: ReadonlyArray<[string, IssueBoardS
   ['needs-decision', 'needs_decision'],
   ['blocked', 'blocked'],
   ['review', 'in_review'],
-  ['in-progress', 'in_progress'],
+  ['coding', 'in_progress'],
   ['ready', 'ready'],
   ['design', 'needs_design'],
 ];

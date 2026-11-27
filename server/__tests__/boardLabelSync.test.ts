@@ -21,7 +21,7 @@ describe('planLabelChanges', () => {
     expect(planLabelChanges([item(1, 'coding')], {})).toEqual([]);
   });
   it('swaps the flow label when the card moved', () => {
-    const plan = planLabelChanges([item(1, 'review', ['in-progress', 'area:x'])], {
+    const plan = planLabelChanges([item(1, 'review', ['coding', 'area:x'])], {
       'o/r#1': 'coding',
     });
     expect(plan).toEqual([
@@ -31,7 +31,7 @@ describe('planLabelChanges', () => {
         from: 'coding',
         to: 'review',
         add: ['review'],
-        remove: ['in-progress'],
+        remove: ['coding'],
       },
     ]);
   });
@@ -48,13 +48,13 @@ describe('planLabelChanges', () => {
     expect(
       planLabelChanges([item(1, 'new', ['blocked'])], { 'o/r#1': 'blocked' })[0]?.remove,
     ).toEqual(['blocked']);
-    expect(planLabelChanges([item(2, 'done', ['in-progress'])], { 'o/r#2': 'coding' })).toEqual([]);
+    expect(planLabelChanges([item(2, 'done', ['coding'])], { 'o/r#2': 'coding' })).toEqual([]);
   });
 });
 
 describe('columnOfLabels', () => {
   it('uses the board sync priority', () => {
-    expect(columnOfLabels(['in-progress', 'needs-decision'])).toBe('decision');
+    expect(columnOfLabels(['coding', 'needs-decision'])).toBe('decision');
     expect(columnOfLabels([])).toBe('new');
   });
 });
@@ -86,7 +86,7 @@ describe('BoardLabelSync.tick', () => {
       now: () => 5,
       log: () => {},
       fetchItems: async () => [item(1, 'review')],
-      loadLabels: async () => ['in-progress'],
+      loadLabels: async () => ['coding'],
       applyChange: async (c) => {
         if (fail) throw new Error('boom');
         applied.push(c);
