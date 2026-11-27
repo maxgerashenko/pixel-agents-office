@@ -44,7 +44,7 @@ Keep your existing statusline: put its command after `--`; it receives the same 
 
 ## Weekly limits
 
-One thin line sits under the token bar when the account reports weekly limits, holding both: **Fable this week** is always yellow and **This week** (all models) is the main fill colour. The shorter layer is drawn in front, so neither covers the other. The Fable line reads a `seven_day_*fable` key of `rate_limits`; it stays hidden when Claude Code does not report one.
+One thin line sits under the token bar when the account reports weekly limits, holding both: **This week** (all models) is the fill in the main colour, and **Fable this week** shows only as its difference from it, in the pink the token bar uses for the last hour, at the fill's right tip: past the tip when Fable is ahead of the week, the last stretch of the fill (from Fable's value up to the tip) when it is behind. The Fable line reads a `seven_day_*fable` key of `rate_limits`; it stays hidden when Claude Code does not report one.
 
 ## Live refresh
 

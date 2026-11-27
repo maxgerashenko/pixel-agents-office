@@ -11,6 +11,7 @@ import {
   sessionClock,
   type UsageView,
   type UsageWindowView,
+  weekLineSegments,
 } from './usageView.js';
 
 /** Grid size and stroke of the session ring, in sprite pixels (drawn at 2×). */
@@ -40,9 +41,10 @@ function SessionRing({ percent }: { percent: number }) {
   );
 }
 
-/** One thin line holding both weekly limits: Fable's week is always yellow,
- *  the all-models week is the main fill colour. The longer layer is drawn
- *  behind and the shorter in front, so neither hides the other. */
+/** One thin line holding both weekly limits: the all-models week is the fill
+ *  in the main colour, and Fable's week shows only as its difference from it,
+ *  in the second colour the session bar uses, at the fill's right tip (see
+ *  `weekLineSegments`). */
 function WeekLine({
   week,
   fable,
@@ -54,7 +56,7 @@ function WeekLine({
 }) {
   const weekPct = week ? displayPercent(week.usedPercentage) : null;
   const fablePct = fable ? displayPercent(fable.usedPercentage) : null;
-  const fableAhead = fablePct !== null && (weekPct === null || fablePct > weekPct);
+  const { mainWidth, diffLeft, diffWidth } = weekLineSegments(weekPct, fablePct);
   const tips = [
     fable && fablePct !== null
       ? `Fable this week: ${fablePct}% used, resets in ${formatTimeLeft(fable.resetsAt, now)}`
@@ -70,25 +72,19 @@ function WeekLine({
       aria-label="Weekly limits"
       aria-valuemin={0}
       aria-valuemax={100}
-      aria-valuenow={fablePct ?? weekPct ?? 0}
+      aria-valuenow={weekPct ?? fablePct ?? 0}
       title={tips.join('\n')}
     >
-      {fablePct !== null && fableAhead && (
-        <div
-          className="absolute inset-y-0 left-0 bg-usage-last-hour-behind"
-          style={{ width: `${fablePct}%` }}
-        />
-      )}
-      {weekPct !== null && (
+      {mainWidth > 0 && (
         <div
           className="absolute inset-y-0 left-0 bg-accent-bright"
-          style={{ width: `${weekPct}%` }}
+          style={{ width: `${mainWidth}%` }}
         />
       )}
-      {fablePct !== null && !fableAhead && (
+      {diffWidth > 0 && (
         <div
-          className="absolute inset-y-0 left-0 bg-usage-last-hour-behind"
-          style={{ width: `${fablePct}%` }}
+          className="absolute inset-y-0 bg-usage-last-hour"
+          style={{ left: `${diffLeft}%`, width: `${diffWidth}%` }}
         />
       )}
     </div>

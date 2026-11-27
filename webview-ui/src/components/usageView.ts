@@ -125,6 +125,30 @@ export function pickWeekWindows(
   return {};
 }
 
+/** The weekly line as two segments, in percent of the track. */
+export interface WeekLineSegments {
+  /** Main-colour fill, from the left edge. */
+  mainWidth: number;
+  /** Second-colour segment: where Fable's week differs from the all-models week. */
+  diffLeft: number;
+  diffWidth: number;
+}
+
+/** The all-models week is the base, in the main colour; Fable's week shows
+ *  only as its DIFFERENCE from it, attached to the week fill's right tip:
+ *  past the tip when Fable is ahead, the fill's last stretch (from Fable's
+ *  value up to the tip) when Fable is behind. Equal values leave no diff.
+ *  Without a week window, Fable's whole fill is the diff. */
+export function weekLineSegments(
+  weekPct: number | null,
+  fablePct: number | null,
+): WeekLineSegments {
+  if (weekPct === null) return { mainWidth: 0, diffLeft: 0, diffWidth: fablePct ?? 0 };
+  if (fablePct === null) return { mainWidth: weekPct, diffLeft: weekPct, diffWidth: 0 };
+  const low = Math.min(weekPct, fablePct);
+  return { mainWidth: low, diffLeft: low, diffWidth: Math.abs(fablePct - weekPct) };
+}
+
 /** Validate one wire window; anything malformed counts as absent. */
 export function asUsageWindow(value: unknown): UsageWindowView | undefined {
   if (typeof value !== 'object' || value === null) return undefined;

@@ -10,6 +10,7 @@ import {
   ringHue,
   ringPixelPaths,
   sessionClock,
+  weekLineSegments,
 } from '../src/components/usageView.js';
 
 describe('formatTimeLeft', () => {
@@ -114,5 +115,21 @@ describe('pickWeekWindows', () => {
     expect(pickWeekWindows(usage, 50)).toEqual({ week: w(100), fable: undefined });
     expect(pickWeekWindows(usage, 5).fable).toEqual(w(10));
     expect(pickWeekWindows(usage, 500)).toEqual({});
+  });
+});
+
+describe('weekLineSegments', () => {
+  it('extends past the week fill when Fable is ahead', () => {
+    expect(weekLineSegments(57, 60)).toEqual({ mainWidth: 57, diffLeft: 57, diffWidth: 3 });
+  });
+  it('recolours the end of the week fill when Fable is behind', () => {
+    expect(weekLineSegments(57, 40)).toEqual({ mainWidth: 40, diffLeft: 40, diffWidth: 17 });
+  });
+  it('has no diff when equal or when Fable is missing', () => {
+    expect(weekLineSegments(57, 57).diffWidth).toBe(0);
+    expect(weekLineSegments(57, null)).toEqual({ mainWidth: 57, diffLeft: 57, diffWidth: 0 });
+  });
+  it('shows Fable alone as the diff when the week is missing', () => {
+    expect(weekLineSegments(null, 30)).toEqual({ mainWidth: 0, diffLeft: 0, diffWidth: 30 });
   });
 });
