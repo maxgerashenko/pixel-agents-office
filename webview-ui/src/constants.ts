@@ -1358,6 +1358,9 @@ export const MONITOR_GLOW_PALETTES: Record<'edit' | 'shell' | 'read', Record<str
 
 // ── Live whiteboard ──────────────────────────────────────────
 export const WHITEBOARD_FURNITURE_TYPE = 'WHITEBOARD';
+/** The 1x1 whiteboard: same count and tap, digits straight on its clean face. Two digits are all it holds. */
+export const WHITEBOARD_SMALL_FURNITURE_TYPE = 'WHITEBOARD_SMALL';
+export const WHITEBOARD_SMALL_COUNT_MAX = 99;
 /** The count's plate, as a fraction of the board's footprint. */
 /** The count is drawn from a 3x5 pixel font, each lit pixel 2 wide so it reads bold. Rows of 3 bits, top first. */
 export const WHITEBOARD_GLYPHS: Record<string, readonly number[]> = {

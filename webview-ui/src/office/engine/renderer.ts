@@ -450,8 +450,10 @@ function renderWhiteboardPlates(
     const h = WHITEBOARD_GLYPH_H + WHITEBOARD_PLATE_MARGIN * 2;
     const left = Math.round(offsetX + (p.x - w / 2) * zoom);
     const top = Math.round(offsetY + (p.y - h / 2) * zoom);
-    ctx.fillStyle = WHITEBOARD_PLATE_COLOR;
-    ctx.fillRect(left, top, w * zoom, h * zoom);
+    if (!p.bare) {
+      ctx.fillStyle = WHITEBOARD_PLATE_COLOR;
+      ctx.fillRect(left, top, w * zoom, h * zoom);
+    }
     ctx.fillStyle = WHITEBOARD_COUNT_COLOR;
     let x = WHITEBOARD_PLATE_MARGIN;
     for (const d of digits) {

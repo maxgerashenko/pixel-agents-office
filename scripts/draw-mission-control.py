@@ -1,4 +1,4 @@
-"""Draws the mission control furniture sprites:
+"""Draws the mission control furniture sprites, and the small whiteboard (WHITEBOARD_SMALL, 16x16):
 
 - MISSION_SCREEN (144x32, 9x2 tiles with one background row, so 9 wide and 1 deep on the floor):
   a free-standing cabinet with a dark screen and faint orbit tracks. The five status counts are drawn live by the renderer (engine/missionScreen.ts).
@@ -106,8 +106,23 @@ def draw_desk(state, frame):
     return im
 
 
+# ── WHITEBOARD_SMALL ────────────────────────────────────────────
+def draw_small_whiteboard():
+    """The 1x1 whiteboard: the big board's frame colours round a clean face (the count is drawn live)."""
+    im = Image.new('RGBA', (16, 16), (0, 0, 0, 0))
+    px = im.load()
+    EDGE, TRAY, FACE = c('#4a4e4d'), c('#b9bcbd'), c('#efebe8')
+    rect(px, 0, 2, 15, 14, EDGE)
+    rect(px, 1, 3, 14, 12, FACE)
+    rect(px, 1, 13, 14, 13, TRAY)
+    out = os.path.join(ROOT, 'WHITEBOARD_SMALL')
+    os.makedirs(out, exist_ok=True)
+    im.save(os.path.join(out, 'WHITEBOARD_SMALL.png'))
+
+
 def main():
     draw_screen()
+    draw_small_whiteboard()
     out = os.path.join(ROOT, 'MISSION_DESK')
     os.makedirs(out, exist_ok=True)
     draw_desk('off', 0).save(os.path.join(out, 'MISSION_DESK_OFF.png'))
