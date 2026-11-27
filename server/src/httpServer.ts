@@ -6,6 +6,7 @@ import Fastify from 'fastify';
 
 import type { AgentRuntime } from './agentRuntime.js';
 import type { AgentStateStore } from './agentStateStore.js';
+import { boardSyncLiveness, readBoardSyncHeartbeat } from './boardLabelSync.js';
 import type {
   AssetCache,
   ReloadAssetsSideEffect,
@@ -121,6 +122,7 @@ export async function createHttpServer(options: HttpServerOptions): Promise<Http
   const allowedHostnames = privilegedHostnames(host, options.allowedHosts ?? []);
 
   registerHealthRoute(app);
+  registerBoardSyncRoute(app);
   registerHookRoute(app, options);
   registerUsageRoute(app, options);
   registerWebSocketRoute(app, options, allowedHostnames);
@@ -147,6 +149,14 @@ function registerHealthRoute(app: FastifyInstance): void {
     uptime: Math.floor((Date.now() - startTime) / 1000),
     pid: process.pid,
   }));
+}
+
+/** The Mac board-to-label sync heartbeat; counts only, no issue data, so no token. */
+function registerBoardSyncRoute(app: FastifyInstance): void {
+  app.get('/api/board-sync', async () => {
+    const hb = readBoardSyncHeartbeat();
+    return { liveness: boardSyncLiveness(hb, Date.now()), heartbeat: hb };
+  });
 }
 
 // ── Hook Events ────────────────────────────────────────────────
