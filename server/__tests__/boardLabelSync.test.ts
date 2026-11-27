@@ -4,6 +4,7 @@ import {
   type BoardItem,
   BoardLabelSync,
   boardSyncLiveness,
+  boardSyncTickMsFromEnv,
   columnOfLabels,
   planLabelChanges,
 } from '../src/boardLabelSync.js';
@@ -114,5 +115,13 @@ describe('BoardLabelSync.tick', () => {
     const hb = await t.sync.tick();
     expect(hb?.ok).toBe(false);
     expect(t.seen()['o/r#1']).toBe('coding');
+  });
+});
+
+describe('boardSyncTickMsFromEnv', () => {
+  it('defaults to 2 minutes and reads the override', () => {
+    expect(boardSyncTickMsFromEnv({})).toBe(120_000);
+    expect(boardSyncTickMsFromEnv({ PIXEL_AGENTS_BOARD_SYNC_MINUTES: '4' })).toBe(240_000);
+    expect(boardSyncTickMsFromEnv({ PIXEL_AGENTS_BOARD_SYNC_MINUTES: 'x' })).toBe(120_000);
   });
 });

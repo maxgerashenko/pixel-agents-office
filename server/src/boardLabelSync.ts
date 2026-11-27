@@ -12,7 +12,14 @@ import { LAYOUT_FILE_DIR } from './constants.js';
  * swapped to match. Each tick also writes a heartbeat file the page reads to show the sync is live.
  */
 
+/** Default tick; override locally with PIXEL_AGENTS_BOARD_SYNC_MINUTES (e.g. 2 or 4). */
 export const BOARD_SYNC_TICK_MS = 2 * 60_000;
+export const BOARD_SYNC_MINUTES_ENV = 'PIXEL_AGENTS_BOARD_SYNC_MINUTES';
+
+export function boardSyncTickMsFromEnv(env: NodeJS.ProcessEnv = process.env): number {
+  const minutes = Number(env[BOARD_SYNC_MINUTES_ENV]);
+  return Number.isFinite(minutes) && minutes >= 0.5 ? minutes * 60_000 : BOARD_SYNC_TICK_MS;
+}
 /** A heartbeat older than this many ticks counts as stale. */
 export const BOARD_SYNC_STALE_AFTER_TICKS = 2;
 export const BOARD_SYNC_ENV = 'PIXEL_AGENTS_BOARD_SYNC';
@@ -229,7 +236,7 @@ export class BoardLabelSync {
     this.opts = {
       owner: opts.owner ?? process.env.PIXEL_AGENTS_BOARD_OWNER ?? 'maxgerashenko',
       projectNumber: opts.projectNumber ?? Number(process.env.PIXEL_AGENTS_BOARD_NUMBER ?? 4),
-      tickMs: opts.tickMs ?? BOARD_SYNC_TICK_MS,
+      tickMs: opts.tickMs ?? boardSyncTickMsFromEnv(),
       mode: opts.mode ?? boardSyncModeFromEnv(),
       now: opts.now ?? Date.now,
       fetchItems: opts.fetchItems ?? fetchBoardItems,
