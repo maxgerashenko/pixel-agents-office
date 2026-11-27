@@ -68,7 +68,7 @@ export function WhiteboardModal({ isOpen, onClose }: { isOpen: boolean; onClose:
         {selected && (
           <div
             data-testid="issue-details"
-            className="absolute inset-x-4 top-4 z-10 flex items-start gap-[16px] border-2 border-border bg-bg-dark p-4 text-text overflow-auto"
+            className="absolute inset-x-4 top-4 z-10 flex items-center gap-[16px] border-2 border-border bg-bg-dark p-4 text-text overflow-auto"
           >
             <div className="flex-1 min-w-0">
               <div className="text-accent-bright">#{selected.number}</div>
