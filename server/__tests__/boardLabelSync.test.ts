@@ -54,7 +54,7 @@ describe('planLabelChanges', () => {
 
 describe('columnOfLabels', () => {
   it('uses the board sync priority', () => {
-    expect(columnOfLabels(['coding', 'needs-decision'])).toBe('decision');
+    expect(columnOfLabels(['coding', 'decision'])).toBe('decision');
     expect(columnOfLabels([])).toBe('new');
   });
 });

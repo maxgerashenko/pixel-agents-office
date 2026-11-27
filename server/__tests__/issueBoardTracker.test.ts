@@ -26,7 +26,7 @@ describe('boardStatusOfIssue', () => {
     expect(boardStatusOfIssue(issue({ labels: labels('Coding') }))).toBe('in_progress');
     expect(boardStatusOfIssue(issue({ labels: labels('coding', 'review') }))).toBe('in_review');
     expect(boardStatusOfIssue(issue({ labels: labels('review', 'blocked') }))).toBe('blocked');
-    expect(boardStatusOfIssue(issue({ labels: labels('blocked', 'needs-decision') }))).toBe(
+    expect(boardStatusOfIssue(issue({ labels: labels('blocked', 'decision') }))).toBe(
       'needs_decision',
     );
     expect(boardStatusOfIssue(issue({ state: 'CLOSED', labels: labels('blocked') }))).toBe('done');
@@ -56,7 +56,7 @@ describe('progress of a card', () => {
   it('other statuses carry no progress', () => {
     expect(progressOf({ labels: labels('ready') })).toBeUndefined();
     expect(progressOf({ labels: labels('review') })).toBeUndefined();
-    expect(progressOf({ labels: labels('needs-decision') })).toBeUndefined();
+    expect(progressOf({ labels: labels('decision') })).toBeUndefined();
   });
 });
 

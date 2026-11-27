@@ -36,7 +36,7 @@ const LABEL_OF_COLUMN: Readonly<Record<string, string | null>> = {
   design: 'design',
   coding: 'coding',
   review: 'review',
-  decision: 'needs-decision',
+  decision: 'decision',
   blocked: 'blocked',
   stale: 'status:stale',
   done: null,
@@ -45,7 +45,7 @@ const FLOW_LABELS = [...new Set(Object.values(LABEL_OF_COLUMN).filter((l): l is 
 
 /** The same priority as prototypeRAG's project_board_status_sync.py. */
 const COLUMN_OF_LABEL_IN_PRIORITY_ORDER: ReadonlyArray<[string, string]> = [
-  ['needs-decision', 'decision'],
+  ['decision', 'decision'],
   ['status:stale', 'stale'],
   ['blocked', 'blocked'],
   ['review', 'review'],

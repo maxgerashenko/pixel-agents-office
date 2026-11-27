@@ -33,7 +33,7 @@ export type IssueBoardStatus = (typeof ISSUE_BOARD_STATUSES)[number];
  * these labels, so the office and the board agree.
  */
 const FLOW_LABEL_TO_STATUS_IN_PRIORITY_ORDER: ReadonlyArray<[string, IssueBoardStatus]> = [
-  ['needs-decision', 'needs_decision'],
+  ['decision', 'needs_decision'],
   ['blocked', 'blocked'],
   ['review', 'in_review'],
   ['coding', 'in_progress'],
