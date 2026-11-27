@@ -85,7 +85,8 @@ describe('BoardLabelSync.tick', () => {
       mode,
       now: () => 5,
       log: () => {},
-      fetchItems: async () => [item(1, 'review', ['in-progress'])],
+      fetchItems: async () => [item(1, 'review')],
+      loadLabels: async () => ['in-progress'],
       applyChange: async (c) => {
         if (fail) throw new Error('boom');
         applied.push(c);

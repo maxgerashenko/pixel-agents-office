@@ -175,38 +175,74 @@ function gh(args: string[]): Promise<string> {
   });
 }
 
-interface GhProjectItem {
-  status?: string;
-  labels?: string[];
-  content?: { number?: number; repository?: string; type?: string };
+const BOARD_QUERY = `query($owner:String!,$number:Int!,$endCursor:String){
+  user(login:$owner){ projectV2(number:$number){ items(first:100, after:$endCursor){
+    pageInfo{ hasNextPage endCursor }
+    nodes{
+      fieldValueByName(name:"Status"){ ... on ProjectV2ItemFieldSingleSelectValue{ name } }
+      content{ __typename ... on Issue{ number repository{ nameWithOwner } } }
+    }
+  } } }
+}`;
+
+interface BoardPage {
+  data?: {
+    user?: {
+      projectV2?: {
+        items?: {
+          nodes?: {
+            fieldValueByName?: { name?: string } | null;
+            content?: {
+              __typename?: string;
+              number?: number;
+              repository?: { nameWithOwner?: string };
+            };
+          }[];
+        };
+      };
+    };
+  };
 }
 
-/** The issue cards of a user project, through the user's own `gh` (needs the project scope). */
+/**
+ * The issue cards of a user project with only their Status, through the user's own `gh` (needs the
+ * project scope). Labels are left empty on purpose: reading them for every card made each tick
+ * expensive, so the tick loads labels only for the cards that moved (see loadIssueLabels).
+ */
 export async function fetchBoardItems(owner: string, projectNumber: number): Promise<BoardItem[]> {
   const out = await gh([
-    'project',
-    'item-list',
-    String(projectNumber),
-    '--owner',
-    owner,
-    '--limit',
-    '500',
-    '--format',
-    'json',
+    'api',
+    'graphql',
+    '--paginate',
+    '--slurp',
+    '-f',
+    `query=${BOARD_QUERY}`,
+    '-f',
+    `owner=${owner}`,
+    '-F',
+    `number=${projectNumber}`,
   ]);
-  const parsed = JSON.parse(out) as { items?: GhProjectItem[] };
+  const pages = JSON.parse(out) as BoardPage[];
   const items: BoardItem[] = [];
-  for (const raw of parsed.items ?? []) {
-    const { number, repository, type } = raw.content ?? {};
-    if (type !== 'Issue' || !number || !repository) continue;
-    items.push({
-      repo: repository,
-      number,
-      status: (raw.status ?? '').trim().toLowerCase(),
-      labels: raw.labels ?? [],
-    });
+  for (const page of pages) {
+    for (const node of page.data?.user?.projectV2?.items?.nodes ?? []) {
+      const { __typename, number, repository } = node.content ?? {};
+      if (__typename !== 'Issue' || !number || !repository?.nameWithOwner) continue;
+      items.push({
+        repo: repository.nameWithOwner,
+        number,
+        status: (node.fieldValueByName?.name ?? '').trim().toLowerCase(),
+        labels: [],
+      });
+    }
   }
   return items;
+}
+
+/** Current labels of one issue (REST, so it does not spend GraphQL points). */
+export async function loadIssueLabels(repo: string, number: number): Promise<string[]> {
+  const out = await gh(['api', `repos/${repo}/issues/${number}`, '--jq', '[.labels[].name]']);
+  return JSON.parse(out) as string[];
 }
 
 export async function applyLabelChange(change: LabelChange): Promise<void> {
@@ -223,6 +259,7 @@ export interface BoardLabelSyncOptions {
   mode?: BoardSyncMode;
   now?: () => number;
   fetchItems?: (owner: string, projectNumber: number) => Promise<BoardItem[]>;
+  loadLabels?: (repo: string, number: number) => Promise<string[]>;
   applyChange?: (change: LabelChange) => Promise<void>;
   loadLastSeen?: () => Record<string, string>;
   saveLastSeen?: (seen: Record<string, string>) => void;
@@ -245,6 +282,7 @@ export class BoardLabelSync {
       mode: opts.mode ?? boardSyncModeFromEnv(),
       now: opts.now ?? Date.now,
       fetchItems: opts.fetchItems ?? fetchBoardItems,
+      loadLabels: opts.loadLabels ?? loadIssueLabels,
       applyChange: opts.applyChange ?? applyLabelChange,
       loadLastSeen:
         opts.loadLastSeen ?? (() => readJson<Record<string, string>>(BOARD_SYNC_STATE_FILE) ?? {}),
@@ -290,6 +328,12 @@ export class BoardLabelSync {
       const items = await this.opts.fetchItems(this.opts.owner, this.opts.projectNumber);
       heartbeat.itemsSeen = items.length;
       const lastSeen = this.opts.loadLastSeen();
+      // Only cards whose column moved need their labels; the rest cost nothing.
+      for (const item of items) {
+        const previous = lastSeen[itemKey(item)];
+        if (previous === undefined || previous === item.status) continue;
+        item.labels = await this.opts.loadLabels(item.repo, item.number);
+      }
       const changes = planLabelChanges(items, lastSeen);
       const nextSeen: Record<string, string> = {};
       for (const item of items) nextSeen[itemKey(item)] = item.status;
