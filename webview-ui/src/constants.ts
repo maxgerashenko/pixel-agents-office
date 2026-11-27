@@ -1396,10 +1396,10 @@ export const MISSION_SCREEN_INNER_X = 4;
 export const MISSION_SCREEN_COLUMN_W = 27;
 /** Seven-segment digits: box size, bar thickness, gap between the two digits, top edge (sprite pixels). */
 export const MISSION_SCREEN_DIGIT_W = 7;
-export const MISSION_SCREEN_DIGIT_H = 12;
+export const MISSION_SCREEN_DIGIT_H = 10;
 export const MISSION_SCREEN_DIGIT_STROKE = 2;
 export const MISSION_SCREEN_DIGIT_GAP = 2;
-export const MISSION_SCREEN_DIGIT_Y = 5;
+export const MISSION_SCREEN_DIGIT_Y = 9;
 /** Lit bars per digit (a top, b upper right, c lower right, d bottom, e lower left, f upper left, g middle). */
 export const MISSION_SCREEN_DIGIT_SEGMENTS: Record<string, string> = {
   '0': 'abcdef',
@@ -1414,7 +1414,7 @@ export const MISSION_SCREEN_DIGIT_SEGMENTS: Record<string, string> = {
   '9': 'abfgcd',
 };
 /** The status names use a 3x5 pixel font drawn smaller than a sprite pixel so the longest fits its column. */
-export const MISSION_SCREEN_LABEL_Y = 19;
+export const MISSION_SCREEN_LABEL_Y = 20.5;
 export const MISSION_SCREEN_LABEL_SCALE = 0.8;
 export const MISSION_SCREEN_LABEL_GLYPH_W = 3;
 export const MISSION_SCREEN_LABEL_GLYPH_GAP = 1;

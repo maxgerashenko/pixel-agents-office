@@ -30,24 +30,29 @@ def draw_screen():
     W, H = 144, 32
     im = Image.new('RGBA', (W, H), (0, 0, 0, 0))
     px = im.load()
-    EDGE, BODY, BODY_L, BODY_D = c('#1a1e30'), c('#3a4268'), c('#5a6490'), c('#2c3350')
+    EDGE, BODY, BODY_D = c('#1a1e30'), c('#3a4268'), c('#2c3350')
+    TOP, TOP_L, TOP_D = c('#6a74a4'), c('#8a94c0'), c('#525c8a')
     BG, MAP, TRACK = c('#10121c'), c('#2c1a38'), c('#173a24')
-    # the cabinet: a lit top edge, the screen housing, and a console strip along the floor
     rect(px, 0, 0, W - 1, H - 1, EDGE)
-    rect(px, 1, 1, W - 2, 1, BODY_L)
-    rect(px, 1, 2, W - 2, 25, BODY)
-    rect(px, 1, 26, W - 2, H - 2, BODY_D)
-    rect(px, 1, 26, W - 2, 26, EDGE)
+    # the top face, seen from above like the arcade's: lit back edge, vents, a darker front lip
+    rect(px, 1, 1, W - 2, 5, TOP)
+    rect(px, 1, 1, W - 2, 1, TOP_L)
+    rect(px, 1, 5, W - 2, 5, TOP_D)
+    for x0 in range(10, W - 10, 27):
+        rect(px, x0, 3, x0 + 7, 3, TOP_D)
+    # the front face: the screen housing, and a console strip along the floor
+    rect(px, 1, 7, W - 2, 26, BODY)
+    rect(px, 1, 27, W - 2, H - 2, BODY_D)
     # the screen, set into the housing
-    rect(px, 2, 3, W - 3, 24, EDGE)
-    rect(px, 3, 4, W - 4, 23, BG)
+    rect(px, 2, 7, W - 3, 26, EDGE)
+    rect(px, 3, 8, W - 4, 25, BG)
     # two orbit ground tracks, kept dim under the digits
     for phase, col in ((0.0, TRACK), (2.1, MAP)):
         for x in range(3, W - 3):
-            y = round(13.5 + 8 * math.sin(x / 17.0 + phase))
-            if 4 <= y <= 23:
+            y = round(16.5 + 7 * math.sin(x / 17.0 + phase))
+            if 8 <= y <= 25:
                 px[x, y] = col
-    # console strip: a status light and a speaker grille under each column, feet at the ends
+    # console strip: a status light and a speaker grille under each column
     lights = [c('#4f8df7'), c('#5fe04f'), c('#ffd83a'), c('#4f8df7'), c('#f0503c')]
     for i, col in enumerate(lights):
         x0 = 4 + i * 27 + 5

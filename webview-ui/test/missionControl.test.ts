@@ -85,7 +85,7 @@ test('seven-segment digits light the right bars and stay inside the digit box', 
   assert.equal(digitRects('0').length, 6);
   for (const d of '0123456789') {
     for (const [x, y, w, h] of digitRects(d)) {
-      assert.ok(x >= 0 && y >= 0 && x + w <= 7 && y + h <= 12, `digit ${d}`);
+      assert.ok(x >= 0 && y >= 0 && x + w <= 7 && y + h <= 10, `digit ${d}`);
     }
   }
 });
