@@ -41,6 +41,11 @@ describe('planLabelChanges', () => {
   it('skips cards labelled local-only', () => {
     expect(planLabelChanges([item(1, 'ready', ['local-only'])], { 'o/r#1': 'new' })).toEqual([]);
   });
+  it('syncs cards labelled runs-on:mac, so the Mac picker sees ready', () => {
+    const changes = planLabelChanges([item(1, 'ready', ['runs-on:mac'])], { 'o/r#1': 'new' });
+    expect(changes).toHaveLength(1);
+    expect(changes[0]?.add).toEqual(['ready']);
+  });
   it('skips when labels already agree', () => {
     expect(planLabelChanges([item(1, 'review', ['review'])], { 'o/r#1': 'coding' })).toEqual([]);
   });
