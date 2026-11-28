@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { decisionsOfSection, sectionsOfIssueBody } from '../src/issueBodySections.js';
+import {
+  decisionsOfSection,
+  sectionsOfIssueBody,
+  tickDecisionOption,
+} from '../src/issueBodySections.js';
 
 const NEW_LAYOUT = `## Before / After
 - Before: a
@@ -76,5 +80,23 @@ describe('decisionsOfSection', () => {
   it('returns nothing for an empty section or the word none', () => {
     expect(decisionsOfSection('')).toEqual([]);
     expect(decisionsOfSection('none')).toEqual([]);
+  });
+});
+
+describe('tickDecisionOption', () => {
+  it('ticks the chosen option, unticks the others of that question and leaves the rest alone', () => {
+    const next = tickDecisionOption(NEW_LAYOUT, 1, 0);
+    expect(next).not.toBeNull();
+    const decisions = decisionsOfSection(sectionsOfIssueBody(next).decisionNeeded);
+    expect(decisions[0].options.map((o) => o.ticked)).toEqual([false, false]);
+    expect(decisions[1].options.map((o) => o.ticked)).toEqual([true, false]);
+    expect(next!.startsWith('## Before / After')).toBe(true);
+    expect(next).toContain('## Done when\nIt works.');
+  });
+
+  it('returns null for a missing section or an index out of range', () => {
+    expect(tickDecisionOption('## Done when\nx', 0, 0)).toBeNull();
+    expect(tickDecisionOption(NEW_LAYOUT, 5, 0)).toBeNull();
+    expect(tickDecisionOption(NEW_LAYOUT, 0, 9)).toBeNull();
   });
 });

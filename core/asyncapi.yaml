@@ -167,6 +167,7 @@ components:
         - $ref: '#/components/schemas/RemoveDirectory'
         - $ref: '#/components/schemas/RequestDirectorySuggestions'
         - $ref: '#/components/schemas/RequestDiagnostics'
+        - $ref: '#/components/schemas/TickIssueDecisionOption'
       discriminator: type
 
     # ── Server message variants ────────────────────────────────────
@@ -1548,6 +1549,24 @@ components:
           const: setShowAreas
         enabled:
           type: boolean
+
+    TickIssueDecisionOption:
+      description: Tick one decision option in the issue body on GitHub (the repo's decision-tick workflow then applies the answer).
+      type: object
+      additionalProperties: false
+      required: [type, cardId, questionIndex, optionIndex]
+      properties:
+        type:
+          const: tickIssueDecisionOption
+        cardId:
+          type: string
+          description: Board card id, owner/repo#number.
+        questionIndex:
+          type: integer
+          minimum: 0
+        optionIndex:
+          type: integer
+          minimum: 0
 
     RequestDiagnostics:
       description: Request agent connection diagnostics (server responds with agentDiagnostics).

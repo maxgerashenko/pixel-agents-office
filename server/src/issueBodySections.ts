@@ -70,3 +70,35 @@ export function decisionsOfSection(sectionText: string): DecisionQuestion[] {
   }
   return questions.filter((question) => question.options.length > 0);
 }
+
+/**
+ * Pure: the body with option `optionIndex` of question `questionIndex` ticked and that
+ * question's other boxes unticked (same question numbering as `decisionsOfSection`).
+ * null when the body has no `## Decision needed` section or the indexes do not exist.
+ */
+export function tickDecisionOption(
+  body: string,
+  questionIndex: number,
+  optionIndex: number,
+): string | null {
+  const heading = /^## Decision needed[ \t]*$/im.exec(body);
+  if (!heading) return null;
+  const lines = body.split('\n');
+  let line = body.slice(0, heading.index).split('\n').length; // first line after the heading
+  const questions: number[][] = [];
+  for (; line < lines.length && !/^## /.test(lines[line]); line++) {
+    const text = lines[line].trim();
+    if (/^\*\*(.+?)\*\*$/.test(text)) questions.push([]);
+    else if (/^- \[[ xX]\]/.test(text) && questions.length > 0)
+      questions[questions.length - 1].push(line);
+  }
+  const boxes = questions.filter((question) => question.length > 0)[questionIndex];
+  if (!boxes || optionIndex < 0 || optionIndex >= boxes.length) return null;
+  boxes.forEach((lineIndex, index) => {
+    lines[lineIndex] = lines[lineIndex].replace(
+      /^(\s*- )\[[ xX]\]/,
+      index === optionIndex ? '$1[x]' : '$1[ ]',
+    );
+  });
+  return lines.join('\n');
+}

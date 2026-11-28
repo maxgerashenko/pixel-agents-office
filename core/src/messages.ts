@@ -80,7 +80,8 @@ export type ClientMessage =
   | SaveDirectory
   | RemoveDirectory
   | RequestDirectorySuggestions
-  | RequestDiagnostics;
+  | RequestDiagnostics
+  | TickIssueDecisionOption;
 
 export interface ProviderCapabilities {
   type: 'providerCapabilities';
@@ -621,4 +622,11 @@ export interface RequestDirectorySuggestions {
 
 export interface RequestDiagnostics {
   type: 'requestDiagnostics';
+}
+
+export interface TickIssueDecisionOption {
+  type: 'tickIssueDecisionOption';
+  cardId: string;
+  questionIndex: number;
+  optionIndex: number;
 }

@@ -9,12 +9,14 @@ import {
   issueDetailSections,
   issueDetailsLine,
 } from '../office/engine/issueBoard.js';
+import { transport } from '../transport/index.js';
 import { Modal } from './ui/Modal.js';
 
 /** The whiteboard's big view: the GitHub board, one column per Status, kept live while open. */
 export function WhiteboardModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const [cards, setCards] = useState(getIssueBoard);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [sentOptionKey, setSentOptionKey] = useState<string | null>(null);
   const selectCard = (id: string) => setSelectedId(id);
 
   useEffect(() => {
@@ -102,27 +104,35 @@ export function WhiteboardModal({ isOpen, onClose }: { isOpen: boolean; onClose:
               )}
             </div>
             <div data-testid="issue-option-buttons" className="flex flex-col gap-[8px] w-full">
-              {selected.details.decisions.flatMap((decision) => [
+              {selected.details.decisions.flatMap((decision, questionIndex) => [
                 <div key={`q-${decision.question}`} className="text-xs text-text-muted">
                   {decision.question}
                 </div>,
-                ...decision.options.map((option) => (
-                  <button
-                    key={`${decision.question}-${option.label}`}
-                    type="button"
-                    data-testid="issue-option"
-                    title="Copies this answer and opens the issue"
-                    onClick={() => {
-                      void navigator.clipboard?.writeText(option.label);
-                      if (isOpenableIssueUrl(selected.url))
-                        window.open(selected.url, '_blank', 'noopener,noreferrer');
-                    }}
-                    className={`w-full min-h-[44px] text-left text-sm bg-bg border-2 px-[10px] py-[6px] cursor-pointer hover:border-accent ${option.recommended ? 'border-accent' : 'border-border'}`}
-                  >
-                    {option.ticked ? '[x] ' : ''}
-                    {option.label}
-                  </button>
-                )),
+                ...decision.options.map((option, optionIndex) => {
+                  const optionKey = `${selected.id}-${questionIndex}-${optionIndex}`;
+                  return (
+                    <button
+                      key={`${decision.question}-${option.label}`}
+                      type="button"
+                      data-testid="issue-option"
+                      title="Ticks this answer on the issue on GitHub"
+                      onClick={() => {
+                        setSentOptionKey(optionKey);
+                        transport.send({
+                          type: 'tickIssueDecisionOption',
+                          cardId: selected.id,
+                          questionIndex,
+                          optionIndex,
+                        });
+                      }}
+                      className={`w-full min-h-[44px] text-left text-sm bg-bg border-2 px-[10px] py-[6px] cursor-pointer hover:border-accent ${option.recommended ? 'border-accent' : 'border-border'}`}
+                    >
+                      {sentOptionKey === optionKey && !option.ticked ? '[...] ' : ''}
+                      {option.ticked ? '[x] ' : ''}
+                      {option.label}
+                    </button>
+                  );
+                }),
               ])}
             </div>
             <div className="flex-none flex gap-[8px] order-first self-end">

@@ -144,3 +144,38 @@ describe('issueBoardFromIssues details', () => {
     expect(card.details?.decisions).toEqual([]);
   });
 });
+
+describe('IssueBoardTracker.tickDecisionOption', () => {
+  const body = '## Decision needed\n**Q?**\n- [ ] A\n- [ ] B\n';
+  const makeTracker = (calls: { args: string[]; stdin?: string }[], viewBody: string | null) =>
+    new IssueBoardTracker({ broadcast: () => {} } as never, {
+      dirs: () => [],
+      fetchIssues: async () => [],
+      runGh: async (args, stdin) => {
+        calls.push({ args, stdin });
+        return args[1] === 'view' ? JSON.stringify({ body: viewBody }) : '';
+      },
+    });
+
+  it('reads the body, writes it back with the option ticked, for the card repo', async () => {
+    const calls: { args: string[]; stdin?: string }[] = [];
+    const ok = await makeTracker(calls, body).tickDecisionOption('o/r#7', 0, 1);
+    expect(ok).toBe(true);
+    expect(calls[0].args).toEqual(['issue', 'view', '7', '--repo', 'o/r', '--json', 'body']);
+    expect(calls[1].args).toEqual(['issue', 'edit', '7', '--repo', 'o/r', '--body-file', '-']);
+    expect(calls[1].stdin).toBe('## Decision needed\n**Q?**\n- [ ] A\n- [x] B\n');
+  });
+
+  it('refuses a malformed card id without calling gh', async () => {
+    const calls: { args: string[]; stdin?: string }[] = [];
+    expect(await makeTracker(calls, body).tickDecisionOption('--evil#7', 0, 0)).toBe(false);
+    expect(await makeTracker(calls, body).tickDecisionOption('o/r#x', 0, 0)).toBe(false);
+    expect(calls).toEqual([]);
+  });
+
+  it('does not edit when the option does not exist', async () => {
+    const calls: { args: string[]; stdin?: string }[] = [];
+    expect(await makeTracker(calls, body).tickDecisionOption('o/r#7', 0, 5)).toBe(false);
+    expect(calls.length).toBe(1);
+  });
+});

@@ -16,6 +16,7 @@ import {
   type DecisionQuestion,
   decisionsOfSection,
   sectionsOfIssueBody,
+  tickDecisionOption,
 } from './issueBodySections.js';
 import { type GhPr, stageOfPr, type TaskStage } from './taskTracker.js';
 
@@ -192,6 +193,21 @@ function runGhIssueList(
 
 type GhOpenPr = GhPr & { closingIssuesReferences?: { number: number }[] };
 
+function runGh(args: string[], stdin?: string): Promise<string | null> {
+  return new Promise((resolve) => {
+    const child = execFile(
+      'gh',
+      args,
+      { timeout: ISSUE_BOARD_POLL_TIMEOUT_MS, maxBuffer: 4 * 1024 * 1024 },
+      (err, stdout) => {
+        if (err) console.warn(`[Pixel Agents] gh ${args[0]} ${args[1]} failed: ${err.message}`);
+        resolve(err ? null : stdout);
+      },
+    );
+    if (stdin !== undefined) child.stdin?.end(stdin);
+  });
+}
+
 function runGhOpenPrList(dir: string): Promise<GhOpenPr[]> {
   return new Promise((resolve) => {
     execFile(
@@ -263,6 +279,8 @@ export interface IssueBoardTrackerOptions {
   dirs?: () => string[];
   fetchIssues?: (dir: string) => Promise<GhIssue[] | null>;
   intervalMs?: number;
+  /** Runs `gh <args>` (optional stdin) and returns stdout, null on failure. */
+  runGh?: (args: string[], stdin?: string) => Promise<string | null>;
 }
 
 /**
@@ -280,6 +298,7 @@ export class IssueBoardTracker {
   private readonly dirs: () => string[];
   private readonly fetchIssues: (dir: string) => Promise<GhIssue[] | null>;
   private readonly intervalMs: number;
+  private readonly runGh: (args: string[], stdin?: string) => Promise<string | null>;
 
   constructor(
     private readonly store: Pick<AgentStateStore, 'broadcast'>,
@@ -289,10 +308,43 @@ export class IssueBoardTracker {
     this.dirs = opts.dirs ?? (() => readConfig().directories.map((d) => d.path));
     this.fetchIssues = opts.fetchIssues ?? fetchIssues;
     this.intervalMs = opts.intervalMs ?? ISSUE_BOARD_POLL_INTERVAL_MS;
+    this.runGh = opts.runGh ?? runGh;
   }
 
   currentMessage(): Record<string, unknown> {
     return { type: 'issueBoardUpdate', issues: this.latest };
+  }
+
+  /**
+   * Ticks one decision option in the issue body on GitHub (the repo comes from the card id
+   * `owner/repo#number`). The repo's decision-tick workflow then applies the answer. True when
+   * the body was changed.
+   */
+  async tickDecisionOption(
+    cardId: string,
+    questionIndex: number,
+    optionIndex: number,
+  ): Promise<boolean> {
+    const match = /^([\w.-]+\/[\w.-]+)#(\d+)$/.exec(cardId);
+    if (!match) return false;
+    const [, repo, number] = match;
+    const viewed = await this.runGh(['issue', 'view', number, '--repo', repo, '--json', 'body']);
+    if (viewed === null) return false;
+    let body: string;
+    try {
+      body = (JSON.parse(viewed) as { body?: string }).body ?? '';
+    } catch {
+      return false;
+    }
+    const next = tickDecisionOption(body, questionIndex, optionIndex);
+    if (next === null) return false;
+    const written = await this.runGh(
+      ['issue', 'edit', number, '--repo', repo, '--body-file', '-'],
+      next,
+    );
+    if (written === null) return false;
+    void this.poll();
+    return true;
   }
 
   addViewer(): () => void {
