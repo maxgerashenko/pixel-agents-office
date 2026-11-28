@@ -13,13 +13,13 @@ export const ISSUE_BOARD_COLUMNS: ReadonlyArray<{ status: IssueBoardStatus; labe
   { status: 'ready', label: 'Ready' },
   { status: 'needs_design', label: 'Design' },
   { status: 'in_progress', label: 'Coding' },
-  { status: 'in_review', label: 'Review' },
-  { status: 'needs_decision', label: 'Decision' },
   { status: 'blocked', label: 'Blocked' },
+  { status: 'needs_decision', label: 'Decision' },
+  { status: 'in_review', label: 'Review' },
   { status: 'done', label: 'Done' },
 ];
 
-/** Columns kept off the board: backlog and finished issues are not active work (Blocked is shown, last). */
+/** Columns kept off the board: backlog and finished issues are not active work (Blocked is shown, after Coding). */
 const HIDDEN_STATUSES: ReadonlySet<IssueBoardStatus> = new Set(['new', 'done']);
 
 const KNOWN_STATUSES = new Set<string>(ISSUE_BOARD_COLUMNS.map((c) => c.status));
