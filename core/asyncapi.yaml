@@ -628,7 +628,7 @@ components:
     IssueBoardCard:
       type: object
       additionalProperties: false
-      required: [id, number, title, status, url]
+      required: [id, number, title, status, url, details]
       properties:
         id:
           type: string
@@ -648,6 +648,37 @@ components:
             What the agent is doing, for the sky. Set only for needs design (writing_plan, or
             plan_ready once its plan file exists) and in progress (coding, or testing once its pull
             request has checks running or is in review).
+        details:
+          type: object
+          additionalProperties: false
+          required: [labels, beforeAfter, doneWhen, blockedBy, scope, verify, decisions]
+          description: The issue body parts the expanded card shows; an empty string is a missing section.
+          properties:
+            labels: { type: array, items: { type: string } }
+            beforeAfter: { type: string }
+            doneWhen: { type: string }
+            blockedBy: { type: string }
+            scope: { type: string }
+            verify: { type: string }
+            pullRequestStage: { type: string }
+            decisions:
+              type: array
+              items:
+                type: object
+                additionalProperties: false
+                required: [question, options]
+                properties:
+                  question: { type: string }
+                  options:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: false
+                      required: [label, recommended, ticked]
+                      properties:
+                        label: { type: string }
+                        recommended: { type: boolean }
+                        ticked: { type: boolean }
 
     IssueBoardProgress:
       type: string

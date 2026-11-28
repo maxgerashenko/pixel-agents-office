@@ -270,6 +270,7 @@ export interface IssueBoardCard {
   status: IssueBoardStatus;
   url: string;
   progress?: IssueBoardProgress;
+  details: AnonymousSchema_99;
 }
 
 export type IssueBoardStatus =
@@ -283,6 +284,28 @@ export type IssueBoardStatus =
   | 'done';
 
 export type IssueBoardProgress = 'writing_plan' | 'plan_ready' | 'coding' | 'testing';
+
+export interface AnonymousSchema_99 {
+  labels: string[];
+  beforeAfter: string;
+  doneWhen: string;
+  blockedBy: string;
+  scope: string;
+  verify: string;
+  pullRequestStage?: string;
+  decisions: AnonymousSchema_109[];
+}
+
+export interface AnonymousSchema_109 {
+  question: string;
+  options: AnonymousSchema_112[];
+}
+
+export interface AnonymousSchema_112 {
+  label: string;
+  recommended: boolean;
+  ticked: boolean;
+}
 
 export interface LayoutLoaded {
   type: 'layoutLoaded';

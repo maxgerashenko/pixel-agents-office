@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { WHITEBOARD_MODAL_Z_INDEX, WHITEBOARD_REFRESH_MS } from '../constants.js';
 import {
@@ -6,6 +6,7 @@ import {
   isOpenableIssueUrl,
   issueBoardColumns,
   issueBoardShownCount,
+  issueDetailSections,
   issueDetailsLine,
 } from '../office/engine/issueBoard.js';
 import { Modal } from './ui/Modal.js';
@@ -14,40 +15,7 @@ import { Modal } from './ui/Modal.js';
 export function WhiteboardModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const [cards, setCards] = useState(getIssueBoard);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const wrapRef = useRef<HTMLDivElement>(null);
-  const detailsRef = useRef<HTMLDivElement>(null);
-  // Where the tapped card sat, in px from the top of the board wrapper.
-  const [tapTop, setTapTop] = useState(0);
-  const [detailsTop, setDetailsTop] = useState(0);
-  // The tapped card's height: the details row is exactly as tall, so it replaces the card in place.
-  const [tapHeight, setTapHeight] = useState(0);
-
-  const selectCard = (id: string, button: HTMLElement) => {
-    const wrap = wrapRef.current;
-    if (wrap) setTapTop(button.getBoundingClientRect().top - wrap.getBoundingClientRect().top);
-    setTapHeight(button.getBoundingClientRect().height);
-    setSelectedId(id);
-  };
-
-  // Sit the row over the tapped card, kept inside the board and the visible part of its scroller.
-  useLayoutEffect(() => {
-    const wrap = wrapRef.current;
-    const row = detailsRef.current;
-    if (!wrap || !row || selectedId === null) return;
-    const height = row.offsetHeight;
-    let min = 0;
-    let max = wrap.offsetHeight - height;
-    let scroller: HTMLElement | null = wrap.parentElement;
-    while (scroller && scroller.scrollHeight <= scroller.clientHeight)
-      scroller = scroller.parentElement;
-    if (scroller) {
-      const wrapTop = wrap.getBoundingClientRect().top;
-      const view = scroller.getBoundingClientRect();
-      min = Math.max(min, view.top - wrapTop);
-      max = Math.min(max, view.bottom - wrapTop - height);
-    }
-    setDetailsTop(Math.max(0, Math.min(tapTop, Math.max(min, max))));
-  }, [selectedId, tapTop, tapHeight]);
+  const selectCard = (id: string) => setSelectedId(id);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -69,7 +37,7 @@ export function WhiteboardModal({ isOpen, onClose }: { isOpen: boolean; onClose:
       zIndex={WHITEBOARD_MODAL_Z_INDEX}
       className="min-w-[min(960px,100%)]!"
     >
-      <div ref={wrapRef} className="relative">
+      <div className="relative" style={{ minHeight: selected ? 'min(70vh, 640px)' : undefined }}>
         <div
           data-testid="issue-board"
           onClick={() => setSelectedId(null)}
@@ -92,7 +60,7 @@ export function WhiteboardModal({ isOpen, onClose }: { isOpen: boolean; onClose:
                       title={card.id}
                       onClick={(e) => {
                         e.stopPropagation();
-                        selectCard(card.id, e.currentTarget);
+                        selectCard(card.id);
                       }}
                       className="w-full text-left text-sm bg-bg border-2 border-border p-4 cursor-pointer hover:border-accent"
                       style={{ lineHeight: 1.3 }}
@@ -108,44 +76,78 @@ export function WhiteboardModal({ isOpen, onClose }: { isOpen: boolean; onClose:
         </div>
         {selected && (
           <div
-            ref={detailsRef}
             data-testid="issue-details"
-            style={{ top: detailsTop, height: tapHeight }}
-            className="absolute inset-x-0 z-10 flex items-center gap-[8px] border-2 border-border bg-bg-dark px-[12px] py-[4px] text-text overflow-hidden box-border"
+            className="absolute inset-0 z-10 flex gap-[12px] border-2 border-border bg-bg-dark p-[12px] text-text overflow-y-auto box-border"
           >
-            <div className="flex-1 min-w-0">
-              <div
-                className="text-sm overflow-hidden"
-                style={{
-                  lineHeight: 1.2,
-                  display: '-webkit-box',
-                  WebkitLineClamp: 2,
-                  WebkitBoxOrient: 'vertical',
-                }}
-              >
+            <div
+              data-testid="issue-option-buttons"
+              className="flex-none w-[180px] flex flex-col gap-[8px]"
+            >
+              {selected.details.decisions.flatMap((decision) => [
+                <div key={`q-${decision.question}`} className="text-xs text-text-muted">
+                  {decision.question}
+                </div>,
+                ...decision.options.map((option) => (
+                  <button
+                    key={`${decision.question}-${option.label}`}
+                    type="button"
+                    data-testid="issue-option"
+                    title="Copies this answer and opens the issue"
+                    onClick={() => {
+                      void navigator.clipboard?.writeText(option.label);
+                      if (isOpenableIssueUrl(selected.url))
+                        window.open(selected.url, '_blank', 'noopener,noreferrer');
+                    }}
+                    className={`text-left text-sm bg-bg border-2 px-[10px] py-[6px] cursor-pointer hover:border-accent ${option.recommended ? 'border-accent' : 'border-border'}`}
+                  >
+                    {option.ticked ? '[x] ' : ''}
+                    {option.label}
+                  </button>
+                )),
+              ])}
+            </div>
+            <div className="flex-1 min-w-0 flex flex-col gap-[8px]">
+              <div className="text-sm" style={{ lineHeight: 1.2 }}>
                 <span className="text-accent-bright">#{selected.number} </span>
                 {selected.title}
               </div>
-              <div className="text-xs text-text-muted truncate">{issueDetailsLine(selected)}</div>
+              <div className="text-xs text-text-muted">{issueDetailsLine(selected)}</div>
+              {issueDetailSections(selected).map((section) =>
+                section.collapsed ? (
+                  <details key={section.label} className="text-xs">
+                    <summary className="cursor-pointer text-text-muted">{section.label}</summary>
+                    <div className="whitespace-pre-wrap">{section.text}</div>
+                  </details>
+                ) : (
+                  <div key={section.label} className="text-xs">
+                    <div className="text-text-muted">{section.label}</div>
+                    <div className={`whitespace-pre-wrap ${section.missing ? 'text-red-400' : ''}`}>
+                      {section.missing ? 'missing' : section.text}
+                    </div>
+                  </div>
+                ),
+              )}
             </div>
-            <button
-              type="button"
-              data-testid="issue-open-github"
-              disabled={!isOpenableIssueUrl(selected.url)}
-              onClick={() => window.open(selected.url, '_blank', 'noopener,noreferrer')}
-              className="flex-none text-sm bg-bg border-2 border-border px-[10px] py-[4px] cursor-pointer hover:border-accent"
-            >
-              Open on GitHub
-            </button>
-            <button
-              type="button"
-              data-testid="issue-details-close"
-              aria-label="Close details"
-              onClick={() => setSelectedId(null)}
-              className="flex-none text-sm bg-bg border-2 border-border px-[10px] py-[4px] cursor-pointer hover:border-accent"
-            >
-              X
-            </button>
+            <div className="flex-none flex flex-col gap-[8px] items-end">
+              <button
+                type="button"
+                data-testid="issue-open-github"
+                disabled={!isOpenableIssueUrl(selected.url)}
+                onClick={() => window.open(selected.url, '_blank', 'noopener,noreferrer')}
+                className="text-sm bg-bg border-2 border-border px-[10px] py-[4px] cursor-pointer hover:border-accent"
+              >
+                Open on GitHub
+              </button>
+              <button
+                type="button"
+                data-testid="issue-details-close"
+                aria-label="Close details"
+                onClick={() => setSelectedId(null)}
+                className="text-sm bg-bg border-2 border-border px-[10px] py-[4px] cursor-pointer hover:border-accent"
+              >
+                X
+              </button>
+            </div>
           </div>
         )}
       </div>

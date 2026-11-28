@@ -89,6 +89,7 @@ describe('issueBoardFromIssues', () => {
       title: 't',
       status: 'new',
       url: 'https://github.com/max/proto/issues/42',
+      details: expect.any(Object),
     });
   });
 });
@@ -114,10 +115,32 @@ describe('IssueBoardTracker', () => {
             title: 't',
             status: 'new',
             url: 'https://github.com/o/r/issues/1',
+            details: expect.any(Object),
           },
         ],
       },
     ]);
     tracker.dispose();
+  });
+});
+
+describe('issueBoardFromIssues details', () => {
+  it('puts the sections of the body on the card, with the decision options', () => {
+    const [card] = issueBoardFromIssues(
+      [
+        issue({
+          body: '## Done when\nit ships\n\n## Decision needed\n**Q?**\n- [ ] A (recommended)\n- [ ] B\n',
+        }),
+      ],
+      0,
+    );
+    expect(card.details?.doneWhen).toBe('it ships');
+    expect(card.details?.decisions?.[0].options).toHaveLength(2);
+  });
+
+  it('gives a card with no body empty details, never undefined sections', () => {
+    const [card] = issueBoardFromIssues([issue({})], 0);
+    expect(card.details?.beforeAfter).toBe('');
+    expect(card.details?.decisions).toEqual([]);
   });
 });

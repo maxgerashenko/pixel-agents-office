@@ -12,6 +12,11 @@ import {
   ISSUE_BOARD_POLL_INTERVAL_MS,
   ISSUE_BOARD_POLL_TIMEOUT_MS,
 } from './constants.js';
+import {
+  type DecisionQuestion,
+  decisionsOfSection,
+  sectionsOfIssueBody,
+} from './issueBodySections.js';
 import { type GhPr, stageOfPr, type TaskStage } from './taskTracker.js';
 
 /** The board's Status columns, left to right. */
@@ -53,6 +58,19 @@ export interface IssueBoardCard {
   status: IssueBoardStatus;
   url: string;
   progress?: IssueProgress;
+  details: IssueBoardCardDetails;
+}
+
+/** The parts of the issue body the expanded card shows; '' for a section the issue lacks. */
+export interface IssueBoardCardDetails {
+  labels: string[];
+  beforeAfter: string;
+  doneWhen: string;
+  blockedBy: string;
+  scope: string;
+  verify: string;
+  decisions: DecisionQuestion[];
+  pullRequestStage?: TaskStage;
 }
 
 /** The fields of `gh issue list --json ...` this reads. */
@@ -63,6 +81,7 @@ export interface GhIssue {
   state: 'OPEN' | 'CLOSED';
   labels: { name: string }[];
   closedAt?: string | null;
+  body?: string;
   /** Added by the tracker, not by `gh`: the stage of the open pull request that fixes this issue. */
   pullRequestStage?: TaskStage;
   /** Added by the tracker: a plan file `plan/feature-<number>-*.md` exists in the repo. */
@@ -95,6 +114,21 @@ function repoOfIssueUrl(url: string): string | null {
   return match ? match[1] : null;
 }
 
+/** Pure: what the expanded card shows for an issue. */
+function detailsOfIssue(issue: GhIssue): IssueBoardCardDetails {
+  const sections = sectionsOfIssueBody(issue.body);
+  return {
+    labels: issue.labels.map((label) => label.name),
+    beforeAfter: sections.beforeAfter,
+    doneWhen: sections.doneWhen,
+    blockedBy: sections.blockedBy,
+    scope: sections.scope,
+    verify: sections.verify,
+    decisions: decisionsOfSection(sections.decisionNeeded),
+    ...(issue.pullRequestStage ? { pullRequestStage: issue.pullRequestStage } : {}),
+  };
+}
+
 /** Pure: the cards for one repo's issues at `now`; closed issues only while recently closed. */
 export function issueBoardFromIssues(issues: GhIssue[], now: number): IssueBoardCard[] {
   const cards: IssueBoardCard[] = [];
@@ -113,6 +147,7 @@ export function issueBoardFromIssues(issues: GhIssue[], now: number): IssueBoard
       title: issue.title,
       status,
       url: issue.url,
+      details: detailsOfIssue(issue),
       ...(progress ? { progress } : {}),
     });
   }
@@ -135,7 +170,7 @@ function runGhIssueList(
         '--limit',
         String(limit),
         '--json',
-        'number,title,url,state,labels,closedAt',
+        'number,title,url,state,labels,closedAt,body',
       ],
       { cwd: dir, timeout: ISSUE_BOARD_POLL_TIMEOUT_MS, maxBuffer: 4 * 1024 * 1024 },
       (err, stdout) => {
