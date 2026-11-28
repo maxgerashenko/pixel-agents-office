@@ -77,36 +77,9 @@ export function WhiteboardModal({ isOpen, onClose }: { isOpen: boolean; onClose:
         {selected && (
           <div
             data-testid="issue-details"
-            className="absolute inset-0 z-10 flex gap-[12px] border-2 border-border bg-bg-dark p-[12px] text-text overflow-y-auto box-border"
+            className="absolute inset-0 z-10 flex flex-col gap-[12px] border-2 border-border bg-bg-dark p-[12px] text-text overflow-y-auto box-border"
           >
-            <div
-              data-testid="issue-option-buttons"
-              className="flex-none w-[180px] flex flex-col gap-[8px]"
-            >
-              {selected.details.decisions.flatMap((decision) => [
-                <div key={`q-${decision.question}`} className="text-xs text-text-muted">
-                  {decision.question}
-                </div>,
-                ...decision.options.map((option) => (
-                  <button
-                    key={`${decision.question}-${option.label}`}
-                    type="button"
-                    data-testid="issue-option"
-                    title="Copies this answer and opens the issue"
-                    onClick={() => {
-                      void navigator.clipboard?.writeText(option.label);
-                      if (isOpenableIssueUrl(selected.url))
-                        window.open(selected.url, '_blank', 'noopener,noreferrer');
-                    }}
-                    className={`text-left text-sm bg-bg border-2 px-[10px] py-[6px] cursor-pointer hover:border-accent ${option.recommended ? 'border-accent' : 'border-border'}`}
-                  >
-                    {option.ticked ? '[x] ' : ''}
-                    {option.label}
-                  </button>
-                )),
-              ])}
-            </div>
-            <div className="flex-1 min-w-0 flex flex-col gap-[8px]">
+            <div className="flex flex-col gap-[8px] w-full">
               <div className="text-sm" style={{ lineHeight: 1.2 }}>
                 <span className="text-accent-bright">#{selected.number} </span>
                 {selected.title}
@@ -128,13 +101,37 @@ export function WhiteboardModal({ isOpen, onClose }: { isOpen: boolean; onClose:
                 ),
               )}
             </div>
-            <div className="flex-none flex flex-col gap-[8px] items-end">
+            <div data-testid="issue-option-buttons" className="flex flex-col gap-[8px] w-full">
+              {selected.details.decisions.flatMap((decision) => [
+                <div key={`q-${decision.question}`} className="text-xs text-text-muted">
+                  {decision.question}
+                </div>,
+                ...decision.options.map((option) => (
+                  <button
+                    key={`${decision.question}-${option.label}`}
+                    type="button"
+                    data-testid="issue-option"
+                    title="Copies this answer and opens the issue"
+                    onClick={() => {
+                      void navigator.clipboard?.writeText(option.label);
+                      if (isOpenableIssueUrl(selected.url))
+                        window.open(selected.url, '_blank', 'noopener,noreferrer');
+                    }}
+                    className={`w-full min-h-[44px] text-left text-sm bg-bg border-2 px-[10px] py-[6px] cursor-pointer hover:border-accent ${option.recommended ? 'border-accent' : 'border-border'}`}
+                  >
+                    {option.ticked ? '[x] ' : ''}
+                    {option.label}
+                  </button>
+                )),
+              ])}
+            </div>
+            <div className="flex-none flex gap-[8px] order-first self-end">
               <button
                 type="button"
                 data-testid="issue-open-github"
                 disabled={!isOpenableIssueUrl(selected.url)}
                 onClick={() => window.open(selected.url, '_blank', 'noopener,noreferrer')}
-                className="text-sm bg-bg border-2 border-border px-[10px] py-[4px] cursor-pointer hover:border-accent"
+                className="w-[130px] text-sm bg-bg border-2 border-border px-[10px] py-[4px] cursor-pointer hover:border-accent"
               >
                 Open on GitHub
               </button>
@@ -143,7 +140,7 @@ export function WhiteboardModal({ isOpen, onClose }: { isOpen: boolean; onClose:
                 data-testid="issue-details-close"
                 aria-label="Close details"
                 onClick={() => setSelectedId(null)}
-                className="text-sm bg-bg border-2 border-border px-[10px] py-[4px] cursor-pointer hover:border-accent"
+                className="w-[130px] text-sm bg-bg border-2 border-border px-[10px] py-[4px] cursor-pointer hover:border-accent"
               >
                 X
               </button>
