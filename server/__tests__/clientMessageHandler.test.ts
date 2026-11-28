@@ -144,6 +144,47 @@ describe('clientMessageHandler: areas + carpet wire ordering', () => {
     });
   });
 
+  // ── tickIssueDecisionOption ──────────────────────────────────
+
+  describe('tickIssueDecisionOption', () => {
+    it('asks the issue board to tick the option for a privileged client', () => {
+      const calls: unknown[][] = [];
+      const issueBoard = {
+        tickDecisionOption: async (...args: unknown[]) => {
+          calls.push(args);
+          return true;
+        },
+      };
+      handleClientMessage(
+        { type: 'tickIssueDecisionOption', cardId: 'o/r#7', questionIndex: 0, optionIndex: 1 },
+        (m) => sent.push(m),
+        { ...ctx, issueBoard } as never,
+      );
+      expect(calls).toEqual([['o/r#7', 0, 1]]);
+    });
+
+    it('ignores a payload with a non-string card id or non-integer indexes', () => {
+      const calls: unknown[][] = [];
+      const issueBoard = {
+        tickDecisionOption: async (...args: unknown[]) => {
+          calls.push(args);
+          return true;
+        },
+      };
+      for (const bad of [
+        { cardId: 7, questionIndex: 0, optionIndex: 0 },
+        { cardId: 'o/r#7', questionIndex: -1, optionIndex: 0 },
+        { cardId: 'o/r#7', questionIndex: 0, optionIndex: 1.5 },
+      ]) {
+        handleClientMessage({ type: 'tickIssueDecisionOption', ...bad }, (m) => sent.push(m), {
+          ...ctx,
+          issueBoard,
+        } as never);
+      }
+      expect(calls).toEqual([]);
+    });
+  });
+
   // ── setShowAreas ─────────────────────────────────────────────
 
   describe('setShowAreas', () => {
@@ -1255,6 +1296,7 @@ describe('clientMessageHandler: read-only (untokened) clients', () => {
       { type: 'removeExternalAssetDirectory', path: directory },
       { type: 'saveAreaMappings', mappings: { Lab: ['project'] } },
       { type: 'setShowAreas', enabled: true },
+      { type: 'tickIssueDecisionOption', cardId: 'o/r#1', questionIndex: 0, optionIndex: 0 },
       { type: 'setBypassPermissions', enabled: true },
       { type: 'saveDirectory', name: 'Project', path: directory },
       { type: 'removeDirectory', path: directory },

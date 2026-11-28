@@ -335,6 +335,24 @@ export function handleClientMessage(
       break;
     }
 
+    case 'tickIssueDecisionOption': {
+      const { cardId, questionIndex, optionIndex } = msg;
+      if (
+        typeof cardId !== 'string' ||
+        !Number.isInteger(questionIndex) ||
+        !Number.isInteger(optionIndex) ||
+        (questionIndex as number) < 0 ||
+        (optionIndex as number) < 0
+      )
+        break;
+      void ctx.issueBoard?.tickDecisionOption(
+        cardId,
+        questionIndex as number,
+        optionIndex as number,
+      );
+      break;
+    }
+
     case 'setBypassPermissions': {
       if (typeof msg.enabled !== 'boolean' || !adapter) break;
       adapter.setSetting(KEY_BYPASS_PERMISSIONS, msg.enabled);

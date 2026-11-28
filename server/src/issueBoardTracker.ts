@@ -12,6 +12,12 @@ import {
   ISSUE_BOARD_POLL_INTERVAL_MS,
   ISSUE_BOARD_POLL_TIMEOUT_MS,
 } from './constants.js';
+import {
+  type DecisionQuestion,
+  decisionsOfSection,
+  sectionsOfIssueBody,
+  tickDecisionOption,
+} from './issueBodySections.js';
 import { type GhPr, stageOfPr, type TaskStage } from './taskTracker.js';
 
 /** The board's Status columns, left to right. */
@@ -53,6 +59,19 @@ export interface IssueBoardCard {
   status: IssueBoardStatus;
   url: string;
   progress?: IssueProgress;
+  details: IssueBoardCardDetails;
+}
+
+/** The parts of the issue body the expanded card shows; '' for a section the issue lacks. */
+export interface IssueBoardCardDetails {
+  labels: string[];
+  beforeAfter: string;
+  doneWhen: string;
+  blockedBy: string;
+  scope: string;
+  verify: string;
+  decisions: DecisionQuestion[];
+  pullRequestStage?: TaskStage;
 }
 
 /** The fields of `gh issue list --json ...` this reads. */
@@ -63,6 +82,7 @@ export interface GhIssue {
   state: 'OPEN' | 'CLOSED';
   labels: { name: string }[];
   closedAt?: string | null;
+  body?: string;
   /** Added by the tracker, not by `gh`: the stage of the open pull request that fixes this issue. */
   pullRequestStage?: TaskStage;
   /** Added by the tracker: a plan file `plan/feature-<number>-*.md` exists in the repo. */
@@ -95,6 +115,21 @@ function repoOfIssueUrl(url: string): string | null {
   return match ? match[1] : null;
 }
 
+/** Pure: what the expanded card shows for an issue. */
+function detailsOfIssue(issue: GhIssue): IssueBoardCardDetails {
+  const sections = sectionsOfIssueBody(issue.body);
+  return {
+    labels: issue.labels.map((label) => label.name),
+    beforeAfter: sections.beforeAfter,
+    doneWhen: sections.doneWhen,
+    blockedBy: sections.blockedBy,
+    scope: sections.scope,
+    verify: sections.verify,
+    decisions: decisionsOfSection(sections.decisionNeeded),
+    ...(issue.pullRequestStage ? { pullRequestStage: issue.pullRequestStage } : {}),
+  };
+}
+
 /** Pure: the cards for one repo's issues at `now`; closed issues only while recently closed. */
 export function issueBoardFromIssues(issues: GhIssue[], now: number): IssueBoardCard[] {
   const cards: IssueBoardCard[] = [];
@@ -113,6 +148,7 @@ export function issueBoardFromIssues(issues: GhIssue[], now: number): IssueBoard
       title: issue.title,
       status,
       url: issue.url,
+      details: detailsOfIssue(issue),
       ...(progress ? { progress } : {}),
     });
   }
@@ -135,7 +171,7 @@ function runGhIssueList(
         '--limit',
         String(limit),
         '--json',
-        'number,title,url,state,labels,closedAt',
+        'number,title,url,state,labels,closedAt,body',
       ],
       { cwd: dir, timeout: ISSUE_BOARD_POLL_TIMEOUT_MS, maxBuffer: 4 * 1024 * 1024 },
       (err, stdout) => {
@@ -156,6 +192,21 @@ function runGhIssueList(
 }
 
 type GhOpenPr = GhPr & { closingIssuesReferences?: { number: number }[] };
+
+function runGh(args: string[], stdin?: string): Promise<string | null> {
+  return new Promise((resolve) => {
+    const child = execFile(
+      'gh',
+      args,
+      { timeout: ISSUE_BOARD_POLL_TIMEOUT_MS, maxBuffer: 4 * 1024 * 1024 },
+      (err, stdout) => {
+        if (err) console.warn(`[Pixel Agents] gh ${args[0]} ${args[1]} failed: ${err.message}`);
+        resolve(err ? null : stdout);
+      },
+    );
+    if (stdin !== undefined) child.stdin?.end(stdin);
+  });
+}
 
 function runGhOpenPrList(dir: string): Promise<GhOpenPr[]> {
   return new Promise((resolve) => {
@@ -228,6 +279,8 @@ export interface IssueBoardTrackerOptions {
   dirs?: () => string[];
   fetchIssues?: (dir: string) => Promise<GhIssue[] | null>;
   intervalMs?: number;
+  /** Runs `gh <args>` (optional stdin) and returns stdout, null on failure. */
+  runGh?: (args: string[], stdin?: string) => Promise<string | null>;
 }
 
 /**
@@ -245,6 +298,7 @@ export class IssueBoardTracker {
   private readonly dirs: () => string[];
   private readonly fetchIssues: (dir: string) => Promise<GhIssue[] | null>;
   private readonly intervalMs: number;
+  private readonly runGh: (args: string[], stdin?: string) => Promise<string | null>;
 
   constructor(
     private readonly store: Pick<AgentStateStore, 'broadcast'>,
@@ -254,10 +308,43 @@ export class IssueBoardTracker {
     this.dirs = opts.dirs ?? (() => readConfig().directories.map((d) => d.path));
     this.fetchIssues = opts.fetchIssues ?? fetchIssues;
     this.intervalMs = opts.intervalMs ?? ISSUE_BOARD_POLL_INTERVAL_MS;
+    this.runGh = opts.runGh ?? runGh;
   }
 
   currentMessage(): Record<string, unknown> {
     return { type: 'issueBoardUpdate', issues: this.latest };
+  }
+
+  /**
+   * Ticks one decision option in the issue body on GitHub (the repo comes from the card id
+   * `owner/repo#number`). The repo's decision-tick workflow then applies the answer. True when
+   * the body was changed.
+   */
+  async tickDecisionOption(
+    cardId: string,
+    questionIndex: number,
+    optionIndex: number,
+  ): Promise<boolean> {
+    const match = /^([\w.-]+\/[\w.-]+)#(\d+)$/.exec(cardId);
+    if (!match) return false;
+    const [, repo, number] = match;
+    const viewed = await this.runGh(['issue', 'view', number, '--repo', repo, '--json', 'body']);
+    if (viewed === null) return false;
+    let body: string;
+    try {
+      body = (JSON.parse(viewed) as { body?: string }).body ?? '';
+    } catch {
+      return false;
+    }
+    const next = tickDecisionOption(body, questionIndex, optionIndex);
+    if (next === null) return false;
+    const written = await this.runGh(
+      ['issue', 'edit', number, '--repo', repo, '--body-file', '-'],
+      next,
+    );
+    if (written === null) return false;
+    void this.poll();
+    return true;
   }
 
   addViewer(): () => void {

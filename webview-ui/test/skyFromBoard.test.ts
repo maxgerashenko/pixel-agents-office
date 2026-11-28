@@ -21,6 +21,15 @@ const card = (
   title: `issue ${number}`,
   status,
   url: `https://github.com/o/r/issues/${number}`,
+  details: {
+    labels: [],
+    beforeAfter: '',
+    doneWhen: '',
+    blockedBy: '',
+    scope: '',
+    verify: '',
+    decisions: [],
+  },
   ...(progress ? { progress } : {}),
 });
 

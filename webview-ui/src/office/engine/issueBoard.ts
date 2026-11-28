@@ -67,3 +67,26 @@ export function issueDetailsLine(card: IssueBoardCardView): string {
   const step = card.progress?.replace('_', ' ');
   return step && step !== column.toLowerCase() ? `${column} \u00b7 ${step}` : column;
 }
+
+export interface IssueDetailSection {
+  label: string;
+  text: string;
+  /** True for a section the issue body lacks; shown in red so the gap is seen. */
+  missing: boolean;
+  /** Shown folded until the reader opens it. */
+  collapsed: boolean;
+}
+
+/** Pure: the sections the expanded card shows. Before / After and Done when are always listed. */
+export function issueDetailSections(card: IssueBoardCardView): IssueDetailSection[] {
+  const { beforeAfter, doneWhen, blockedBy, scope, verify } = card.details;
+  const sections: IssueDetailSection[] = [
+    { label: 'Before / After', text: beforeAfter, missing: !beforeAfter, collapsed: false },
+    { label: 'Done when', text: doneWhen, missing: !doneWhen, collapsed: false },
+  ];
+  if (blockedBy && blockedBy.toLowerCase() !== 'none')
+    sections.push({ label: 'Blocked by', text: blockedBy, missing: false, collapsed: false });
+  if (scope) sections.push({ label: 'Scope', text: scope, missing: false, collapsed: true });
+  if (verify) sections.push({ label: 'Verify', text: verify, missing: false, collapsed: true });
+  return sections;
+}

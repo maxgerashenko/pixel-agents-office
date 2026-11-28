@@ -13,6 +13,7 @@ import {
   isOpenableIssueUrl,
   type IssueBoardCardView,
   issueBoardColumns,
+  issueDetailSections,
   issueDetailsLine,
   setIssueBoard,
 } from '../src/office/engine/issueBoard.js';
@@ -23,6 +24,15 @@ const card = (number: number, status: IssueBoardCardView['status']): IssueBoardC
   title: `issue ${number}`,
   status,
   url: `https://github.com/o/r/issues/${number}`,
+  details: {
+    labels: [],
+    beforeAfter: '',
+    doneWhen: '',
+    blockedBy: '',
+    scope: '',
+    verify: '',
+    decisions: [],
+  },
 });
 
 test('columns follow the board left to right, each with its own issues, empty ones kept', () => {
@@ -73,4 +83,41 @@ test('details line names the column and the progress step', () => {
     issueDetailsLine({ ...card(2, 'in_progress'), progress: 'plan_ready' }),
     'Coding \u00b7 plan ready',
   );
+});
+
+test('detail sections always list Before / After and Done when, flagged missing when empty', () => {
+  const sections = issueDetailSections(card(1, 'new'));
+  assert.deepEqual(
+    sections.map((s) => [s.label, s.missing, s.collapsed]),
+    [
+      ['Before / After', true, false],
+      ['Done when', true, false],
+    ],
+  );
+});
+
+test('detail sections add Blocked by (not when none), Scope and Verify (collapsed) when filled', () => {
+  const full: IssueBoardCardView = {
+    ...card(1, 'new'),
+    details: {
+      ...card(1, 'new').details,
+      beforeAfter: '- Before: a\n- After: b',
+      doneWhen: 'ships',
+      blockedBy: '#12',
+      scope: 'files',
+      verify: 'run it',
+    },
+  };
+  assert.deepEqual(
+    issueDetailSections(full).map((s) => [s.label, s.missing, s.collapsed]),
+    [
+      ['Before / After', false, false],
+      ['Done when', false, false],
+      ['Blocked by', false, false],
+      ['Scope', false, true],
+      ['Verify', false, true],
+    ],
+  );
+  const none = { ...full, details: { ...full.details, blockedBy: 'none' } };
+  assert.ok(!issueDetailSections(none).some((s) => s.label === 'Blocked by'));
 });
