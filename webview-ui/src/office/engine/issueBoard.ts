@@ -10,8 +10,8 @@ export type IssueBoardCardView = IssueBoardCard;
 /** The board's columns, left to right, with the names the GitHub board shows. */
 export const ISSUE_BOARD_COLUMNS: ReadonlyArray<{ status: IssueBoardStatus; label: string }> = [
   { status: 'new', label: 'New' },
-  { status: 'needs_design', label: 'Design' },
   { status: 'ready', label: 'Ready' },
+  { status: 'needs_design', label: 'Design' },
   { status: 'in_progress', label: 'Coding' },
   { status: 'in_review', label: 'Review' },
   { status: 'needs_decision', label: 'Decision' },
@@ -19,8 +19,8 @@ export const ISSUE_BOARD_COLUMNS: ReadonlyArray<{ status: IssueBoardStatus; labe
   { status: 'done', label: 'Done' },
 ];
 
-/** Columns kept off the board: backlog, stuck and finished issues are not active work. */
-const HIDDEN_STATUSES: ReadonlySet<IssueBoardStatus> = new Set(['new', 'blocked', 'done']);
+/** Columns kept off the board: backlog and finished issues are not active work (Blocked is shown, last). */
+const HIDDEN_STATUSES: ReadonlySet<IssueBoardStatus> = new Set(['new', 'done']);
 
 const KNOWN_STATUSES = new Set<string>(ISSUE_BOARD_COLUMNS.map((c) => c.status));
 
