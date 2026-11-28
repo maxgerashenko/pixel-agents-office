@@ -125,21 +125,27 @@ export function pickWeekWindows(
   return {};
 }
 
-/** One fill of the weekly line, from the left edge, in percent of the track. */
+/** One fill of the weekly line, from the left edge, in percent of the track.
+ *  `used` is the main colour; `diff` is the second colour, the share of the
+ *  week that is not Fable. */
 export interface WeekLineLayer {
-  kind: 'week' | 'fable';
+  kind: 'used' | 'diff';
   width: number;
 }
 
-/** Both weekly fills start at the left edge: the all-models week in the main
- *  colour, Fable's week in the second colour. The longer one is the
- *  background and the shorter is drawn over it, so the longer shows only past
- *  the shorter's tip. Returned back to front; a tie puts the week in front. */
+/** The weekly line, back to front. When Fable is below the week, the main
+ *  colour runs to Fable's share and the second colour continues to the
+ *  week's (week − Fable). Otherwise (Fable equal or ahead, or only one window
+ *  reported) it is just the week's percent in the main colour. */
 export function weekLineLayers(weekPct: number | null, fablePct: number | null): WeekLineLayer[] {
-  const layers: WeekLineLayer[] = [];
-  if (fablePct !== null) layers.push({ kind: 'fable', width: fablePct });
-  if (weekPct !== null) layers.push({ kind: 'week', width: weekPct });
-  return layers.sort((a, b) => b.width - a.width);
+  if (weekPct !== null && fablePct !== null && fablePct < weekPct) {
+    return [
+      { kind: 'diff', width: weekPct },
+      { kind: 'used', width: fablePct },
+    ];
+  }
+  const width = weekPct ?? fablePct;
+  return width === null ? [] : [{ kind: 'used', width }];
 }
 
 /** Validate one wire window; anything malformed counts as absent. */

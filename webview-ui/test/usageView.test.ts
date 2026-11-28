@@ -119,24 +119,21 @@ describe('pickWeekWindows', () => {
 });
 
 describe('weekLineLayers', () => {
-  it('puts Fable behind the week when Fable is ahead', () => {
-    expect(weekLineLayers(57, 70)).toEqual([
-      { kind: 'fable', width: 70 },
-      { kind: 'week', width: 57 },
+  it('splits the week into Fable and the difference when Fable is behind', () => {
+    expect(weekLineLayers(80, 77)).toEqual([
+      { kind: 'diff', width: 80 },
+      { kind: 'used', width: 77 },
     ]);
   });
-  it('puts the week behind Fable when Fable is behind', () => {
-    expect(weekLineLayers(57, 40)).toEqual([
-      { kind: 'week', width: 57 },
-      { kind: 'fable', width: 40 },
-    ]);
+  it('shows just the week when Fable is ahead', () => {
+    expect(weekLineLayers(57, 70)).toEqual([{ kind: 'used', width: 57 }]);
   });
-  it('keeps the week in front on a tie', () => {
-    expect(weekLineLayers(57, 57).map((l) => l.kind)).toEqual(['fable', 'week']);
+  it('shows just the week on a tie', () => {
+    expect(weekLineLayers(57, 57)).toEqual([{ kind: 'used', width: 57 }]);
   });
   it('draws whichever window is reported alone', () => {
-    expect(weekLineLayers(57, null)).toEqual([{ kind: 'week', width: 57 }]);
-    expect(weekLineLayers(null, 30)).toEqual([{ kind: 'fable', width: 30 }]);
+    expect(weekLineLayers(57, null)).toEqual([{ kind: 'used', width: 57 }]);
+    expect(weekLineLayers(null, 30)).toEqual([{ kind: 'used', width: 30 }]);
     expect(weekLineLayers(null, null)).toEqual([]);
   });
 });

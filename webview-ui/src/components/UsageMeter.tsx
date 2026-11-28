@@ -41,9 +41,9 @@ function SessionRing({ percent }: { percent: number }) {
   );
 }
 
-/** One thin line holding both weekly limits, each a fill from the left edge:
- *  the all-models week in the main colour, Fable's week in the second colour
- *  the session bar uses. The shorter is drawn over the longer (see
+/** One thin line for the weekly limits. Fable below the week: the main colour
+ *  up to Fable's share, the second colour for the rest of the week's (week −
+ *  Fable). Otherwise just the week's percent in the main colour (see
  *  `weekLineLayers`). */
 function WeekLine({
   week,
@@ -77,7 +77,7 @@ function WeekLine({
       {weekLineLayers(weekPct, fablePct).map(({ kind, width }) => (
         <div
           key={kind}
-          className={`absolute inset-y-0 left-0 ${kind === 'week' ? 'bg-accent-bright' : 'bg-usage-last-hour'}`}
+          className={`absolute inset-y-0 left-0 ${kind === 'used' ? 'bg-accent-bright' : 'bg-usage-last-hour'}`}
           style={{ width: `${width}%` }}
         />
       ))}
